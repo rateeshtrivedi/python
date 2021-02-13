@@ -1,2 +1,2 @@
 # python
-Repository contains programs which will help to learn basic Python Programming and Advance Techniques like OepnCV
+Repository contains programs which will help to learn basic Python Programming Langauge
