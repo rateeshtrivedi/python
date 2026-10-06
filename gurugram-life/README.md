@@ -3,7 +3,7 @@
 A lightweight, browser-based life-sim / open-world game set in **Gurugram, Haryana**.
 Create a character, find a job, pay rent, make friends, book rides and explore the Millennium City.
 
-**No build step, no libraries, no downloads.** About 110 KB of plain HTML, CSS and JavaScript, with every graphic drawn on a canvas.
+**No build step, no libraries, no downloads.** About 140 KB (uncompressed) of plain HTML, CSS and JavaScript, with every graphic drawn on a canvas.
 
 ## Play
 
