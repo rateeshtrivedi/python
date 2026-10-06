@@ -1667,7 +1667,13 @@
       { icon: '💾', label: 'Save game', sub: 'Also autosaves every few seconds', onClick: () => { save(); toast('Game saved.', 'good'); } },
       { icon: '🎮', label: 'Controls', sub: 'WASD/arrows move · Shift jog · E interact · P phone · M map · F vehicle · Esc close' },
       { icon: '🚪', label: 'Sign out', sub: `Signed in as ${esc(store.profiles[user].display)}`, onClick: signOut },
-      { icon: '🗑️', label: 'Delete this save & start over', sub: 'Cannot be undone', onClick: () => { if (confirm('Delete your Gurugram Life progress?')) { store.profiles[user].save = null; saveStore(); running = false; S = null; closePhone(); openCreator(store.profiles[user].display); } } },
+      { icon: '🗑️', label: 'Delete this save & start over', sub: 'Cannot be undone', onClick: () => {
+        closePhone();
+        showModal('Delete your progress?', 'Your character, money and home will be gone. This cannot be undone.', [
+          { icon: '🗑️', label: 'Yes, delete my save', onClick: () => { store.profiles[user].save = null; saveStore(); running = false; S = null; closeModal(); openCreator(store.profiles[user].display); } },
+          { icon: '↩️', label: 'Keep playing', onClick: closeModal },
+        ]);
+      } },
       { note: 'Gurugram Life is a work of fiction. All businesses, apps and brands are made up.', blue: true },
     ]);
   }
