@@ -327,7 +327,7 @@
     s.player.items = s.player.items || [];
     s.player.vehicles = s.player.vehicles || [];
     s.stats = Object.assign({ rides: 0, deliveries: 0, shifts: 0, courses: 0, km: 0 }, s.stats);
-    s.orders = s.orders || []; s.quests = s.quests || {}; s.naka = s.naka || {}; s.goals = s.goals || {};
+    s.orders = s.orders || []; s.quests = s.quests || {}; s.naka = s.naka || {}; s.goals = s.goals || {}; s.hints = s.hints || {};
     return s;
   }
 
@@ -342,6 +342,7 @@
     $('#game3d').classList.toggle('hidden', !use3D);
     $('#game').classList.toggle('hidden', use3D);
     resize();
+    renderKeyLegend();
   }
 
   function startGame(state, fresh) {
@@ -354,6 +355,8 @@
     showScreen('screen-game');
     resize();
     running = true;
+    playStart = 0;
+    renderKeyLegend();
     updateHUD();
     if (fresh) welcome();
     else toast(`Welcome back, ${esc(S.player.name)}! ${weekday(dayOf(S.time))} ${clock(S.time)}.`, 'good');
@@ -367,7 +370,8 @@
       { icon: '💼', label: 'Get a job', sub: 'Open KaamDhanda on your phone. Chai Chaupal and ZipZap hire freshers.' },
       { icon: '🚕', label: 'Book rides', sub: 'Chalo (cabs & autos) or PhatPhat (bike taxis). Beware peak-hour surge!' },
       { icon: '👋', label: 'Make friends', sub: 'Walk up to people and press E. Some have errands for you (❗).' },
-      { note: '<b>Controls:</b> WASD / arrows to walk · Shift to jog · E interact · P phone · M map · F ride your vehicle. On mobile use the joystick and buttons.', blue: true },
+      { note: isTouch() ? '<b>Controls:</b> joystick to walk · <b>E</b> to interact · drag the screen to look around · 📱 phone · 🗺️ map · ❓ help.' : `<b>Controls:</b> WASD to walk · Shift to jog · E interact · P phone · M map · F vehicle${use3D ? ' · drag the mouse to look around' : ''} · <b>H for help</b>.`, blue: true },
+      { icon: '📖', label: 'Read the quick guide', sub: 'Controls, getting around, money and tips — 2 minutes', onClick: () => openHelp('start') },
       { icon: '▶️', label: 'Let\'s go!', onClick: closeModal },
     ]);
   }
@@ -533,14 +537,14 @@
   }
 
   // ---------- UI: toasts, modal ----------
-  function toast(html, kind) {
+  function toast(html, kind, ms = 5000) {
     const box = $('#toasts');
     const t = document.createElement('div');
     t.className = 'toast' + (kind ? ' ' + kind : '');
     t.innerHTML = html;
     box.appendChild(t);
     while (box.children.length > 4) box.firstChild.remove();
-    setTimeout(() => t.remove(), 5000);
+    setTimeout(() => t.remove(), ms);
   }
 
   function itemEl(it) {
@@ -558,6 +562,7 @@
 
   function showModal(title, sub, items) {
     const body = $('#modal-body');
+    $('.modal-box').classList.remove('wide');
     body.innerHTML = `<h3>${esc(title)}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}<div class="list"></div>`;
     fillList(body.querySelector('.list'), items);
     $('#modal').classList.remove('hidden');
@@ -1048,6 +1053,7 @@
     if (busy) return;
     if (k === 'e' || k === 'enter') { if (!isUI() && currentAct) currentAct(); }
     if (k === 'p' || k === 'tab') { e.preventDefault(); if ($('#phone').classList.contains('hidden')) openPhone(); else closePhone(); }
+    if (k === 'h' || k === '?') { if ($('#modal').classList.contains('hidden')) openHelp(); else closeModal(); }
     if (k === 'm') { if ($('#mapview').classList.contains('hidden')) openMap(); else closeMap(); }
     if (k === 'f' && !isUI()) toggleVehicle();
     if (k.startsWith('arrow') || k === ' ') e.preventDefault();
@@ -1073,6 +1079,7 @@
   $('#btn-phone').onclick = () => openPhone();
   $('#btn-map').onclick = () => openMap();
   $('#btn-veh').onclick = () => toggleVehicle();
+  $('#btn-help').onclick = () => openHelp();
   if ('ontouchstart' in window || matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');
 
   // ---------- update ----------
@@ -1517,6 +1524,7 @@
     { id: 'maps', name: 'Maps', ico: '🗺️', bg: '#34a853' },
     { id: 'goals', name: 'Goals', ico: '🏆', bg: '#f59e0b' },
     { id: 'me', name: 'Profile', ico: '🧑', bg: '#64748b' },
+    { id: 'help', name: 'Help', ico: '❓', bg: '#0ea5e9' },
     { id: 'settings', name: 'Settings', ico: '⚙️', bg: '#374151' },
   ];
   const phoneBody = $('#phone-body');
@@ -1552,7 +1560,7 @@
   function openApp(id, ...args) {
     if (args[0] && (id === 'chalo' || id === 'phatphat')) return rideQuote(id, args[0]);
     ({ chalo: rideApp, phatphat: rideApp, bhookh: bhookhApp, kaam: kaamApp, roof: roofApp, pay: payApp, yaari: yaariApp, goals: goalsApp, me: meApp, settings: settingsApp,
-      maps: () => { closePhone(); openMap(); } })[id](id, ...args);
+      maps: () => { closePhone(); openMap(); }, help: () => openHelp() })[id](id, ...args);
   }
 
   function placeGroups() {
@@ -1704,7 +1712,10 @@
     const pad = appShell('settings');
     fillList(pad, [
       { icon: '💾', label: 'Save game', sub: 'Also autosaves every few seconds', onClick: () => { save(); toast('Game saved.', 'good'); } },
-      { icon: '🎮', label: 'Controls', sub: 'WASD/arrows move · Shift jog · E interact · P phone · M map · F vehicle · Esc close · 3D: drag or Z/X to turn the camera, scroll to zoom' },
+      { icon: '📖', label: 'Help guide', sub: 'Controls, navigation, money, daily life, tips', onClick: () => openHelp('controls') },
+      { icon: '💡', label: `Tips & hints: ${store.tips === false ? 'Off' : 'On'}`, sub: 'Helpful pop-ups the first time things happen, plus an occasional tip', onClick: () => { store.tips = store.tips === false; saveStore(); settingsApp(); } },
+      !isTouch() && { icon: '⌨️', label: `Key legend: ${store.legend === false ? 'Hidden' : 'Shown'}`, sub: 'The row of shortcut keys at the bottom left', onClick: () => { store.legend = store.legend === false; saveStore(); renderKeyLegend(); settingsApp(); } },
+      { icon: '🔄', label: 'Replay first-time hints', onClick: () => { S.hints = {}; toast('Hints will show again as things come up.', 'good'); } },
       { icon: use3D ? '🧊' : '🗺️', label: `Graphics: ${use3D ? '3D city' : '2D classic'}`, sub: can3D() ? `Switch to ${use3D ? '2D classic (fastest, for older phones)' : '3D city'}` : '3D needs WebGL, which this device does not support',
         disabled: !can3D() && !use3D, onClick: () => { store.gfx = use3D ? '2d' : '3d'; saveStore(); setGraphics(store.gfx); settingsApp(); toast(`Graphics set to ${use3D ? '3D' : '2D'}.`); } },
       { icon: '🚪', label: 'Sign out', sub: `Signed in as ${esc(store.profiles[user].display)}`, onClick: signOut },
@@ -1722,6 +1733,7 @@
   function signOut() {
     save(); running = false; S = null; ride = null; user = null;
     closePhone(); closeModal(); closeMap();
+    renderKeyLegend();
     renderProfiles();
     showScreen('screen-login');
   }
@@ -1734,7 +1746,7 @@
     closeModal();
     mapMode = opts.pick || null; mapPick = null;
     $('#mapview').classList.remove('hidden');
-    $('#map-hint').textContent = mapMode ? 'Tap where you want to go' : 'Tap anywhere to set a waypoint';
+    $('#map-hint').textContent = mapMode ? 'Tap where you want to go' : 'Tap a spot to set a waypoint or book a ride there · 🟠 you · 🟢 home · 🔵 work · 🩷 waypoint';
     $('#map-actions').innerHTML = '';
     const box = $('.map-box');
     const w = box.clientWidth - 20, maxH = window.innerHeight - 130;
@@ -1785,6 +1797,156 @@
     if (S.waypoint) mk('Clear waypoint', () => { S.waypoint = null; drawBigMap(); });
   });
 
+  // ---------- help guide, hints and tips ----------
+  const isTouch = () => document.body.classList.contains('is-touch');
+  const kb = (k) => `<kbd class="k">${k}</kbd>`;
+  const HELP_TABS = [
+    { id: 'start', label: 'Start here' }, { id: 'controls', label: 'Controls' }, { id: 'travel', label: 'Getting around' },
+    { id: 'money', label: 'Jobs & money' }, { id: 'life', label: 'Daily life' }, { id: 'tips', label: 'Tips & tricks' },
+  ];
+  function helpContent(tab) {
+    const T = isTouch();
+    if (tab === 'start') return [
+      { note: 'You have just arrived in Gurugram. Your goal is to build a life: a roof, a job, friends and savings. The <b>task bar</b> under your stats always shows what to do next.', blue: true },
+      { icon: '1️⃣', label: 'Rent a place on day one', sub: 'Basera Rooms is next to the bus stand (₹900/week). Without a home you sleep on park benches and barely recover.' },
+      { icon: '2️⃣', label: 'Get a job you qualify for', sub: 'Phone → KaamDhanda. Barista (Chai Chaupal, 7 AM) and factory helper (Udyog Vihar, 8 AM) need no skills.' },
+      { icon: '3️⃣', label: 'Earn while you wait for your shift', sub: 'Register at the ZipZap hub on Sohna Road and deliver orders. Rent their e-bike for ₹199 so you arrive on time.' },
+      { icon: '4️⃣', label: 'Upskill, then move up', sub: 'SkillUp Academy (Sector 14) raises Coding and Communication. CodeKraft pays ₹3,300 a shift at Coding 3.' },
+      { icon: '🏆', label: 'Follow your goals', sub: 'Phone → Goals lists 11 milestones, and each one pays a cash reward.' },
+    ];
+    if (tab === 'controls') return [
+      { section: T ? 'Touch controls' : 'Keyboard and mouse' },
+      ...(T ? [
+        { icon: '🕹️', label: 'Joystick (bottom left)', sub: 'Drag to walk. Push it all the way to move faster.' },
+        { icon: '🟠', label: 'E button', sub: 'Enter buildings, talk to people and board your ride. A label above it says what it will do.' },
+        { icon: '👆', label: 'Drag anywhere else on the screen', sub: use3D ? 'Turns and tilts the camera. Walking follows the direction the camera faces.' : 'Nothing in 2D. The map always faces north.' },
+        { icon: '📱', label: 'Side buttons', sub: '📱 phone · 🗺️ city map · 🛵 get on or off your vehicle · ❓ this guide' },
+      ] : [
+        { html: `<div class="keys-grid">
+          <span>${kb('W')}${kb('A')}${kb('S')}${kb('D')} or arrows</span><span>Walk${use3D ? ' (relative to the camera)' : ''}</span>
+          <span>${kb('Shift')}</span><span>Jog (uses more energy)</span>
+          <span>${kb('E')} or ${kb('Enter')}</span><span>Enter, talk, board a ride</span>
+          <span>${kb('P')} or ${kb('Tab')}</span><span>Open or close your phone</span>
+          <span>${kb('M')}</span><span>City map</span>
+          <span>${kb('F')}</span><span>Get on or off your vehicle</span>
+          <span>${kb('H')}</span><span>This help guide</span>
+          <span>${kb('Esc')}</span><span>Close any window</span>
+          ${use3D ? `<span>Mouse drag</span><span>Turn and tilt the camera</span>
+          <span>${kb('Z')} ${kb('X')}</span><span>Turn the camera left or right</span>
+          <span>Mouse wheel</span><span>Zoom in or out</span>` : ''}
+        </div>` },
+      ]),
+      { section: 'Reading the screen' },
+      { icon: '📊', label: 'Four bars, top left', sub: '❤️ health · 🍛 hunger · ⚡ energy · 💬 social. They turn yellow, then red, when low.' },
+      { icon: '📍', label: 'Location chip', sub: 'Shows the road or district you are in, your vehicle, and the distance to your waypoint.' },
+      { icon: '🗺️', label: 'Minimap, bottom right', sub: `🟠 you${use3D ? ' (the light cone is where the camera looks)' : ''} · 🟢 home · 🔵 work · 🩷 waypoint · 🟡 your ride` },
+      { icon: '💬', label: 'Prompt at the bottom', sub: `Appears when you can do something here. ${T ? 'Tap E' : 'Press E'} to act on it.` },
+      { icon: '🎯', label: 'Yellow rings', sub: 'Mark building entrances on the ground. Stand in one to go inside.' },
+    ];
+    if (tab === 'travel') return [
+      { section: 'Finding your way' },
+      { icon: '🗺️', label: 'Set a waypoint on the map', sub: `Open the map (${T ? '🗺️' : 'M'}), tap any spot or building, then choose <b>Set waypoint</b>. ${use3D ? 'A pink light beam marks it in the city' : 'A pink arrow at the screen edge points to it'}, and the location chip shows the distance.` },
+      { icon: '📌', label: 'Quick waypoints', sub: 'KaamDhanda → <b>Navigate to work</b> and RoofRaja → <b>Navigate home</b>. Deliveries and errands set one automatically.' },
+      { icon: '🧭', label: 'The city is a grid', sub: 'North–south: NH-48, Old Railway Rd, Sohna Rd, Golf Course Rd, Golf Course Ext. Rd. East–west: MG Road, Sector Road, Southern Peripheral Road.' },
+      { section: 'Ways to travel' },
+      { icon: '🚶', label: 'Walking', sub: 'Free but slow, about 3 game minutes per km. Fine inside a district.' },
+      { icon: '🚕', label: 'Chalo or PhatPhat', sub: 'Phone → app → pick a place, Home, Work or your waypoint. Wait by the road, walk to the car with the yellow ring, and press E. You pay on arrival.' },
+      { icon: '🚇', label: 'Rapid Link Metro', sub: '₹20–60 between Cyber City, MG Road, Sikanderpur, Golf Course Rd and Sector 54. Open 6 AM–11 PM. The fastest way across the north of the city.' },
+      { icon: '🛵', label: 'Your own vehicle', sub: `Rent the ZipZap e-bike (₹199/day) or buy one at Raftaar Motors. Press ${T ? '🛵' : 'F'} to ride. Two-wheelers need a helmet from Sadar Bazaar.` },
+      { icon: '🍱', label: 'Stay put and order food', sub: 'Bhookh delivers to wherever you are in about 30 minutes.' },
+    ];
+    if (tab === 'money') return [
+      { icon: '🕘', label: 'Shifts have fixed times', sub: 'You can clock in from 1 hour before to 2 hours after the start. Late means 15% less pay. Missing 3 shifts in a row gets you fired. Sundays are off.' },
+      { icon: '📈', label: 'Promotions', sub: 'Every 8 shifts you get a promotion worth +15% pay.' },
+      { icon: '🎓', label: 'Skill requirements', sub: 'Coding and Communication come from SkillUp Academy, Fitness from the gym and parks, Style from clothes shops. Check Phone → Profile.' },
+      { icon: '📦', label: 'Gig work', sub: 'ZipZap pays per order, plus a tip if you beat the timer. HustleHive freelancing (Coding 2) has no fixed hours.' },
+      { icon: '🏠', label: 'Rent', sub: 'Paid automatically every 7 days. If you can\'t pay, you have 3 days before eviction and you lose your deposit.' },
+      { icon: '🏦', label: 'Paisa Bank', sub: 'Savings earn 0.2% a day, and money in the bank can\'t be spent on impulse.' },
+      { icon: '💸', label: 'PayKaro', sub: 'Every rupee in and out is listed there, including rent, fares, fuel and challans.' },
+    ];
+    if (tab === 'life') return [
+      { icon: '🍛', label: 'Hunger', sub: 'Drops about 4 points an hour. Eat at dhabas, cafés or the mall, or order on Bhookh. A PG includes breakfast.' },
+      { icon: '⚡', label: 'Energy', sub: 'Work and jogging drain it. Sleep at home until 7 AM, or take a nap. Better homes restore more. At 0 you faint in the street.' },
+      { icon: '❤️', label: 'Health', sub: 'Falls when you are starving, exhausted, hit by traffic or out on bad-AQI days without a mask. At 0 you are rushed to hospital (₹3,000).' },
+      { icon: '💬', label: 'Social', sub: 'Chat with people, hang out at Cyber Square, the pub or the cinema, or call friends on Yaari.' },
+      { icon: '🤝', label: 'Friends', sub: 'Chat once an hour (+6 friendship). At 25 you can hang out; at 30 they become a friend. People with ❗ have paid errands.' },
+      { icon: '🌧️', label: 'Weather and AQI', sub: 'Rain floods roads (slow walking) and adds surge pricing. AQI above 300 harms health, so buy N95 masks.' },
+    ];
+    return [
+      { icon: '💡', label: 'Book a ride before you leave', sub: 'The driver takes a few minutes. Book, then walk toward the nearest road while they come.' },
+      { icon: '🏍️', label: 'Beat the jam on a bike', sub: 'At peak hours (8–11 AM, 5–9 PM) cars crawl on NH-48, MG Rd, Sohna Rd and Golf Course Rd. Bike taxis and scooters barely slow down, and surge less.' },
+      { icon: '🦓', label: 'Cross at zebra crossings', sub: 'Traffic never stops for you. Getting hit costs 12 health.' },
+      { icon: '⛑️', label: 'Buy a helmet first', sub: 'Police nakas (orange cones) fine riders without one ₹1,000, every time you pass.' },
+      { icon: '🧾', label: 'Two jobs at once', sub: 'Work a morning shift, then do ZipZap deliveries or HustleHive sessions in the evening.' },
+      { icon: '🌅', label: 'Morning yoga is free social', sub: 'Leisure Valley Park, 5–10 AM: social, fitness and a friend, all without spending money.' },
+      { icon: '🏠', label: 'Live near work', sub: 'Commuting eats your money and time. Sector 14 and Sushant Lok are central and affordable.' },
+      { icon: '💤', label: 'Sleep before a big day', sub: 'You can\'t start a shift with less than 20 energy.' },
+      { icon: '🎯', label: 'Goal rewards add up', sub: 'Early goals pay ₹200–800 each, which is enough to cover your first week\'s rent.' },
+      { icon: '🗺️', label: 'Use the map to book a ride', sub: 'Tap any spot on the map and choose 🚕 or 🏍️ to get a fare quote there instantly.' },
+    ];
+  }
+  function openHelp(tab = 'start') {
+    closePhone(); closeMap();
+    const tabsHtml = `<div class="help-tabs">${HELP_TABS.map((t) => `<button data-tab="${t.id}" class="${t.id === tab ? 'on' : ''}">${t.label}</button>`).join('')}</div>`;
+    showModal('How to play', 'Gurugram Life guide', [{ html: tabsHtml }, ...helpContent(tab)]);
+    $('.modal-box').classList.add('wide');
+    $('#modal-body').querySelectorAll('.help-tabs button').forEach((b) => { b.onclick = () => openHelp(b.dataset.tab); });
+  }
+
+  // One-time hints that appear the first time something becomes relevant.
+  function hint(id, html) {
+    if (!S.hints) S.hints = {};
+    if (S.hints[id] || store.tips === false) return;
+    S.hints[id] = true;
+    toast(`💡 ${html}`, 'tip', 9000);
+  }
+  let hintAt = 0, tipAt = performance.now(), playStart = 0;
+  const TIPS = [
+    'Book a ride before you leave the building — drivers take a few minutes to arrive.',
+    'Bike taxis on PhatPhat skip most peak-hour jams and surge less.',
+    'Tap anywhere on the map, then choose 🚕 to get a fare quote to that exact spot.',
+    'Leisure Valley morning yoga (5–10 AM) is free social and fitness.',
+    'Deposit spare cash at Paisa Bank: 0.2% interest a day.',
+    'People with ❗ above their head pay you for quick errands.',
+    'Rent the ZipZap e-bike to make delivery timers easily.',
+    'Buy a helmet at Sadar Bazaar before riding — nakas fine ₹1,000.',
+    'Press H any time for the full help guide.',
+    'Order on Bhookh when you\'re far from food; it reaches you anywhere.',
+  ];
+  function runHints() {
+    const now = performance.now();
+    if (!playStart) playStart = now;
+    if (now - hintAt < 1000) return;
+    hintAt = now;
+    const P = S.player, onboard = ride && ride.status === 'onboard';
+    if (now - playStart > 3000) hint('move', isTouch() ? 'Drag the <b>joystick</b> to walk. Tap <b>❓</b> any time for the help guide.' : `Walk with <b>WASD</b>${use3D ? ', drag the mouse to look around, scroll to zoom' : ''}. Press <b>H</b> any time for the help guide.`);
+    if (currentAct && promptEl.textContent.includes('Talk')) hint('npc', `Press <b>E</b> to talk. Chatting builds friendship, and people share job tips.`);
+    else if (currentAct && !onboard) hint('door', `You're at an entrance. Press <b>E</b> to see what you can do inside.`);
+    if (!onboard && !P.riding && roadAt(P.x, P.y)) hint('road', 'Careful — traffic never stops for you. Cross at the <b>zebra crossings</b> near junctions.');
+    if (P.hunger < 35) hint('hungry', 'You\'re getting hungry. Eat at a 🍽️ place or order on <b>Bhookh</b> from your phone.');
+    if (P.energy < 30) hint('tired', 'Energy is low. Sleep at home (enter your 🏠 and choose Sleep), or grab a chai for a quick boost.');
+    if (darkness() > 0.3) hint('night', 'Night has fallen. The metro closes at 11 PM, and bars stay open until 2 AM.');
+    if (S.weather === 'rain') hint('rain', 'It\'s raining: roads waterlog, walking slows down and cab fares surge. PhatPhat bikes surge less.');
+    if (isPeak() && (P.riding || onboard)) hint('peak', 'Peak traffic! Cars crawl on the big roads 8–11 AM and 5–9 PM. Two-wheelers get through faster.');
+    if (bestVehicle() && !P.riding) hint('vehicle', `You have a vehicle. Press <b>${isTouch() ? '🛵' : 'F'}</b> to ride it.`);
+    if (S.waypoint) hint('waypoint', `Waypoint set! Follow the ${use3D ? 'pink light beam' : 'pink arrow'}; the 📍 chip shows how far it is.`);
+    if (ride && ride.status === 'waiting') hint('board', 'Your driver is here. Walk to the car with the <b>yellow ring</b> and press <b>E</b> to get in.');
+    if (P.money < 1500) hint('broke', 'Running low on cash? ZipZap deliveries pay right away, and goals (Phone → Goals) pay rewards.');
+    if (S.home && S.home.nextDue - dayOf(S.time) <= 1 && P.money < HOMES[S.home.key].rent) hint('rentdue' + S.home.nextDue, `Rent of ${inr(HOMES[S.home.key].rent)} is due tomorrow and you can't cover it yet!`);
+    if (S.job) hint('shift', 'Be at your workplace near your shift time, step into the yellow ring and press <b>E → Start shift</b>.');
+    if (store.tips !== false && now - tipAt > 240000 && !isUI()) { tipAt = now; toast(`💡 Tip: ${pick(TIPS)}`, 'tip', 8000); }
+  }
+
+  function renderKeyLegend() {
+    const el = $('#keylegend');
+    const show = running && !isTouch() && store.legend !== false;
+    el.classList.toggle('hidden', !show);
+    if (!show) return;
+    el.innerHTML = `<button class="kl-x" title="Hide (turn back on in Settings)">✕</button>
+      <span>${kb('W')}${kb('A')}${kb('S')}${kb('D')} walk</span><span>${kb('E')} interact</span><span>${kb('P')} phone</span><span>${kb('M')} map</span><span>${kb('F')} vehicle</span>${use3D ? '<span>drag / ' + kb('Z') + kb('X') + ' camera</span>' : ''}<span>${kb('H')} help</span>`;
+    el.querySelector('.kl-x').onclick = () => { store.legend = false; saveStore(); renderKeyLegend(); toast('Key legend hidden. Turn it back on in Phone → Settings.'); };
+  }
+
   // ---------- save / loop ----------
   function save() {
     if (!S || !user || !store.profiles[user]) return;
@@ -1806,6 +1968,7 @@
       hudT += dt; goalT += dt;
       if (hudT > 0.2) { hudT = 0; updateHUD(); }
       if (goalT > 1) { goalT = 0; checkGoals(); }
+      if (!isUI()) runHints();
     }
     requestAnimationFrame(frame);
   }

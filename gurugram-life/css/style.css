@@ -78,7 +78,7 @@ input:focus { border-color: var(--accent); }
 .bar s { display: block; height: 100%; background: #6be08f; border-radius: 4px; transition: width .3s; }
 .bar s.low { background: #ff6b6b; }
 .bar s.mid { background: #ffc94d; }
-#prompt { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--hud); color: var(--hud-ink); padding: 8px 14px; border-radius: 99px; font-weight: 600; pointer-events: none; white-space: nowrap; }
+#prompt { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); background: var(--hud); color: var(--hud-ink); padding: 8px 14px; border-radius: 99px; font-weight: 600; pointer-events: none; white-space: nowrap; }
 #prompt:empty { display: none; }
 #prompt kbd { background: var(--accent); color: #fff; border-radius: 5px; padding: 0 6px; margin-right: 4px; font: inherit; }
 #minimap { position: absolute; right: 10px; bottom: 10px; border-radius: 12px; border: 2px solid rgba(255,255,255,.7); background: #333; }
@@ -162,3 +162,17 @@ button.item:disabled { opacity: .5; cursor: not-allowed; }
 #act-text { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
 .act-bar { height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
 .act-bar s { display: block; height: 100%; width: 0; background: var(--accent); }
+
+/* Help guide, hints and key legend */
+.toast.tip { border-left-color: #0ea5e9; background: #f0f9ff; }
+kbd.k { display: inline-block; min-width: 1.7em; padding: 1px 6px; margin: 0 2px 0 0; border: 1px solid #c9cfdb; border-bottom-width: 2px; border-radius: 5px; background: #fff; color: var(--ink); font: 600 12px/1.5 ui-monospace, Menlo, monospace; text-align: center; }
+.keys-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; }
+.keys-grid > span:nth-child(odd) { white-space: nowrap; }
+.help-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.help-tabs button { border: 1.5px solid var(--line); background: #fff; color: var(--ink); border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 600; }
+.help-tabs button.on { border-color: #0ea5e9; background: #e0f2fe; color: #075985; }
+.modal-box.wide { width: 560px; }
+#keylegend { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; max-width: calc(100vw - 230px); background: var(--hud); color: var(--hud-ink); border-radius: 10px; padding: 7px 34px 7px 10px; font-size: 12px; }
+#keylegend kbd.k { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.3); }
+#keylegend .kl-x { position: absolute; top: 5px; right: 6px; border: 0; background: none; color: #fff; opacity: .7; font-size: 12px; }
+#keylegend .kl-x:hover { opacity: 1; }

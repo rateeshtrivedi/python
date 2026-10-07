@@ -36,6 +36,7 @@ It works on desktop and mobile. Touch devices get a joystick and action buttons.
 | **Social** | Chat with about 28 residents, build friendships, hang out, call friends on **Yaari** and run ❗ errands for rewards. |
 | **GTA-style touches** | Buy a scooter, motorbike or car, or rent an e-bike, and ride it yourself. Traffic can knock you over, police nakas fine you for riding without a helmet, and you can run delivery and errand missions. |
 | **Upskilling** | SkillUp Academy (coding, communication), Iron Paradise Gym, parks (yoga, jogging, cricket, treks), clothes that raise your Style, and a golf club with a dress code. |
+| **Help & tips** | A six-section guide (press **H**, tap **❓**, or open *Phone → Help*): Start here, Controls, Getting around, Jobs & money, Daily life, Tips & tricks. First-time hints pop up when something becomes relevant (your first entrance, crossing a road, getting hungry, rain, peak traffic, your ride arriving). There is also an occasional tip, a key legend on desktop and a legend on the map. Hints and the legend can be turned off in Settings. |
 | **Goals** | Eleven milestones with cash rewards, such as saving ₹1,00,000, becoming a software engineer and living on Golf Course Road. |
 
 ## Controls
@@ -49,6 +50,7 @@ It works on desktop and mobile. Touch devices get a joystick and action buttons.
 | Phone (rides, jobs, rent, food…) | P | 📱 |
 | City map / waypoint / book ride to a spot | M | 🗺️ |
 | Ride your own vehicle | F | 🛵 |
+| Help guide | H | ❓ |
 | Close menus | Esc | ✕ |
 
 ## Notes
