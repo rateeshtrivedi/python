@@ -641,6 +641,38 @@ window.GGL3D = (() => {
     return playerVeh[key];
   }
 
+  // Sheru the dog: one merged mesh that trots behind the player.
+  let dog = null;
+  const dogS = { x: 0, z: 0, ang: 0, phase: 0, init: false };
+  function makeDog() {
+    const fur = '#a0703c', dark = '#5b3a1e', parts = [
+      part(BOX(12, 6, 5.5), fur, 0, 8, 0), part(BOX(6, 5.5, 5), fur, 7.5, 11.5, 0), part(BOX(3.5, 2.6, 3.2), '#c99a66', 11.5, 10.5, 0),
+      part(BOX(1, 1, 1), '#111', 13.3, 11, 0), part(BOX(2, 3, 1.2), dark, 6.5, 15, 1.8), part(BOX(2, 3, 1.2), dark, 6.5, 15, -1.8),
+      part(BOX(5, 1.6, 1.6), fur, -7.5, 11, 0, 0, 0, 0.7),
+      part(BOX(2, 6, 2), fur, 4.5, 3, 1.8), part(BOX(2, 6, 2), fur, 4.5, 3, -1.8), part(BOX(2, 6, 2), fur, -4.5, 3, 1.8), part(BOX(2, 6, 2), fur, -4.5, 3, -1.8),
+      part(BOX(1.2, 1.4, 5.8), '#d94a2b', 4.2, 10.5, 0),
+    ];
+    const m = new T.Mesh(merge(parts), vehMat);
+    m.castShadow = !mobile;
+    m.scale.setScalar(0.85);
+    return m;
+  }
+  function updateDog(f, dt) {
+    if (!f.pet || f.onboard) { if (dog) dog.visible = false; return; }
+    if (!dog) { dog = makeDog(); scene.add(dog); }
+    dog.visible = true;
+    const P = f.P, a = P.ang || 0;
+    const tx = P.x - Math.cos(a) * 22 - Math.sin(a) * 10, tz = P.y - Math.sin(a) * 22 + Math.cos(a) * 10;
+    if (!dogS.init || Math.hypot(tx - dogS.x, tz - dogS.z) > 300) { dogS.x = tx; dogS.z = tz; dogS.init = true; }
+    const dx = tx - dogS.x, dz = tz - dogS.z, d = Math.hypot(dx, dz);
+    if (d > 3) {
+      const sp = Math.min(d, Math.max(90, d * 3) * dt);
+      dogS.x += (dx / d) * sp; dogS.z += (dz / d) * sp; dogS.ang = Math.atan2(dz, dx); dogS.phase += dt * 14;
+    }
+    dog.position.set(dogS.x, 0.6 + (d > 3 ? Math.abs(Math.sin(dogS.phase)) * 1.6 : 0), dogS.z);
+    dog.rotation.y = -dogS.ang;
+  }
+
   // ---------- per-frame ----------
   const fogDay = new T.Color(), skyTop = new T.Color(), skyBot = new T.Color(), C = (h) => new T.Color(h);
   function lerpHex(a, b, t) { return C(a).lerp(C(b), clamp(t, 0, 1)); }
@@ -673,23 +705,10 @@ window.GGL3D = (() => {
     rain.visible = f.rain; puddleGroup.visible = f.rain;
   }
 
-  function placeCamera(f, dt) {
-    if (rot.left) cam.yaw -= dt * 1.8;
-    if (rot.right) cam.yaw += dt * 1.8;
-    if (f.onboard && f.followAng != null) {
-      let d = f.followAng - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
-      cam.yaw += d * Math.min(1, dt * 1.2);
-    }
-    const jump = Math.hypot(f.focus.x - cam.tx, f.focus.y - cam.tz) > 250; // metro, hospital, ride drop-off
-    const k = cam.init && !jump ? 1 - Math.exp(-dt * 10) : 1;
-    cam.init = true;
-    cam.tx += (f.focus.x - cam.tx) * k; cam.tz += (f.focus.y - cam.tz) * k; cam.ty = 14;
-    const fx = Math.cos(cam.yaw), fz = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), spc = Math.sin(cam.pitch);
-    let d = cam.dist * (f.onboard ? 1.25 : 1);
-    const ex = cam.tx - fx * cp * d, ey = cam.ty + spc * d, ez = cam.tz - fz * cp * d;
-    // pull the camera in front of buildings that would hide the player
+  function occlusion(fx, fz, pitch, d) {
+    const cp = Math.cos(pitch), spc = Math.sin(pitch);
+    const ox = cam.tx, oy = cam.ty, oz = cam.tz, dx = -fx * cp * d, dy = spc * d, dz = -fz * cp * d;
     let tmin = 1;
-    const ox = cam.tx, oy = cam.ty, oz = cam.tz, dx = ex - ox, dy = ey - oy, dz = ez - oz;
     for (const b of boxes) {
       let t0 = 0, t1 = 1, ok = true;
       for (const [o, dd, lo, hi] of [[ox, dx, b.x0, b.x1], [oy, dy, 0, b.h], [oz, dz, b.z0, b.z1]]) {
@@ -701,7 +720,31 @@ window.GGL3D = (() => {
       }
       if (ok && t0 < tmin) tmin = t0;
     }
-    if (tmin < 1) d *= Math.max(0.12, tmin * 0.9);
+    return tmin;
+  }
+  function placeCamera(f, dt) {
+    if (rot.left) cam.yaw -= dt * 1.8;
+    if (rot.right) cam.yaw += dt * 1.8;
+    if (f.onboard && f.followAng != null) {
+      let d = f.followAng - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+      cam.yaw += d * Math.min(1, dt * 1.2);
+    }
+    const jump = Math.hypot(f.focus.x - cam.tx, f.focus.y - cam.tz) > 250; // metro, hospital, ride drop-off
+    const k = cam.init && !jump ? 1 - Math.exp(-dt * 10) : 1;
+    cam.init = true;
+    cam.tx += (f.focus.x - cam.tx) * k; cam.tz += (f.focus.y - cam.tz) * k; cam.ty = 14;
+    const fx = Math.cos(cam.yaw), fz = Math.sin(cam.yaw);
+    const base = cam.dist * (f.onboard ? 1.25 : 1);
+    // First try lifting the camera over low buildings; only pull it in if that fails.
+    let pitch = cam.pitch, d = base, tmin = 1;
+    for (const p of [cam.pitch, cam.pitch + 0.25, cam.pitch + 0.5, 1.2]) {
+      tmin = occlusion(fx, fz, Math.min(p, 1.3), base);
+      pitch = Math.min(p, 1.3);
+      if (tmin >= 1) break;
+    }
+    if (tmin < 1) { pitch = cam.pitch; tmin = occlusion(fx, fz, pitch, base); d = base * Math.max(0.12, tmin * 0.9); }
+    cam.curPitch = cam.curPitch == null ? pitch : cam.curPitch + (pitch - cam.curPitch) * Math.min(1, dt * 6);
+    const cp = Math.cos(cam.curPitch), spc = Math.sin(cam.curPitch);
     camera.position.set(cam.tx - fx * cp * d, cam.ty + spc * d, cam.tz - fz * cp * d);
     camera.lookAt(cam.tx, cam.ty + 4, cam.tz);
   }
@@ -780,6 +823,7 @@ window.GGL3D = (() => {
       rain.geometry.attributes.position.needsUpdate = true;
       rain.position.set(cam.tx, 0, cam.tz);
     }
+    updateDog(f, dt);
     placeCamera(f, dt);
     sky.position.copy(camera.position);
     stars.position.copy(camera.position);

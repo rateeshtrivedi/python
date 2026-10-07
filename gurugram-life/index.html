@@ -55,6 +55,7 @@
     <div class="hud-top">
       <div class="pill" id="hud-time"></div>
       <div class="pill" id="hud-weather"></div>
+      <div class="pill lvl" id="hud-lvl"></div>
       <div class="pill money" id="hud-money"></div>
     </div>
     <div class="bars">
@@ -72,6 +73,7 @@
     <button id="btn-phone" title="Phone (P)">📱</button>
     <button id="btn-map" title="Map (M)">🗺️</button>
     <button id="btn-veh" title="Ride your vehicle (F)">🛵</button>
+    <button id="btn-gift" title="Rewards (G)">🎁</button>
     <button id="btn-help" title="Help guide (H)">❓</button>
   </div>
   <div id="touch">
@@ -98,6 +100,8 @@
     <div class="map-actions" id="map-actions"></div>
   </div>
 </div>
+<div id="celebrate" class="hidden"></div>
+<canvas id="confetti" class="hidden"></canvas>
 <div id="activity" class="hidden"><div class="act-box"><div id="act-text"></div><div class="act-bar"><s id="act-fill"></s></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

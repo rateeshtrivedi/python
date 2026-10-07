@@ -328,6 +328,7 @@
     s.player.vehicles = s.player.vehicles || [];
     s.stats = Object.assign({ rides: 0, deliveries: 0, shifts: 0, courses: 0, km: 0 }, s.stats);
     s.orders = s.orders || []; s.quests = s.quests || {}; s.naka = s.naka || {}; s.goals = s.goals || {}; s.hints = s.hints || {};
+    ensureProg(s);
     return s;
   }
 
@@ -358,8 +359,18 @@
     playStart = 0;
     renderKeyLegend();
     updateHUD();
+    const newDayReal = checkDaily();
+    if (!fresh && S.lastSeen) {
+      const hrs = Math.min(8, (Date.now() - S.lastSeen) / 3.6e6);
+      let sum = 0;
+      if (hrs > 0.05) for (const b of BUSINESSES) { const o = S.biz[b.id]; if (!o) continue; const cap = bizIncome(b, o.lvl) * BIZ_CAP_H, add = Math.min(cap - o.till, bizIncome(b, o.lvl) * hrs * 3); if (add > 0) { o.till += add; sum += add; } }
+      if (sum >= 1) setTimeout(() => toast(`🏪 While you were away, your businesses made ${inr(sum)}. Collect it in Dhandha!`, 'good', 8000), 1500);
+    }
     if (fresh) welcome();
-    else toast(`Welcome back, ${esc(S.player.name)}! ${weekday(dayOf(S.time))} ${clock(S.time)}.`, 'good');
+    else {
+      toast(`Welcome back, ${esc(S.player.name)}! ${weekday(dayOf(S.time))} ${clock(S.time)}.`, 'good');
+      if (newDayReal || rewardsPending()) setTimeout(() => { if (!isUI()) openRewards(); }, 900);
+    }
   }
 
   function welcome() {
@@ -396,7 +407,7 @@
     } else {
       P.hunger -= 0.06 * m * (mods.hunger || 1);
       P.energy -= 0.05 * m * (mods.energy || 1) * fit;
-      P.social -= 0.03 * m * (mods.social == null ? 1 : mods.social);
+      P.social -= 0.03 * m * (mods.social == null ? 1 : mods.social) * (S.partner && (mods.social == null || mods.social > 0) ? 0.6 : 1);
     }
     if (P.hunger <= 0 || P.energy <= 0) P.health -= 0.15 * m;
     else if (P.hunger > 40 && P.energy > 20) P.health += 0.03 * m;
@@ -411,12 +422,13 @@
       const toMidnight = 1440 - (S.time % 1440);
       const step = Math.min(left, toMidnight);
       applyNeeds(step, mods);
+      accrueBiz(step);
       S.time += step; left -= step;
       if (dayOf(S.time) !== S.lastDay) newDay();
     }
     for (let i = S.orders.length - 1; i >= 0; i--) {
       const o = S.orders[i];
-      if (S.time >= o.at) { S.orders.splice(i, 1); applyFood(o.h, o.fx); toast(`🛵 Your Bhookh order arrived: ${o.name}. Delicious!`, 'good'); }
+      if (S.time >= o.at) { S.orders.splice(i, 1); applyFood(o.h, o.fx); track('eat'); toast(`🛵 Your Bhookh order arrived: ${o.name}. Delicious!`, 'good'); }
     }
   }
 
@@ -446,6 +458,7 @@
     }
     if (S.home && S.home.key === 'pg') P.hunger = clamp(P.hunger + 25, 0, 100);
     genQuests();
+    onNewDayProg(d);
     const wx = S.weather === 'rain' ? '🌧️ Monsoon rain — waterlogging and surge pricing likely' : `AQI ${S.aqi}${S.aqi > 300 ? ' 😷 wear a mask' : ''}`;
     toast(`📅 ${weekday(d)}, Day ${d} · ${wx}`);
   }
@@ -524,6 +537,14 @@
     { id: 'vehicle', t: 'Buy your own vehicle', d: 'Raftaar Motors, Sohna Road', r: 1000, ok: () => S.player.vehicles.length > 0 },
     { id: 'lakh', t: 'Save ₹1,00,000', d: 'Wallet + savings', r: 2000, ok: () => S.player.money + S.player.savings >= 100000 },
     { id: 'dev', t: 'Become a Software Engineer', d: 'CodeKraft, Cyber City — needs Coding 3', r: 3000, ok: () => S.job && S.job.id === 'dev' },
+    { id: 'level5', t: 'Reach Level 5', d: 'Earn XP from everything you do', r: 1000, ok: () => S.level >= 5 },
+    { id: 'biz', t: 'Start your first hustle', d: 'Phone → Dhandha', r: 800, ok: () => Object.keys(S.biz).length > 0 },
+    { id: 'viral', t: 'Go viral on Reelz', d: 'Post reels at photo spots', r: 1500, ok: () => S.reelz.viral > 0 },
+    { id: 'fans', t: 'Reach 10K followers', d: 'Unlocks a ₹3,000/day brand deal', r: 3000, ok: () => S.reelz.followers >= 10000 },
+    { id: 'love', t: 'Find love', d: 'Friendship 70+, then ask them out', r: 1500, ok: () => !!S.partner },
+    { id: 'pet', t: 'Adopt a pet', d: 'Keep an eye out for strays', r: 500, ok: () => !!S.pet },
+    { id: 'streak', t: 'Play 7 days in a row', d: '🎁 Rewards → daily streak', r: 5000, ok: () => S.streak.count >= 7 },
+    { id: 'empire', t: 'Own 4 businesses', d: 'Build a hustle empire', r: 10000, ok: () => Object.keys(S.biz).length >= 4 },
     { id: 'gcr', t: 'Live on Golf Course Road', d: 'Rent the Skyline Towers penthouse', r: 5000, ok: () => S.home && S.home.key === 'penthouse' },
   ];
   function checkGoals() {
@@ -597,7 +618,7 @@
             S.orders.push({ at: S.time + eta, name: n, h, fx });
             closePhone();
             toast(`🍱 Order placed! ${n} arriving in ~${eta} min.`);
-          } else activity(`Eating ${n}…`, 20, { indoor: true }, () => { applyFood(h, fx); toast(`😋 ${n} — ekdum mast!`, 'good'); });
+          } else activity(`Eating ${n}…`, 20, { indoor: true }, () => { applyFood(h, fx); track('eat'); toast(`😋 ${n} — ekdum mast!`, 'good'); });
         },
       };
     });
@@ -634,6 +655,7 @@
     S.job.lastShiftAt = S.time; S.job.lastDay = dayOf(S.time); S.job.missed = 0;
     activity(`Working as ${J.title}…`, J.hours * 60, { energy: J.energy, social: 0.5, indoor: true }, () => {
       earn(pay, `${BLD[J.building].name} – shift pay`);
+      track('shift'); track('earn', pay);
       S.job.shifts++; S.stats.shifts++;
       ['coding', 'comm', 'fitness'].forEach((k) => { if (J[k]) gainSkill(k, J[k]); });
       let msg = `💰 Shift done! Earned ${inr(pay)}.`;
@@ -724,6 +746,7 @@
     return items;
   }
   function sleep(min, comfort, mood) {
+    if (S.player.items.includes('inverter')) comfort += 0.12;
     activity('Sleeping… zzz', min, { sleep: true, comfort, mood, indoor: true }, () => toast(`☀️ Good ${hourF(S.time) < 12 ? 'morning' : 'day'}! Energy ${Math.round(S.player.energy)}.`, 'good'));
   }
   function homeMenu(b) {
@@ -763,6 +786,7 @@
       P.social = clamp(P.social + v.social, 0, 100);
       if (v.hunger) P.hunger = clamp(P.hunger + v.hunger, 0, 100);
       if (v.comm) gainSkill('comm', v.comm);
+      track('social');
       let msg = `🎉 Fun time! Social +${v.social}.`;
       if (v.meet) { const n = pick(NPC_NAMES); addFriend(n[0], 10); msg += ` You met ${n[0]} (${n[1]}).`; }
       toast(msg, 'good');
@@ -782,7 +806,7 @@
     const P = S.player, h = hourF(S.time);
     const items = [
       { icon: '🚶', label: 'Take a stroll', sub: '1h · Social +8, Fitness +0.05', onClick: () => activity('Strolling…', 60, { energy: 1.2, social: -4 }, () => gainSkill('fitness', 0.05)) },
-      { icon: '🏃', label: 'Go for a jog', sub: '1h · Fitness +0.2, Energy −', onClick: () => activity('Jogging…', 60, { energy: 3, hunger: 1.6 }, () => gainSkill('fitness', 0.2)) },
+      { icon: '🏃', label: 'Go for a jog', sub: '1h · Fitness +0.2, Energy −', onClick: () => activity('Jogging…', 60, { energy: 3, hunger: 1.6 }, () => { gainSkill('fitness', 0.2); track('train'); }) },
     ];
     if (b.park === 'leisure') items.push({ icon: '🧘', label: 'Morning yoga with the aunty-ji group', sub: h >= 5 && h < 10 ? '1h · Social +15, Fitness +0.15' : 'Only 5 AM – 10 AM', disabled: !(h >= 5 && h < 10),
       onClick: () => activity('Surya namaskar ×12…', 60, { energy: 1.5, social: -8 }, () => { gainSkill('fitness', 0.15); addFriend('Simran', 6); }) });
@@ -799,7 +823,7 @@
     showModal(b.name, open ? 'Rapid Link Metro · 6 AM – 11 PM' : 'Closed for the night (6 AM – 11 PM)', st.filter((x) => x !== b).map((x) => {
       const hops = Math.abs(st.indexOf(x) - i), fare = 20 + hops * 10;
       return { icon: '🚇', label: x.name.replace('Rapid Link – ', ''), sub: `${hops} stop${hops > 1 ? 's' : ''} · ~${4 + hops * 4} min`, right: inr(fare), disabled: !open,
-        onClick: () => { if (spend(fare, `Rapid Link Metro`)) activity('Riding the Rapid Link Metro…', 4 + hops * 4, { indoor: true }, () => { const d = door(x); S.player.x = d.x; S.player.y = d.y; S.player.riding = null; arrivalChecks(); }); } };
+        onClick: () => { if (spend(fare, `Rapid Link Metro`)) activity('Riding the Rapid Link Metro…', 4 + hops * 4, { indoor: true }, () => { const d = door(x); S.player.x = d.x; S.player.y = d.y; S.player.riding = null; track('metro'); arrivalChecks(); }); } };
     }));
   }
 
@@ -856,7 +880,7 @@
     const P = S.player;
     showModal(b.name, `Fitness ${P.skills.fitness.toFixed(1)} / 5 · reduces how fast you tire`, [
       { icon: '🏋️', label: 'Workout session', sub: '1.5h · Fitness +0.35', right: '₹300', disabled: P.energy < 20,
-        onClick: () => { if (spend(300, 'Iron Paradise session')) activity('Leg day. No skipping.', 90, { energy: 3, hunger: 1.5, indoor: true }, () => { gainSkill('fitness', 0.35); addFriend('Harsh', 3); }); } },
+        onClick: () => { if (spend(300, 'Iron Paradise session')) activity('Leg day. No skipping.', 90, { energy: 3, hunger: 1.5, indoor: true }, () => { gainSkill('fitness', 0.35); addFriend('Harsh', 3); track('train'); }); } },
       { icon: '🥤', label: 'Protein shake', sub: 'Hunger +15, Energy +5', right: '₹180', onClick: () => { if (spend(180, 'Protein shake')) { applyFood(15, { energy: 5 }); toast('💪 Gains!'); closeModal(); } } },
     ]);
   }
@@ -865,7 +889,7 @@
     const P = S.player;
     const course = (label, k, cost, mins, gain) => ({
       icon: '🎓', label, sub: `${mins / 60}h · ${SKILL_LABEL[k]} +${gain} (now ${P.skills[k].toFixed(1)}/5)`, right: cost ? inr(cost) : 'Free', disabled: P.skills[k] >= 5 || P.energy < 15,
-      onClick: () => { if (cost && !spend(cost, `SkillUp: ${label}`)) return; activity(`Studying ${label}…`, mins, { energy: 1.4, indoor: true }, () => { gainSkill(k, gain); S.stats.courses++; toast(`📚 ${SKILL_LABEL[k]} is now ${P.skills[k].toFixed(1)}!`, 'good'); }); },
+      onClick: () => { if (cost && !spend(cost, `SkillUp: ${label}`)) return; activity(`Studying ${label}…`, mins, { energy: 1.4, indoor: true }, () => { gainSkill(k, gain); S.stats.courses++; track('train'); toast(`📚 ${SKILL_LABEL[k]} is now ${P.skills[k].toFixed(1)}!`, 'good'); }); },
     });
     showModal(b.name, 'Upskill to unlock better-paying jobs', [
       course('Coding bootcamp module', 'coding', 2500, 240, 1),
@@ -900,12 +924,14 @@
         const fr = S.friends[n.name] || addFriend(n.name, 0);
         if (S.time - fr.lastChat < 60) { toast(`${n.name}: "Yaar, we just talked! Catch you later."`); closeModal(); return; }
         fr.lastChat = S.time; addFriend(n.name, 6); S.player.social = clamp(S.player.social + 8, 0, 100); passTime(10);
+        track('chat');
         toast(`💬 Nice chat with ${n.name}.`, 'good'); closeModal();
       } },
       { icon: '💡', label: 'Ask about jobs', onClick: () => { toast(`${n.name}: "${JOB_TIPS[n.occ] || 'Check KaamDhanda on your phone — and learn skills at SkillUp Academy.'}"`); addFriend(n.name, 1); closeModal(); } },
       { icon: '☕', label: 'Hang out over chai & snacks', sub: f.fs >= 25 ? '2h · Friendship +12 · Social +30' : 'Become closer first (friendship 25)', right: '₹400', disabled: f.fs < 25,
         onClick: () => { if (spend(400, `Hangout with ${n.name}`)) activity(`Hanging out with ${n.name}…`, 120, { social: -8 }, () => { addFriend(n.name, 12); applyFood(15); }); } },
     ];
+    if (f.fs >= 70 && !S.partner) items.push({ icon: '💞', label: `Ask ${n.name} out on a date`, sub: 'Dinner at Cyber Square · Style and mood help', right: '₹1,500', onClick: () => askOut(n.name) });
     if (q && !S.errand) items.push({ icon: '❗', label: `Errand: ${q.label}`, sub: `Take it to ${BLD[q.bid].name}`, right: inr(q.reward),
       onClick: () => { S.errand = { npc: n.name, ...q }; delete S.quests[n.name]; setWaypoint(door(BLD[q.bid]), BLD[q.bid].name); closeModal(); toast(`❗ Errand accepted for ${n.name}. Waypoint set to ${BLD[q.bid].name}.`); } });
     else if (q) items.push({ note: `${n.name} has an errand, but you're already running one.` });
@@ -987,6 +1013,7 @@
     }
     P.money -= r.fare; txn(`${RIDE_APPS[r.app].name} ${RIDE_TYPES[r.type].label} ride`, -r.fare);
     S.stats.rides++;
+    track('ride');
     toast(`🏁 Arrived at ${esc(r.dest.label)}. ${inr(r.fare)} paid via PayKaro. You rated ${r.driver.name} ★★★★★`, 'good');
     if (S.waypoint && dist(S.waypoint.x, S.waypoint.y, target.x, target.y) < 60 && !S.gig && !S.errand) S.waypoint = null;
     arrivalChecks(); checkGoals(); save();
@@ -1009,6 +1036,7 @@
         const pay = late ? Math.round(g.pay * 0.8) : g.pay;
         earn(pay + tip, `ZipZap delivery${tip ? ' + tip' : ''}`);
         S.stats.deliveries++; S.gig = null; S.waypoint = null;
+        track('deliver'); track('earn', pay + tip);
         toast(late ? `📦 Delivered, but late. ${g.cust} rated you 3★. Earned ${inr(pay)}.` : `📦 Delivered on time! ${g.cust} tipped ${inr(tip)}. Earned ${inr(pay + tip)}.`, late ? '' : 'good');
         checkGoals();
       }
@@ -1018,6 +1046,7 @@
       if (dist(P.x, P.y, d.x, d.y) < 55) {
         earn(S.errand.reward, `Errand for ${S.errand.npc}`);
         addFriend(S.errand.npc, 15);
+        track('errand'); track('earn', S.errand.reward);
         toast(`❗ Errand done! ${S.errand.npc} sent you ${inr(S.errand.reward)} on PayKaro. Friendship +15.`, 'good');
         S.errand = null; S.waypoint = null;
         checkGoals();
@@ -1054,6 +1083,7 @@
     if (k === 'e' || k === 'enter') { if (!isUI() && currentAct) currentAct(); }
     if (k === 'p' || k === 'tab') { e.preventDefault(); if ($('#phone').classList.contains('hidden')) openPhone(); else closePhone(); }
     if (k === 'h' || k === '?') { if ($('#modal').classList.contains('hidden')) openHelp(); else closeModal(); }
+    if (k === 'g') { if ($('#modal').classList.contains('hidden')) openRewards(); else closeModal(); }
     if (k === 'm') { if ($('#mapview').classList.contains('hidden')) openMap(); else closeMap(); }
     if (k === 'f' && !isUI()) toggleVehicle();
     if (k.startsWith('arrow') || k === ' ') e.preventDefault();
@@ -1080,6 +1110,7 @@
   $('#btn-map').onclick = () => openMap();
   $('#btn-veh').onclick = () => toggleVehicle();
   $('#btn-help').onclick = () => openHelp();
+  $('#btn-gift').onclick = () => openRewards();
   if ('ontouchstart' in window || matchMedia('(pointer: coarse)').matches) document.body.classList.add('is-touch');
 
   // ---------- update ----------
@@ -1403,6 +1434,7 @@
         if (V.two) drawPerson(ctx, P.x, P.y, P.look, 0);
       } else drawPerson(ctx, P.x, P.y, P.look, P.moving ? P.phase : 0);
       drawLabel(ctx, P.name, P.x, P.y - 32, 11, '#fff');
+      if (S.pet) { const a = P.ang || 0; drawLabel(ctx, '🐕', P.x - Math.cos(a) * 22 + 10, P.y - Math.sin(a) * 22 + 4, 16); }
     }
     // labels
     for (const b of BUILDINGS) if (vis(b.x - 60, b.y - 20, b.w + 120, b.h + 40)) {
@@ -1448,7 +1480,7 @@
       P, focus, onboard, followAng: onboard ? ride.car.ang : null, ride, rideType: ride ? RIDE_TYPES[ride.type] : null,
       cars, npcs, carXY, quests: S.quests, waypoint: S.waypoint,
       hour: hourF(S.time), dark: darkness(), rain: S.weather === 'rain', aqi: S.aqi,
-      vehTwo: P.riding ? VEHICLES[P.riding].two : false,
+      vehTwo: P.riding ? VEHICLES[P.riding].two : false, pet: !!S.pet,
     });
     drawMinimap();
   }
@@ -1485,6 +1517,8 @@
     $('#hud-time').textContent = `${weekday(d)} · Day ${d} · ${clock(S.time)}${isPeak() ? ' · 🚦 Peak' : ''}`;
     $('#hud-weather').textContent = S.weather === 'rain' ? '🌧️ Rain' : `${hourF(S.time) > 6 && hourF(S.time) < 19 ? '☀️' : '🌙'} AQI ${S.aqi}`;
     $('#hud-money').textContent = inr(P.money);
+    $('#hud-lvl').innerHTML = `⭐ Lv ${S.level} · ${titleFor(S.level)}<i class="xpbar"><s style="width:${Math.min(100, (S.xp / xpNeed(S.level)) * 100)}%"></s></i>`;
+    $('#btn-gift').classList.toggle('dot', rewardsPending());
     $('#hud-money').style.color = P.money < 0 ? '#ff8f8f' : '';
     setBar('#bar-health', P.health); setBar('#bar-hunger', P.hunger); setBar('#bar-energy', P.energy); setBar('#bar-social', P.social);
     $('#hud-loc').textContent = '📍 ' + (ride && ride.status === 'onboard' ? `In a ${RIDE_TYPES[ride.type].label} · ${placeName(ride.car.x, ride.car.y)}` : placeName(P.x, P.y)) + (P.riding ? ` · 🛵 ${VEHICLES[P.riding].name}` : '') + (S.waypoint ? ` · 📌 ${(dist(focus0().x, focus0().y, S.waypoint.x, S.waypoint.y) / PX_PER_KM).toFixed(1)} km` : '');
@@ -1508,6 +1542,7 @@
       const J = JOBS[S.job.id], h = hourF(S.time), until = (J.start - h + 24) % 24;
       if (until < 3 && S.time - S.job.lastShiftAt > 12 * 60) return `🕘 Shift at ${BLD[J.building].name} starts ${fmtHour(J.start)} (${until < 1 ? 'soon!' : `in ${Math.floor(until)}h`})`;
     }
+    if (S.rival && !S.rival.beaten) return `⚔️ Beat ${esc(S.rival.name)}: Life Score ${lifeScore()} / ${S.rival.score}`;
     const g = GOALS.find((x) => !S.goals[x.id]);
     return g ? `🏆 ${g.t} — <small>${g.d}</small>` : '🏆 All goals done. You\'re a true Gurugramite!';
   }
@@ -1524,6 +1559,10 @@
     { id: 'maps', name: 'Maps', ico: '🗺️', bg: '#34a853' },
     { id: 'goals', name: 'Goals', ico: '🏆', bg: '#f59e0b' },
     { id: 'me', name: 'Profile', ico: '🧑', bg: '#64748b' },
+    { id: 'reelz', name: 'Reelz', ico: '📸', bg: 'linear-gradient(135deg,#f58529,#dd2a7b,#8134af)' },
+    { id: 'dhandha', name: 'Dhandha', ico: '🏪', bg: '#16a34a' },
+    { id: 'rewards', name: 'Rewards', ico: '🎁', bg: '#f43f5e' },
+    { id: 'share', name: 'Share', ico: '📣', bg: '#0f172a' },
     { id: 'help', name: 'Help', ico: '❓', bg: '#0ea5e9' },
     { id: 'settings', name: 'Settings', ico: '⚙️', bg: '#374151' },
   ];
@@ -1560,7 +1599,7 @@
   function openApp(id, ...args) {
     if (args[0] && (id === 'chalo' || id === 'phatphat')) return rideQuote(id, args[0]);
     ({ chalo: rideApp, phatphat: rideApp, bhookh: bhookhApp, kaam: kaamApp, roof: roofApp, pay: payApp, yaari: yaariApp, goals: goalsApp, me: meApp, settings: settingsApp,
-      maps: () => { closePhone(); openMap(); }, help: () => openHelp() })[id](id, ...args);
+      maps: () => { closePhone(); openMap(); }, help: () => openHelp(), reelz: reelzApp, dhandha: dhandhaApp, rewards: () => openRewards(), share: () => openShare() })[id](id, ...args);
   }
 
   function placeGroups() {
@@ -1679,7 +1718,10 @@
     const pad = appShell('yaari');
     const known = Object.entries(S.friends).sort((a, b) => b[1].fs - a[1].fs);
     if (!known.length) { fillList(pad, [{ note: 'No contacts yet. Walk up to people around the city and press E to chat!' }]); return; }
-    fillList(pad, [{ note: `${friendCount()} friend(s) · Social ${Math.round(S.player.social)}/100` }, ...known.map(([name, f]) => {
+    fillList(pad, [{ note: `${friendCount()} friend(s) · Social ${Math.round(S.player.social)}/100${S.partner ? ` · 💞 with ${esc(S.partner.name)}` : ''}${S.pet ? ` · 🐕 ${S.pet.name}` : ''}` },
+      S.partner && { icon: '💞', label: `Date night with ${S.partner.name}`, sub: '2.5h · Social +60 · once a day', right: '₹1,200', disabled: S.partner.lastDate === dayOf(S.time), onClick: dateNight },
+      ...known.filter(([name, f]) => f.fs >= 70 && !S.partner).map(([name]) => ({ icon: '💞', label: `Ask ${name} out`, sub: 'You two are close. Take the chance?', right: '₹1,500', onClick: () => askOut(name) })),
+      ...known.map(([name, f]) => {
       const occ = (NPC_NAMES.find((n) => n[0] === name) || [])[1] || '';
       const today = dayOf(S.time);
       return { icon: f.fs >= 30 ? '💛' : '🙂', label: name, sub: `${occ} · <span class="progress" style="display:block"><s style="width:${f.fs}%"></s></span>`, right: f.lastCall === today ? 'Called' : '📞',
@@ -1715,6 +1757,7 @@
       { icon: '📖', label: 'Help guide', sub: 'Controls, navigation, money, daily life, tips', onClick: () => openHelp('controls') },
       { icon: '💡', label: `Tips & hints: ${store.tips === false ? 'Off' : 'On'}`, sub: 'Helpful pop-ups the first time things happen, plus an occasional tip', onClick: () => { store.tips = store.tips === false; saveStore(); settingsApp(); } },
       !isTouch() && { icon: '⌨️', label: `Key legend: ${store.legend === false ? 'Hidden' : 'Shown'}`, sub: 'The row of shortcut keys at the bottom left', onClick: () => { store.legend = store.legend === false; saveStore(); renderKeyLegend(); settingsApp(); } },
+      { icon: store.sound === false ? '🔇' : '🔊', label: `Sound effects: ${store.sound === false ? 'Off' : 'On'}`, onClick: () => { store.sound = store.sound === false; saveStore(); settingsApp(); } },
       { icon: '🔄', label: 'Replay first-time hints', onClick: () => { S.hints = {}; toast('Hints will show again as things come up.', 'good'); } },
       { icon: use3D ? '🧊' : '🗺️', label: `Graphics: ${use3D ? '3D city' : '2D classic'}`, sub: can3D() ? `Switch to ${use3D ? '2D classic (fastest, for older phones)' : '3D city'}` : '3D needs WebGL, which this device does not support',
         disabled: !can3D() && !use3D, onClick: () => { store.gfx = use3D ? '2d' : '3d'; saveStore(); setGraphics(store.gfx); settingsApp(); toast(`Graphics set to ${use3D ? '3D' : '2D'}.`); } },
@@ -1797,12 +1840,421 @@
     if (S.waypoint) mk('Clear waypoint', () => { S.waypoint = null; drawBigMap(); });
   });
 
+  // ---------- progression: XP, daily rewards, hustles, fame, life events ----------
+  const dstr = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  const todayStr = () => dstr(new Date());
+  const yesterdayStr = () => dstr(new Date(Date.now() - 864e5));
+  const xpNeed = (lvl) => Math.round(120 * Math.pow(lvl, 1.45));
+  const titleFor = (lvl) => LEVEL_TITLES.filter(([l]) => lvl >= l).pop()[1];
+  const fmtNum = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(Math.round(n)));
+  const shuffle = (a) => a.map((v) => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+
+  function ensureProg(s) {
+    if (s.xp == null) s.xp = 0;
+    if (s.level == null) s.level = 1;
+    s.biz = s.biz || {};
+    s.reelz = Object.assign({ followers: 0, posts: 0, best: 0, last: -9999, spots: {}, boost: 1, tier: 0, viral: 0 }, s.reelz);
+    s.streak = s.streak || { last: '', count: 0, claimed: '' };
+    if (s.spins == null) s.spins = 0;
+    s.pending = s.pending || [];
+    if (s.nextEvent == null) s.nextEvent = s.time + 240;
+    s.flags = s.flags || {};
+    return s;
+  }
+
+  // ----- sound + celebration -----
+  let actx = null;
+  function chime(kind = 'good') {
+    if (store.sound === false) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const notes = kind === 'big' ? [523, 659, 784, 1047] : kind === 'bad' ? [330, 247] : [660, 880];
+      notes.forEach((f, i) => {
+        const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + i * 0.09;
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+        o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.3);
+      });
+    } catch (e) { /* audio unavailable */ }
+  }
+  function celebrate(big, small) {
+    const el = $('#celebrate');
+    el.innerHTML = `<b>${big}</b><span>${small || ''}</span>`;
+    el.classList.remove('hidden', 'show'); void el.offsetWidth; el.classList.add('show');
+    clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 2600);
+    confetti();
+    chime('big');
+  }
+  function confetti() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const c = $('#confetti'), g = c.getContext('2d');
+    c.width = innerWidth; c.height = innerHeight; c.classList.remove('hidden');
+    const cols = ['#ff8a3d', '#ffd400', '#22a06b', '#3b82f6', '#e23744', '#8e5cf5'];
+    const ps = Array.from({ length: 140 }, () => ({ x: innerWidth / 2 + rand(-80, 80), y: innerHeight * 0.35, vx: rand(-7, 7), vy: rand(-12, -3), r: rand(3, 7), c: pick(cols), a: rand(0, 6) }));
+    const t0 = performance.now();
+    (function step(now) {
+      g.clearRect(0, 0, c.width, c.height);
+      for (const p of ps) { p.vy += 0.35; p.x += p.vx; p.y += p.vy; p.a += 0.2; g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.fillStyle = p.c; g.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); g.restore(); }
+      if (now - t0 < 2200) requestAnimationFrame(step); else { g.clearRect(0, 0, c.width, c.height); c.classList.add('hidden'); }
+    })(t0);
+  }
+
+  // ----- XP and levels -----
+  function addXP(n) {
+    if (!n) return;
+    S.xp += n;
+    while (S.xp >= xpNeed(S.level)) {
+      S.xp -= xpNeed(S.level); S.level++;
+      const bonus = 250 * S.level;
+      earn(bonus, `Level ${S.level} bonus`);
+      const unlocks = BUSINESSES.filter((b) => b.level === S.level).map((b) => `${b.icon} ${b.name}`);
+      celebrate(`Level ${S.level}!`, `You're now a <b>${titleFor(S.level)}</b> · +${inr(bonus)}${unlocks.length ? ` · Unlocked ${unlocks.join(', ')}` : ''}`);
+    }
+  }
+
+  // track() is the single hook for anything that counts toward XP or daily challenges.
+  function track(kind, n = 1) {
+    addXP((XP_FOR[kind] || 0) * (kind === 'earn' ? 0 : n));
+    if (!S.daily) return;
+    for (const t of S.daily.tasks) {
+      if (t.k !== kind || t.p >= t.n) continue;
+      t.p = Math.min(t.n, t.p + n);
+      if (t.p >= t.n) { toast(`🎯 Daily challenge done: ${t.t}! Claim it in 🎁 Rewards.`, 'good'); chime(); }
+    }
+  }
+
+  // ----- daily login, streak, challenges, spin -----
+  function checkDaily() {
+    const t = todayStr();
+    if (S.daily && S.daily.date === t) return false;
+    S.daily = { date: t, spun: false, bonus: false, tasks: shuffle(DAILY_TASKS).slice(0, 3).map((c) => ({ ...c, p: 0, claimed: false, cash: randi(3, 8) * 100, xp: randi(6, 12) * 10 })) };
+    if (S.streak.last === yesterdayStr()) S.streak.count++;
+    else if (S.streak.last !== t) S.streak.count = 1;
+    S.streak.last = t;
+    return true;
+  }
+  const loginDay = () => ((S.streak.count - 1) % 7) + 1;
+  function rewardsPending() {
+    if (!S.daily) return false;
+    return S.streak.claimed !== S.daily.date || !S.daily.spun || S.spins > 0 || S.daily.tasks.some((t) => t.p >= t.n && !t.claimed);
+  }
+  function giveReward(r, label) {
+    const bits = [];
+    if (r.cash) { earn(r.cash, label); bits.push(inr(r.cash)); }
+    if (r.xp) { addXP(r.xp); bits.push(`+${r.xp} XP`); }
+    if (r.spins) { S.spins += r.spins; bits.push(`+${r.spins} spin`); }
+    if (r.followers) { S.reelz.followers += r.followers; bits.push(`+${r.followers} fans`); }
+    if (r.energy) { S.player.energy = 100; bits.push('full energy'); }
+    return bits.join(' · ');
+  }
+  function openRewards() {
+    closePhone(); closeMap();
+    checkDaily();
+    const day = loginDay(), claimedToday = S.streak.claimed === S.daily.date;
+    const ladder = LOGIN_REWARDS.map((r, i) => {
+      const d = i + 1, cls = d < day || (d === day && claimedToday) ? 'done' : d === day ? 'now' : '';
+      const txt = r.cash ? inr(r.cash) : r.xp ? `${r.xp} XP` : '🎡';
+      return `<div class="ladder-cell ${cls}"><small>Day ${d}</small><b>${d === 7 ? '🎁 ' : ''}${txt}</b></div>`;
+    }).join('');
+    const allDone = S.daily.tasks.every((t) => t.claimed);
+    const items = [
+      { html: `<div class="streak"><div class="big">🔥 ${S.streak.count}-day streak</div><small>Come back every day. Miss a day and the streak resets.</small><div class="ladder">${ladder}</div></div>` },
+      { icon: '📅', label: claimedToday ? `Day ${day} reward claimed` : `Claim your Day ${day} reward`, sub: claimedToday ? 'Come back tomorrow for the next one' : 'Free, once per day',
+        disabled: claimedToday, onClick: () => { S.streak.claimed = S.daily.date; const got = giveReward(LOGIN_REWARDS[day - 1], `Day ${day} login reward`); celebrate('Daily reward!', got); openRewards(); } },
+      { section: 'Lucky Chai Spin' },
+      { icon: '🎡', label: !S.daily.spun ? 'Spin the wheel (free today)' : S.spins > 0 ? `Use a bonus spin (${S.spins} left)` : 'Next free spin tomorrow', sub: 'Cash, XP, fans, energy — or the ₹10,000 jackpot',
+        disabled: S.daily.spun && S.spins <= 0, onClick: openSpin },
+      { section: `Today's challenges${allDone ? ' · all done!' : ''}` },
+      ...S.daily.tasks.map((t) => ({ icon: t.claimed ? '✅' : t.p >= t.n ? '🎯' : '⬜', label: t.t,
+        sub: `<span class="progress" style="display:block"><s style="width:${(t.p / t.n) * 100}%"></s></span>${t.k === 'earn' ? inr(t.p) + ' / ' + inr(t.n) : `${t.p} / ${t.n}`} · reward ${inr(t.cash)} + ${t.xp} XP`,
+        right: t.claimed ? 'Done' : t.p >= t.n ? 'Claim' : '', disabled: t.claimed || t.p < t.n,
+        onClick: () => { t.claimed = true; giveReward({ cash: t.cash, xp: t.xp }, `Challenge: ${t.t}`); chime();
+          if (!S.daily.bonus && S.daily.tasks.every((x) => x.claimed)) { S.daily.bonus = true; S.spins++; celebrate('All 3 challenges done!', '+1 bonus spin'); }
+          openRewards(); } })),
+      { note: 'Finish all three for a bonus spin. New challenges every day at midnight (your time).', blue: true },
+    ];
+    showModal('🎁 Rewards', `Level ${S.level} ${titleFor(S.level)} · ${S.xp}/${xpNeed(S.level)} XP`, items);
+  }
+  function openSpin() {
+    const free = !S.daily.spun;
+    if (!free && S.spins <= 0) return;
+    showModal('🎡 Lucky Chai Spin', 'Tap spin. One free spin a day; earn more from streaks and challenges.', [
+      { html: '<div class="wheel-wrap"><div class="wheel-pin">▼</div><canvas id="wheel" width="280" height="280"></canvas></div>' },
+      { html: '<button class="btn primary" id="spin-go" style="width:100%">Spin!</button>' },
+    ]);
+    const cv = $('#wheel'), g = cv.getContext('2d'), N = SPIN_PRIZES.length, R = 136, seg = (Math.PI * 2) / N;
+    SPIN_PRIZES.forEach((p, i) => {
+      g.beginPath(); g.moveTo(140, 140); g.arc(140, 140, R, -Math.PI / 2 + i * seg, -Math.PI / 2 + (i + 1) * seg); g.closePath();
+      g.fillStyle = p.c; g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+      g.save(); g.translate(140, 140); g.rotate(-Math.PI / 2 + (i + 0.5) * seg); g.textAlign = 'right'; g.fillStyle = '#fff'; g.font = '700 13px system-ui'; g.fillText(p.t, R - 10, 5); g.restore();
+    });
+    g.beginPath(); g.arc(140, 140, 22, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.font = '20px system-ui'; g.textAlign = 'center'; g.fillText('☕', 140, 147);
+    $('#spin-go').onclick = () => {
+      $('#spin-go').disabled = true;
+      if (free) S.daily.spun = true; else S.spins--;
+      let r = Math.random() * SPIN_PRIZES.reduce((s, p) => s + p.w, 0), idx = 0;
+      for (; idx < N; idx++) { r -= SPIN_PRIZES[idx].w; if (r <= 0) break; }
+      idx = Math.min(idx, N - 1);
+      const deg = 360 * 6 - (idx + 0.5) * (360 / N) + rand(-8, 8);
+      cv.style.transition = 'transform 3.4s cubic-bezier(.12,.7,.15,1)'; cv.style.transform = `rotate(${deg}deg)`;
+      setTimeout(() => {
+        const p = SPIN_PRIZES[idx], got = giveReward(p, `Lucky Chai Spin: ${p.t}`);
+        if (p.t === 'JACKPOT') celebrate('💰 JACKPOT! 💰', got); else { toast(`🎡 You won ${got}!`, 'good'); chime(); }
+        save(); setTimeout(openRewards, 900);
+      }, 3500);
+    };
+  }
+
+  // ----- businesses (idle income) -----
+  const bizIncome = (b, lvl) => b.income * Math.pow(1.5, lvl - 1);
+  const bizUpCost = (b, lvl) => Math.round(b.cost * 0.8 * Math.pow(1.7, lvl));
+  const BIZ_CAP_H = 12;
+  function accrueBiz(min) {
+    for (const b of BUSINESSES) {
+      const o = S.biz[b.id];
+      if (!o) continue;
+      const cap = bizIncome(b, o.lvl) * BIZ_CAP_H;
+      const was = o.till;
+      o.till = Math.min(cap, o.till + (bizIncome(b, o.lvl) * min) / 60);
+      if (was < cap && o.till >= cap) toast(`${b.icon} ${b.name}'s cash box is full! Collect it in the Dhandha app.`);
+    }
+  }
+  function collectAll() {
+    let sum = 0;
+    for (const b of BUSINESSES) { const o = S.biz[b.id]; if (o && o.till >= 1) { sum += o.till; o.till = 0; } }
+    if (sum < 1) { toast('Nothing to collect yet.'); return; }
+    earn(sum, 'Business earnings collected'); track('collect'); track('earn', sum);
+    toast(`💰 Collected ${inr(sum)} from your businesses!`, 'good'); chime();
+  }
+  function dhandhaApp() {
+    const pad = appShell('dhandha');
+    const owned = BUSINESSES.filter((b) => S.biz[b.id]);
+    const perH = owned.reduce((s, b) => s + bizIncome(b, S.biz[b.id].lvl), 0);
+    const till = owned.reduce((s, b) => s + S.biz[b.id].till, 0);
+    fillList(pad, [
+      { html: `<div class="note blue"><small>Passive income</small><div class="big">${inr(perH)}/hr</div>Cash waiting: <b>${inr(till)}</b> · boxes fill up in ${BIZ_CAP_H} game hours, so collect often.</div>` },
+      { icon: '💰', label: 'Collect all earnings', right: inr(till), disabled: till < 1, onClick: () => { collectAll(); dhandhaApp(); } },
+      { section: 'Your hustles' },
+      ...BUSINESSES.map((b) => {
+        const o = S.biz[b.id];
+        if (!o) {
+          const locked = S.level < b.level;
+          return { icon: b.icon, label: `${b.name}${locked ? ` · 🔒 Level ${b.level}` : ''}`, sub: `${b.where} · earns ${inr(b.income)}/hr`, right: inr(b.cost), disabled: locked || S.player.money < b.cost,
+            onClick: () => { if (spend(b.cost, `Bought ${b.name}`)) { S.biz[b.id] = { lvl: 1, till: 0 }; celebrate(`${b.icon} ${b.name} is yours!`, `Earning ${inr(b.income)} every game hour`); checkGoals(); dhandhaApp(); } } };
+        }
+        const cap = bizIncome(b, o.lvl) * BIZ_CAP_H, up = bizUpCost(b, o.lvl);
+        return { icon: b.icon, label: `${b.name} · Lv ${o.lvl}${o.lvl >= 5 ? ' (max)' : ''}`,
+          sub: `${inr(bizIncome(b, o.lvl))}/hr · box ${inr(o.till)} / ${inr(cap)}<span class="progress" style="display:block"><s style="width:${(o.till / cap) * 100}%"></s></span>${o.lvl < 5 ? `Upgrade: +50% income for ${inr(up)}` : ''}`,
+          right: o.lvl < 5 ? '⬆️' : '', disabled: o.lvl >= 5 || S.player.money < up,
+          onClick: () => { if (spend(up, `Upgraded ${b.name}`)) { o.lvl++; toast(`⬆️ ${b.name} upgraded to level ${o.lvl}!`, 'good'); chime(); dhandhaApp(); } } };
+      }),
+    ]);
+  }
+
+  // ----- Reelz: influencer fame -----
+  function nearSpot() {
+    const P = S.player;
+    for (const sp of PHOTO_SPOTS) { const b = BLD[sp.id], d = door(b); if (dist(P.x, P.y, d.x, d.y) < 130 || (!b.solid && P.x > b.x && P.x < b.x + b.w && P.y > b.y && P.y < b.y + b.h)) return { ...sp, b }; }
+    return null;
+  }
+  function postReel(sp) {
+    const R = S.reelz, day = dayOf(S.time);
+    if (S.time - R.last < 60) { toast('Your followers need a breather — post again in a bit.', 'bad'); return; }
+    if (R.spots[sp.id] === day) { toast('You already posted from here today. Try another spot!', 'bad'); return; }
+    if (S.player.energy < 10) { toast('Too tired to film. Rest first.', 'bad'); return; }
+    R.last = S.time; R.spots[sp.id] = day;
+    activity(`Shooting a reel at ${sp.b.name}…`, 30, { energy: 1.5 }, () => {
+      const P = S.player;
+      const base = 220 + R.followers * 0.18;
+      let views = base * sp.hype * (1 + styleScore() * 0.25) * (0.6 + P.social / 100) * (S.pet ? 1.3 : 1) * R.boost * Math.exp(rand(-0.6, 0.9));
+      const viral = Math.random() < 0.04 + styleScore() * 0.01 + (R.boost > 1 ? 0.08 : 0);
+      if (viral) views *= rand(15, 40);
+      views = Math.round(views);
+      const gained = Math.round(views * rand(0.015, 0.03));
+      R.followers += gained; R.posts++; R.best = Math.max(R.best, views); R.boost = 1;
+      P.social = clamp(P.social + 6, 0, 100);
+      track('reel');
+      if (viral) { R.viral++; celebrate('🔥 YOUR REEL WENT VIRAL! 🔥', `${fmtNum(views)} views · +${fmtNum(gained)} followers`); }
+      else toast(`📸 Reel posted: ${fmtNum(views)} views, +${fmtNum(gained)} followers.${S.pet ? ` ${S.pet.name}'s cameo helped!` : ''}`, 'good');
+      const tier = BRAND_DEALS.filter(([f]) => R.followers >= f).length;
+      if (tier > R.tier) { R.tier = tier; const [, pay, brand] = BRAND_DEALS[tier - 1]; celebrate('🤝 Brand deal unlocked!', `${brand} pays you ${inr(pay)} every day`); }
+      checkGoals();
+    });
+  }
+  function reelzApp() {
+    const pad = appShell('reelz');
+    const R = S.reelz, sp = nearSpot(), day = dayOf(S.time);
+    const deal = BRAND_DEALS.filter(([f]) => R.followers >= f).pop(), next = BRAND_DEALS.find(([f]) => R.followers < f);
+    fillList(pad, [
+      { html: `<div class="note reelz-card"><div class="big">${fmtNum(R.followers)} followers</div>${R.posts} reels · best ${fmtNum(R.best)} views · ${R.viral} viral hit${R.viral === 1 ? '' : 's'}${R.boost > 1 ? '<br>🔥 Trend boost active on your next reel!' : ''}</div>` },
+      sp ? { icon: '🎬', label: `Post a reel at ${sp.b.name}`, sub: R.spots[sp.id] === day ? 'Already posted here today' : `Spot hype ×${sp.hype} · 30 min · Style and Social boost views`, disabled: R.spots[sp.id] === day, onClick: () => postReel(sp) }
+        : { note: '📍 Go to a photo spot to post. Hot spots are listed below; tap one to set a waypoint.' },
+      { section: 'Brand deals' },
+      { icon: '🤝', label: deal ? `${deal[2]} pays ${inr(deal[1])}/day` : 'No brand deal yet', sub: next ? `Next: ${inr(next[1])}/day from ${next[2]} at ${fmtNum(next[0])} followers` : 'Top tier reached!' },
+      { section: 'Photo spots' },
+      ...PHOTO_SPOTS.slice().sort((a, b) => b.hype - a.hype).map((s) => ({ icon: R.spots[s.id] === day ? '✅' : '📸', label: BLD[s.id].name, sub: `Hype ×${s.hype}${R.spots[s.id] === day ? ' · posted today' : ''} · ${(dist(S.player.x, S.player.y, door(BLD[s.id]).x, door(BLD[s.id]).y) / PX_PER_KM).toFixed(1)} km`,
+        onClick: () => { setWaypoint(door(BLD[s.id]), BLD[s.id].name); closePhone(); toast(`📌 Waypoint set: ${BLD[s.id].name}`); } })),
+      { note: 'Tips: better clothes (Style) and a good mood (Social) mean more views. Trends from life events triple your viral odds.', blue: true },
+    ]);
+  }
+
+  // ----- relationships & pet -----
+  function askOut(name) {
+    if (!spend(1500, `Date with ${name}`)) return;
+    activity(`Dinner date with ${name} at Cyber Square…`, 180, { social: -10, indoor: true }, () => {
+      const chance = 0.45 + styleScore() * 0.08 + S.player.social / 400;
+      if (Math.random() < chance) { S.partner = { name, since: dayOf(S.time), lastDate: dayOf(S.time) }; addXP(100); celebrate(`💞 You and ${name} are together!`, 'Your social bar now drains slower'); checkGoals(); }
+      else { addFriend(name, -5); toast(`${name}: "You're sweet, but let's stay friends 🙂" Try again later with better Style.`, 'bad'); }
+    });
+  }
+  function dateNight() {
+    const p = S.partner, today = dayOf(S.time);
+    if (p.lastDate === today) { toast(`You already had a date with ${p.name} today.`); return; }
+    if (!spend(1200, `Date night with ${p.name}`)) return;
+    p.lastDate = today;
+    activity(`Date night with ${p.name}…`, 150, { social: -20, indoor: true }, () => { addXP(40); toast(`💞 Lovely evening with ${p.name}.`, 'good'); });
+  }
+
+  // ----- random life events with choices -----
+  const knownFriend = () => { const k = Object.keys(S.friends); return k.length ? pick(k) : pick(NPC_NAMES)[0]; };
+  const EVENTS = [
+    { id: 'otp', ok: () => true, make: () => ({ title: '📞 A "bank" is calling', text: '"Your card will be blocked today. Just read me the OTP we sent."', choices: [
+      { t: 'Read out the OTP', fn: () => { const loss = Math.min(5000, Math.max(0, S.player.money)); S.player.money -= loss; txn('Lost to phone scam', -loss); toast(`😱 ${inr(loss)} vanished. Banks never ask for OTPs!`, 'bad'); chime('bad'); } },
+      { t: 'Hang up and block', fn: () => { addXP(40); toast('🧠 Smart. Real banks never ask for OTPs. +40 XP', 'good'); } }] }) },
+    { id: 'wedding', ok: () => true, make: () => { const f = knownFriend(); return { title: `💌 ${f}'s cousin is getting married`, text: 'A big fat farmhouse wedding in Badshahpur tonight. DJ, dhol and 600 guests.', choices: [
+      { t: 'Go and dance (₹2,100 shagun)', fn: () => { if (!spend(2100, 'Wedding shagun')) return; activity('Dancing to dhol at the baraat…', 240, { social: -12, energy: 1.6 }, () => { addFriend(f, 12); addFriend(pick(NPC_NAMES)[0], 10); addXP(50); applyFood(40); toast('💃 Best night out in months. You made new friends.', 'good'); }); } },
+      { t: 'Send wishes on chat', fn: () => { addFriend(f, -4); toast(`${f}: "Arre, you should have come!"`); } }] }; } },
+    { id: 'loan', ok: () => S.player.money > 4000, make: () => { const f = knownFriend(); return { title: `🙏 ${f} needs help`, text: `"Bhai/behen, can you lend me ₹3,000 till salary day? I'll return it with a treat."`, choices: [
+      { t: 'Lend ₹3,000', fn: () => { if (!spend(3000, `Loan to ${f}`)) return; S.pending.push({ kind: 'loan', who: f, day: dayOf(S.time) + 3 }); addFriend(f, 10); toast(`${f}: "You're a lifesaver!"`, 'good'); } },
+      { t: 'Politely refuse', fn: () => { addFriend(f, -8); toast(`${f} looks disappointed.`); } }] }; } },
+    { id: 'pitch', ok: () => S.player.money > 12000, make: () => ({ title: '🦄 A founder pitches you', text: '"We\'re building an app that delivers chai in 7 minutes. Want in at the ground floor? ₹10,000 for a tiny stake."', choices: [
+      { t: 'Invest ₹10,000', fn: () => { if (!spend(10000, 'Angel investment')) return; S.pending.push({ kind: 'invest', day: dayOf(S.time) + 5 }); toast('📈 You\'re an angel investor now. Results in 5 days.'); } },
+      { t: 'Pass', fn: () => toast('Maybe next unicorn.') }] }) },
+    { id: 'stray', ok: () => !S.pet, make: () => ({ title: '🐕 A puppy follows you', text: 'A scruffy street puppy has followed you for three blocks, tail wagging.', choices: [
+      { t: 'Adopt him — name him Sheru (₹1,000 vet visit)', fn: () => { if (!spend(1000, 'Vet visit for Sheru')) return; S.pet = { name: 'Sheru', since: dayOf(S.time) }; celebrate('🐕 Sheru is your dog now!', 'He follows you everywhere and boosts your reels'); checkGoals(); } },
+      { t: 'Buy him a biscuit packet', fn: () => { S.player.social = clamp(S.player.social + 5, 0, 100); toast('🐕 Happy puppy. Happy you.'); } }] }) },
+    { id: 'flood', ok: () => S.weather === 'rain', make: () => ({ title: '🌊 Knee-deep waterlogging', text: 'The road ahead has turned into a river. A tractor-trolley driver offers a lift.', choices: [
+      { t: 'Pay ₹150 for the tractor ride', fn: () => { if (spend(150, 'Tractor-trolley ride')) toast('🚜 Dry feet, great story.', 'good'); } },
+      { t: 'Wade through it', fn: () => { S.player.health = clamp(S.player.health - 8, 0, 100); addXP(15); toast('💦 Soaked. +15 XP for being a true Gurugram survivor.'); } }] }) },
+    { id: 'powercut', ok: () => !!S.home && !S.player.items.includes('inverter'), make: () => ({ title: '🔌 Power cut, again', text: 'No electricity in your building. It\'s 38°C and the fan is dead.', choices: [
+      { t: 'Buy an inverter (₹4,500, better sleep)', fn: () => { if (spend(4500, 'Inverter')) { S.player.items.push('inverter'); toast('🔋 Inverter installed. Sleep restores more energy now.', 'good'); } } },
+      { t: 'Sweat it out', fn: () => { S.player.energy = clamp(S.player.energy - 12, 0, 100); toast('🥵 Long sweaty night.'); } }] }) },
+    { id: 'raise', ok: () => !!S.job, make: () => ({ title: '📨 A recruiter slides into your DMs', text: '"We\'ll pay 20% more. Interested?" You could use this to ask your boss for a raise.', choices: [
+      { t: 'Negotiate a raise (needs Communication 2)', fn: () => { if (S.player.skills.comm >= 2 || Math.random() < 0.3) { S.job.level++; celebrate('💼 Raise approved!', 'Your pay just went up 15%'); } else { S.job.missed = Math.min(2, S.job.missed + 1); toast('😬 Your boss was not impressed. One warning added.', 'bad'); } } },
+      { t: 'Stay loyal', fn: () => { addXP(30); toast('Loyalty noted. +30 XP'); } }] }) },
+    { id: 'trend', ok: () => true, make: () => ({ title: '📈 A dance trend is blowing up', text: 'Everyone on Reelz is doing the "Rapid Metro shuffle". Jump on it?', choices: [
+      { t: 'Learn it (next reel gets a 3× boost)', fn: () => { S.reelz.boost = 3; toast('🔥 Trend boost ready. Post a reel at a photo spot!', 'good'); } },
+      { t: 'Too cringe, skip', fn: () => toast('Fair.') }] }) },
+    { id: 'ipl', ok: () => hourF(S.time) > 17, make: () => ({ title: '🏏 Big cricket match tonight', text: 'Brew Bastion is screening the final on a giant screen.', choices: [
+      { t: 'Go watch (₹600)', fn: () => { if (!spend(600, 'Match screening')) return; activity('Cheering every boundary…', 180, { social: -15, indoor: true }, () => { addFriend(pick(NPC_NAMES)[0], 10); addXP(30); toast('🏏 What a finish! You made a new friend.', 'good'); }); } },
+      { t: 'Watch on your phone', fn: () => { S.player.social = clamp(S.player.social + 8, 0, 100); } }] }) },
+    { id: 'festival', ok: () => Object.keys(S.friends).length >= 2, make: () => ({ title: '🪔 Festival season!', text: 'Lights everywhere, sweets everywhere. Your friends would love a gift box.', choices: [
+      { t: 'Gift sweets to all friends (₹1,500)', fn: () => { if (!spend(1500, 'Festival sweets')) return; Object.keys(S.friends).forEach((n) => addFriend(n, 8)); addXP(40); toast('🪔 Everyone loved the kaju katli. Friendships +8.', 'good'); } },
+      { t: 'Celebrate quietly', fn: () => { S.player.social = clamp(S.player.social + 10, 0, 100); } }] }) },
+    { id: 'carpool', ok: () => !!S.job, make: () => { const f = knownFriend(); return { title: `🚗 ${f} offers a carpool`, text: 'Share rides to work and split fuel. Good company in traffic.', choices: [
+      { t: 'Join (friendship +10)', fn: () => { addFriend(f, 10); S.player.social = clamp(S.player.social + 8, 0, 100); toast(`🚗 Commutes with ${f} are way more fun.`, 'good'); } },
+      { t: 'No thanks', fn: () => {} }] }; } },
+  ];
+  function maybeEvent() {
+    if (S.time < S.nextEvent || isUI() || (ride && ride.status === 'onboard')) return;
+    S.nextEvent = S.time + randi(420, 780);
+    const pool = EVENTS.filter((e) => e.ok() && S.flags.lastEvent !== e.id);
+    if (!pool.length) return;
+    const ev = pick(pool), d = ev.make();
+    S.flags.lastEvent = ev.id;
+    chime();
+    showModal(d.title, 'Life in Gurugram', [{ note: d.text }, ...d.choices.map((c, i) => ({ icon: i ? '↩️' : '👉', label: c.t, onClick: () => { closeModal(); c.fn(); track('event'); save(); } }))]);
+  }
+  function resolvePending(day) {
+    for (let i = S.pending.length - 1; i >= 0; i--) {
+      const p = S.pending[i];
+      if (p.day > day) continue;
+      S.pending.splice(i, 1);
+      if (p.kind === 'loan') {
+        if (Math.random() < 0.75) { earn(3300, `${p.who} repaid the loan`); toast(`🙏 ${p.who} paid back ₹3,300 — with interest!`, 'good'); }
+        else { addFriend(p.who, -10); toast(`😒 ${p.who} "forgot" about the ₹3,000 loan.`, 'bad'); }
+      } else if (p.kind === 'invest') {
+        const r = Math.random();
+        if (r < 0.2) { earn(100000, 'Startup exit!'); celebrate('🦄 Your startup bet paid off!', 'The chai app got acquired. +₹1,00,000'); }
+        else if (r < 0.6) { earn(12000, 'Startup investment returned'); toast('📈 The startup raised a round. You got ₹12,000 back.', 'good'); }
+        else toast('📉 The chai-delivery startup shut down. Investment lost.', 'bad');
+      }
+    }
+  }
+  function onNewDayProg(day) {
+    resolvePending(day);
+    const deal = BRAND_DEALS.filter(([f]) => S.reelz.followers >= f).pop();
+    if (deal) earn(deal[1], `Brand deal: ${deal[2]}`);
+    if (S.partner) toast(`💌 ${S.partner.name}: "${pick(['Good morning! Have a great day ☀️', 'Don\'t forget to eat breakfast!', 'Momos tonight?', 'Proud of you 💛'])}"`);
+    if (S.pet) S.player.social = clamp(S.player.social + 6, 0, 100);
+  }
+
+  // ----- life score, share card, rival codes, local hall of fame -----
+  function lifeScore(s = S) {
+    const bizVal = BUSINESSES.reduce((t, b) => t + (s.biz && s.biz[b.id] ? b.cost : 0), 0);
+    const friends = Object.values(s.friends || {}).filter((f) => f.fs >= 30).length;
+    return Math.round((s.player.money + s.player.savings + bizVal) / 1000 + ((s.reelz && s.reelz.followers) || 0) / 50 + (s.level || 1) * 40 + friends * 15);
+  }
+  const myCode = () => `${S.player.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 10).toUpperCase() || 'PLAYER'}-L${S.level}-S${lifeScore()}-D${dayOf(S.time)}`;
+  function checkRival() {
+    if (S.rival && !S.rival.beaten && lifeScore() > S.rival.score) {
+      S.rival.beaten = true; addXP(200);
+      celebrate(`🏆 You beat ${S.rival.name}!`, `Your Life Score ${lifeScore()} vs their ${S.rival.score}. Send them your code!`);
+    }
+  }
+  function copyText(text, el) {
+    const done = () => toast('📋 Copied! Paste it in WhatsApp, Instagram or X.', 'good');
+    try { navigator.clipboard.writeText(text).then(done, () => { el.select(); toast('Press Ctrl/Cmd+C (or long-press → Copy) to copy.'); }); }
+    catch (e) { el.select(); toast('Press Ctrl/Cmd+C (or long-press → Copy) to copy.'); }
+  }
+  function drawCard(cv) {
+    const g = cv.getContext('2d'), W = cv.width, H = cv.height, P = S.player;
+    const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#ff8a3d'); gr.addColorStop(1, '#8e5cf5');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,.12)'; for (let i = 0; i < 7; i++) g.fillRect(W - 60 - i * 46, H - 40 - (i % 3) * 30 - i * 18, 32, 40 + (i % 3) * 30 + i * 18);
+    g.fillStyle = '#fff'; g.font = '800 30px system-ui, sans-serif'; g.fillText('Gurugram Life', 28, 50);
+    g.font = '600 15px system-ui, sans-serif'; g.globalAlpha = 0.85; g.fillText(`Day ${dayOf(S.time)} in the Millennium City`, 28, 74); g.globalAlpha = 1;
+    drawPerson(g, 80, 190, P.look, 0, 3.2);
+    g.font = '800 26px system-ui, sans-serif'; g.fillText(P.name, 150, 130);
+    g.font = '600 16px system-ui, sans-serif';
+    const lines = [`⭐ Level ${S.level} · ${titleFor(S.level)}`, `💰 Net worth ${inr(P.money + P.savings)}`, `📸 ${fmtNum(S.reelz.followers)} followers`, `💼 ${S.job ? JOBS[S.job.id].title : 'Hustling'}`, `🏆 Life Score ${lifeScore()}`];
+    lines.forEach((l, i) => g.fillText(l, 150, 160 + i * 25));
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, H - 44, W, 44);
+    g.fillStyle = '#fff'; g.font = '700 15px system-ui, sans-serif'; g.fillText(`Beat my code: ${myCode()}`, 28, H - 16);
+  }
+  function openShare() {
+    closePhone(); closeMap();
+    const text = `I'm ${S.player.name}, a Level ${S.level} ${titleFor(S.level)} in Gurugram Life 🏙️ — ${inr(S.player.money + S.player.savings)} net worth, ${fmtNum(S.reelz.followers)} followers, Day ${dayOf(S.time)}. Life Score ${lifeScore()}. Think you can beat me? Enter my code ${myCode()} in the game 👉 ${SHARE_URL}`;
+    const hof = Object.values(store.profiles).filter((p) => p.save).map((p) => ({ n: p.display, s: lifeScore(ensureProg(JSON.parse(JSON.stringify(p.save)))) }));
+    if (S.rival) hof.push({ n: `${S.rival.name} (rival)`, s: S.rival.score });
+    hof.sort((a, b) => b.s - a.s);
+    showModal('📣 Share & challenge', 'Screenshot the card or copy the text, then dare your friends to beat you.', [
+      { html: '<canvas id="sharecard" width="560" height="300" class="sharecard"></canvas>' },
+      { html: `<textarea id="brag" class="brag" readonly>${esc(text)}</textarea>` },
+      { icon: '📋', label: 'Copy brag text + link', sub: 'Paste into WhatsApp, Instagram stories or X', onClick: () => copyText($('#brag').value, $('#brag')) },
+      { icon: '🔑', label: `Your challenge code: ${myCode()}`, sub: 'Friends enter it in their game to race your Life Score', onClick: () => copyText(myCode(), $('#brag')) },
+      { section: 'Accept a friend\'s challenge' },
+      { html: '<div class="row"><input id="rival-in" placeholder="e.g. RAHUL-L7-S940-D6" style="flex:1;min-width:0"><button class="btn primary" id="rival-go">Accept</button></div>' },
+      S.rival && { note: `${S.rival.beaten ? '🏆 You beat' : '⚔️ Racing'} <b>${esc(S.rival.name)}</b>: their score ${S.rival.score} (Day ${S.rival.day}) vs yours ${lifeScore()}.` },
+      { section: 'Hall of fame (this device)' },
+      ...hof.slice(0, 6).map((h, i) => ({ icon: ['🥇', '🥈', '🥉'][i] || '🏅', label: h.n, right: String(h.s) })),
+    ]);
+    drawCard($('#sharecard'));
+    $('#rival-go').onclick = () => {
+      const m = /^([A-Z0-9]{1,10})-L(\d{1,3})-S(\d{1,7})-D(\d{1,5})$/i.exec($('#rival-in').value.trim());
+      if (!m) { toast('That code doesn\'t look right. It looks like NAME-L7-S940-D6.', 'bad'); return; }
+      S.rival = { name: m[1].toUpperCase(), level: +m[2], score: +m[3], day: +m[4], beaten: false };
+      toast(`⚔️ Challenge accepted! Beat ${S.rival.name}'s Life Score of ${S.rival.score}.`, 'good');
+      save(); openShare();
+    };
+  }
+
   // ---------- help guide, hints and tips ----------
   const isTouch = () => document.body.classList.contains('is-touch');
   const kb = (k) => `<kbd class="k">${k}</kbd>`;
   const HELP_TABS = [
     { id: 'start', label: 'Start here' }, { id: 'controls', label: 'Controls' }, { id: 'travel', label: 'Getting around' },
-    { id: 'money', label: 'Jobs & money' }, { id: 'life', label: 'Daily life' }, { id: 'tips', label: 'Tips & tricks' },
+    { id: 'money', label: 'Jobs & money' }, { id: 'fame', label: 'Hustle & fame' }, { id: 'life', label: 'Daily life' }, { id: 'tips', label: 'Tips & tricks' },
   ];
   function helpContent(tab) {
     const T = isTouch();
@@ -1863,6 +2315,15 @@
       { icon: '🏠', label: 'Rent', sub: 'Paid automatically every 7 days. If you can\'t pay, you have 3 days before eviction and you lose your deposit.' },
       { icon: '🏦', label: 'Paisa Bank', sub: 'Savings earn 0.2% a day, and money in the bank can\'t be spent on impulse.' },
       { icon: '💸', label: 'PayKaro', sub: 'Every rupee in and out is listed there, including rent, fares, fuel and challans.' },
+    ];
+    if (tab === 'fame') return [
+      { icon: '⭐', label: 'XP and levels', sub: 'Almost everything earns XP: shifts, deliveries, rides, chats, meals, reels and life events. Each level pays a cash bonus and unlocks bigger businesses.' },
+      { icon: '🎁', label: 'Daily rewards (G)', sub: 'Come back every real day: a streak reward that grows to ₹6,000 on day 7, a free Lucky Chai Spin, and 3 daily challenges. Clear all 3 for a bonus spin.' },
+      { icon: '🏪', label: 'Dhandha: passive income', sub: 'Buy a Chai Tapri, Momo Cart, Cloud Kitchen and more. They earn every game hour, and even while you are away (up to 8 hours). Cash boxes fill up in 12 game hours, so collect often and upgrade.' },
+      { icon: '📸', label: 'Reelz: become an influencer', sub: 'Go to a photo spot (Cyber Square, Emerald Golf Club, Skyline Towers…) and post a reel. Style and a good mood mean more views. Viral hits explode your followers, and 1K / 10K / 100K / 1M followers unlock daily brand-deal pay.' },
+      { icon: '🎲', label: 'Life events', sub: 'Every few game hours something happens: weddings, scam calls, a friend asking for a loan, a founder\'s pitch, a stray puppy. Your choice changes your money, friends and story.' },
+      { icon: '💞', label: 'Love and pets', sub: 'Get a friend to 70 friendship and ask them out. A partner slows how fast your Social drains. Adopt Sheru the street dog when you meet him: he follows you and boosts your reels.' },
+      { icon: '📣', label: 'Share and challenge friends', sub: 'Phone → Share makes a brag card and a challenge code (like RAHUL-L7-S940-D6). Friends enter your code to race your Life Score, and you enter theirs.' },
     ];
     if (tab === 'life') return [
       { icon: '🍛', label: 'Hunger', sub: 'Drops about 4 points an hour. Eat at dhabas, cafés or the mall, or order on Bhookh. A PG includes breakfast.' },
@@ -1934,6 +2395,9 @@
     if (P.money < 1500) hint('broke', 'Running low on cash? ZipZap deliveries pay right away, and goals (Phone → Goals) pay rewards.');
     if (S.home && S.home.nextDue - dayOf(S.time) <= 1 && P.money < HOMES[S.home.key].rent) hint('rentdue' + S.home.nextDue, `Rent of ${inr(HOMES[S.home.key].rent)} is due tomorrow and you can't cover it yet!`);
     if (S.job) hint('shift', 'Be at your workplace near your shift time, step into the yellow ring and press <b>E → Start shift</b>.');
+    if (S.level >= 2 || rewardsPending()) hint('rewards', 'Tap <b>🎁</b> (or press <b>G</b>) for your daily streak reward, a free spin and 3 daily challenges.');
+    if (nearSpot()) hint('spot', '📸 This is a photo spot! Open <b>Reelz</b> on your phone and post a reel to gain followers.');
+    if (S.level >= 2 && P.money >= 8000) hint('biz', '🏪 You can afford a hustle! Buy a Chai Tapri in the <b>Dhandha</b> app for passive income.');
     if (store.tips !== false && now - tipAt > 240000 && !isUI()) { tipAt = now; toast(`💡 Tip: ${pick(TIPS)}`, 'tip', 8000); }
   }
 
@@ -1950,6 +2414,7 @@
   // ---------- save / loop ----------
   function save() {
     if (!S || !user || !store.profiles[user]) return;
+    S.lastSeen = Date.now();
     store.profiles[user].save = S;
     store.profiles[user].last = Date.now();
     saveStore();
@@ -1958,7 +2423,7 @@
   window.addEventListener('beforeunload', save);
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 
-  let last = performance.now(), hudT = 0, goalT = 0;
+  let last = performance.now(), hudT = 0, goalT = 0, dailyT = 0;
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -1968,7 +2433,8 @@
       hudT += dt; goalT += dt;
       if (hudT > 0.2) { hudT = 0; updateHUD(); }
       if (goalT > 1) { goalT = 0; checkGoals(); }
-      if (!isUI()) runHints();
+      if (!isUI()) { runHints(); maybeEvent(); }
+      dailyT += dt; if (dailyT > 20) { dailyT = 0; if (checkDaily()) toast('🌅 New day, new rewards! Open 🎁 for your streak bonus and challenges.', 'good', 8000); checkRival(); }
     }
     requestAnimationFrame(frame);
   }

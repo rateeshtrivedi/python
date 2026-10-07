@@ -175,6 +175,7 @@ const ITEMS = {
   sneakers: { name: 'Branded-ish Sneakers', price: 4500, style: 1 },
   watch: { name: 'Smart Watch', price: 8000, style: 1 },
   blazer: { name: 'Designer Blazer', price: 12000, style: 2 },
+  inverter: { name: 'Home inverter', price: 4500, desc: 'Power backup: better sleep.' },
 };
 const SHOPS = {
   bazaar: ['helmet', 'mask', 'tshirt', 'kurta', 'sunglasses'],
@@ -266,4 +267,42 @@ const ORDERS = ['2 Butter Naan & Dal', 'a phone charger', 'groceries for a PG', 
 // Traffic police check-points on major roads.
 const NAKAS = [
   { x: 900, y: 720 }, { x: 1650, y: 1480 }, { x: 2400, y: 760 }, { x: 200, y: 1380 }, { x: 2000, y: 1850 },
+];
+
+// ---------- progression & hustle data ----------
+const SHARE_URL = 'https://claude.ai/artifact/WNB7SbEJFng3ZZczXmkHkp';
+
+const LEVEL_TITLES = [[1, 'Fresher'], [3, 'Hustler'], [5, 'Local Pro'], [8, 'Corporate Warrior'], [12, 'Startup Wala'], [16, 'Influencer'], [20, 'Gurugram Royalty'], [25, 'Millennium City Legend']];
+const XP_FOR = { deliver: 25, shift: 40, ride: 10, metro: 10, chat: 8, eat: 5, reel: 15, social: 20, train: 25, errand: 30, collect: 4, event: 15 };
+
+// Passive-income hustles. income = ₹ per in-game hour at level 1.
+const BUSINESSES = [
+  { id: 'chai', name: 'Chai Tapri', icon: '☕', cost: 8000, income: 60, level: 1, where: 'a footpath in Cyber City' },
+  { id: 'momo', name: 'Momo Cart', icon: '🥟', cost: 25000, income: 170, level: 3, where: 'Sector 29 market' },
+  { id: 'kitchen', name: 'Cloud Kitchen', icon: '🍳', cost: 120000, income: 700, level: 5, where: 'a basement on Sohna Road' },
+  { id: 'pg', name: 'PG Building', icon: '🏘️', cost: 600000, income: 3000, level: 8, where: 'Sector 14' },
+  { id: 'cowork', name: 'Coworking Floor', icon: '🧑‍💻', cost: 2000000, income: 9000, level: 12, where: 'Golf Course Ext. Road' },
+  { id: 'startup', name: 'Your Own Startup', icon: '🦄', cost: 5000000, income: 24000, level: 16, where: 'Cyber City' },
+];
+
+// Reelz photo spots: building id and how much the spot boosts views.
+const PHOTO_SPOTS = [
+  { id: 'cybersquare', hype: 1.8 }, { id: 'glasstower', hype: 1.5 }, { id: 'leisure', hype: 1.3 }, { id: 'emerald', hype: 2.0 },
+  { id: 'galaxymall', hype: 1.4 }, { id: 'aravallipark', hype: 1.6 }, { id: 'skyline', hype: 1.9 }, { id: 'natak', hype: 1.5 },
+  { id: 'cricket', hype: 1.2 }, { id: 'chaupal', hype: 1.3 }, { id: 'momomahal', hype: 1.2 }, { id: 'sadar', hype: 1.4 },
+];
+const BRAND_DEALS = [[1000, 500, 'a local chai brand'], [10000, 3000, 'a sneaker label'], [100000, 15000, 'a fintech app'], [1000000, 60000, 'a national cola brand']];
+
+const DAILY_TASKS = [
+  { k: 'deliver', n: 3, t: 'Complete 3 ZipZap deliveries' }, { k: 'shift', n: 1, t: 'Work a full shift' },
+  { k: 'ride', n: 2, t: 'Take 2 Chalo or PhatPhat rides' }, { k: 'metro', n: 1, t: 'Ride the Rapid Link Metro' },
+  { k: 'chat', n: 4, t: 'Chat with 4 people' }, { k: 'eat', n: 3, t: 'Eat 3 meals' }, { k: 'reel', n: 2, t: 'Post 2 reels on Reelz' },
+  { k: 'social', n: 1, t: 'Hang out at a social venue' }, { k: 'earn', n: 3000, t: 'Earn ₹3,000' }, { k: 'train', n: 1, t: 'Work out, jog or take a course' },
+  { k: 'collect', n: 2, t: 'Collect business earnings twice' }, { k: 'errand', n: 1, t: 'Run an errand for someone' },
+];
+const LOGIN_REWARDS = [{ cash: 500 }, { cash: 800 }, { xp: 150 }, { cash: 1500 }, { spins: 1 }, { cash: 3000 }, { cash: 6000, spins: 1, xp: 300 }];
+const SPIN_PRIZES = [
+  { t: '₹200', w: 22, cash: 200, c: '#ffb27a' }, { t: '₹500', w: 20, cash: 500, c: '#8e5cf5' }, { t: '+60 XP', w: 16, xp: 60, c: '#22a06b' },
+  { t: '₹1,000', w: 14, cash: 1000, c: '#3b82f6' }, { t: 'Full energy', w: 10, energy: true, c: '#f2c14e' }, { t: '+500 fans', w: 8, followers: 500, c: '#e23744' },
+  { t: '₹2,500', w: 7, cash: 2500, c: '#0ea5e9' }, { t: 'JACKPOT', w: 3, cash: 10000, c: '#111827' },
 ];
