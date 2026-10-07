@@ -34,7 +34,7 @@
     return `${h % 12 || 12}:${String(mm).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
   }
   const isPeak = () => { const h = hourF(S.time); return weekday(dayOf(S.time)) !== 'Sun' && ((h >= 8 && h < 11) || (h >= 17 && h < 21)); };
-  const MIN_PER_SEC = 2; // one real second = two in-game minutes
+  const MIN_PER_SEC = 1440 / 900; // one in-game day lasts 15 real minutes
 
   // ---------- storage / profiles ----------
   const STORE_KEY = 'ggl.v1';
@@ -182,6 +182,9 @@
     for (const b of BUILDINGS) {
       if (b.solid && x + rad > b.x && x - rad < b.x + b.w && y + rad > b.y && y - rad < b.y + b.h) return b;
     }
+    for (const b of FILLERS) {
+      if (x + rad > b.x && x - rad < b.x + b.w && y + rad > b.y && y - rad < b.y + b.h) return b;
+    }
     return null;
   }
   function districtAt(x, y) {
@@ -314,6 +317,7 @@
     c.fillStyle = '#55585f';
     for (const r of ROADS_V) c.fillRect(r.x - r.w / 2, 0, r.w, WORLD.h);
     for (const r of ROADS_H) c.fillRect(0, r.y - r.w / 2, WORLD.w, r.w);
+    for (const b of FILLERS) { c.fillStyle = '#a9a39a'; c.fillRect(b.x, b.y, b.w, b.h); }
     for (const b of BUILDINGS) if (b.solid) { c.fillStyle = b.color; c.fillRect(b.x, b.y, b.w, b.h); }
   }
 
@@ -328,7 +332,7 @@
     s.player.vehicles = s.player.vehicles || [];
     s.stats = Object.assign({ rides: 0, deliveries: 0, shifts: 0, courses: 0, km: 0 }, s.stats);
     s.orders = s.orders || []; s.quests = s.quests || {}; s.naka = s.naka || {}; s.goals = s.goals || {}; s.hints = s.hints || {};
-    ensureProg(s);
+    ensureProg(s); ensureMore(s);
     return s;
   }
 
@@ -337,7 +341,7 @@
   function setGraphics(mode) {
     use3D = mode === '3d' && can3D();
     if (use3D && !window.GGL3D.ready) {
-      try { window.GGL3D.init($('#game3d'), { trees, puddles }); } catch (e) { console.warn('3D init failed, using 2D', e); use3D = false; }
+      try { window.GGL3D.init($('#game3d'), { trees, puddles, quality: store.gfxq }); } catch (e) { console.warn('3D init failed, using 2D', e); use3D = false; }
     }
     if (use3D) window.GGL3D.setNPCs(npcs);
     $('#game3d').classList.toggle('hidden', !use3D);
@@ -426,6 +430,7 @@
       S.time += step; left -= step;
       if (dayOf(S.time) !== S.lastDay) newDay();
     }
+    tickMarket();
     for (let i = S.orders.length - 1; i >= 0; i--) {
       const o = S.orders[i];
       if (S.time >= o.at) { S.orders.splice(i, 1); applyFood(o.h, o.fx); track('eat'); toast(`🛵 Your Bhookh order arrived: ${o.name}. Delicious!`, 'good'); }
@@ -459,6 +464,7 @@
     if (S.home && S.home.key === 'pg') P.hunger = clamp(P.hunger + 25, 0, 100);
     genQuests();
     onNewDayProg(d);
+    marketNewDay();
     const wx = S.weather === 'rain' ? '🌧️ Monsoon rain — waterlogging and surge pricing likely' : `AQI ${S.aqi}${S.aqi > 300 ? ' 😷 wear a mask' : ''}`;
     toast(`📅 ${weekday(d)}, Day ${d} · ${wx}`);
   }
@@ -545,6 +551,10 @@
     { id: 'pet', t: 'Adopt a pet', d: 'Keep an eye out for strays', r: 500, ok: () => !!S.pet },
     { id: 'streak', t: 'Play 7 days in a row', d: '🎁 Rewards → daily streak', r: 5000, ok: () => S.streak.count >= 7 },
     { id: 'empire', t: 'Own 4 businesses', d: 'Build a hustle empire', r: 10000, ok: () => Object.keys(S.biz).length >= 4 },
+    { id: 'chai10', t: 'Find 10 Golden Chai cups', d: 'They are hidden all over the city', r: 2000, ok: () => S.chai.length >= 10 },
+    { id: 'racegold', t: 'Win gold in a street race', d: 'Night Runs at Raftaar Motors', r: 3000, ok: () => Object.values(S.races).some((r) => r.medal === 0) },
+    { id: 'driver10', t: 'Complete 10 passenger trips', d: 'KaamDhanda → drive for Chalo / PhatPhat', r: 2500, ok: () => S.driver.trips >= 10 },
+    { id: 'investor', t: 'Grow a ₹1,00,000 portfolio', d: 'Paisa Trade app', r: 5000, ok: () => portfolio() >= 100000 },
     { id: 'gcr', t: 'Live on Golf Course Road', d: 'Rent the Skyline Towers penthouse', r: 5000, ok: () => S.home && S.home.key === 'penthouse' },
   ];
   function checkGoals() {
@@ -908,7 +918,7 @@
         : { icon: V.two ? '🛵' : '🚗', label: V.name, sub: `Top speed ${V.speed} · fuel ~${inr(V.fuel)}/km${V.two ? ' · helmet required' : ' · AC, no helmet needed'}`, right: inr(V.price),
           onClick: () => { if (spend(V.price, `Raftaar Motors – ${V.name}`)) { P.vehicles.push(k); toast(`🔑 You bought a ${V.name}! Press F to ride.`, 'good'); checkGoals(); dealerMenu(b); } } };
     });
-    showModal(b.name, 'Zero down-payment? No. Full payment only.', [{ note: 'Two-wheelers dodge traffic jams better; cars stay slow in peak hours. Ride without a helmet and the traffic police nakas will fine you ₹1,000.' }, ...items]);
+    showModal(b.name, 'Zero down-payment? No. Full payment only.', [{ section: 'Night Runs · street races (start here, on your vehicle)' }, ...raceItems(), { section: 'Showroom' }, { note: 'Two-wheelers dodge traffic jams better; cars stay slow in peak hours. Ride without a helmet and the traffic police nakas will fine you ₹1,000.' }, ...items]);
   }
 
   function landmarkMenu(b) { showModal(b.name, districtAt(b.x, b.y).name, [{ note: b.text }]); }
@@ -1205,6 +1215,9 @@
         });
       }
       arrivalChecks();
+      checkChai();
+      updateRace();
+      updateDriver(dt);
     }
     checkHealth();
     findInteraction();
@@ -1312,6 +1325,7 @@
         }
       }
     }
+    if (b.filler) return;
     c.fillStyle = '#5a3a22'; c.fillRect(b.x + b.w / 2 - 10, b.y + b.h - 9, 20, 9);
     c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(b.x + b.w / 2 - 28, b.y + b.h + 2, 56, 4);
   }
@@ -1399,7 +1413,15 @@
       ctx.fillStyle = t.c; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.fill();
     }
     // buildings
+    for (const b of FILLERS) if (vis(b.x - 10, b.y - 10, b.w + 30, b.h + 30)) drawBuilding(ctx, b, night);
     for (const b of BUILDINGS) if (b.solid && vis(b.x - 10, b.y - 10, b.w + 30, b.h + 30)) drawBuilding(ctx, b, night);
+    for (const c of GOLDEN_CHAI) if (!S.chai.includes(c.id) && vis(c.x - 20, c.y - 20, 40, 40)) {
+      const bob = Math.sin(performance.now() / 250 + c.x) * 3;
+      ctx.fillStyle = 'rgba(255,215,0,.35)'; ctx.beginPath(); ctx.arc(c.x, c.y, 16, 0, Math.PI * 2); ctx.fill();
+      drawLabel(ctx, '☕', c.x, c.y - 4 + bob, 18, '#ffd700');
+    }
+    if (race && !race.countdown) { const [rx, ry] = race.r.pts[race.idx]; ctx.strokeStyle = '#ff7b00'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(rx, ry, 50, 0, Math.PI * 2); ctx.stroke(); }
+    if (S.driver.trip && S.driver.trip.stage === 'pickup') { const t = S.driver.trip; drawPerson(ctx, t.pu.x, t.pu.y, { skin: '#c98f62', hair: '#1b1410', hairStyle: 'long', shirt: '#22a06b', pants: '#2f3a56' }, 0); drawLabel(ctx, '🙋', t.pu.x, t.pu.y - 32, 16); }
     // waypoint
     if (S.waypoint && vis(S.waypoint.x - 40, S.waypoint.y - 60, 80, 80)) {
       const t = performance.now() / 300, wp = S.waypoint;
@@ -1481,6 +1503,8 @@
       cars, npcs, carXY, quests: S.quests, waypoint: S.waypoint,
       hour: hourF(S.time), dark: darkness(), rain: S.weather === 'rain', aqi: S.aqi,
       vehTwo: P.riding ? VEHICLES[P.riding].two : false, pet: !!S.pet,
+      chai: S.chai, checkpoint: race && !race.countdown ? race.r.pts[race.idx] : null,
+      passenger: S.driver.trip && S.driver.trip.stage === 'pickup' ? S.driver.trip.pu : null,
     });
     drawMinimap();
   }
@@ -1534,6 +1558,8 @@
       if (ride.status === 'waiting') return `📍 ${ride.driver.name} is waiting (yellow ring). Walk up and press E`;
       return `🚗 Riding to ${esc(ride.dest.label)}`;
     }
+    if (race) return race.countdown ? '🏁 Get ready…' : `🏁 ${race.r.name} · checkpoint ${race.idx + 1}/${race.r.pts.length} · ${fmtSec((performance.now() - race.t0) / 1000)}`;
+    if (S.driver.trip) return S.driver.trip.stage === 'pickup' ? `🙋 Pick up ${S.driver.trip.name} at ${esc(S.driver.trip.pu.label)}` : `🚘 Drop ${S.driver.trip.name} at ${BLD[S.driver.trip.bid].name} · ${inr(S.driver.trip.fare)}`;
     if (S.gig) { const left = Math.round(S.gig.allowed - (S.time - S.gig.start)); return `📦 Deliver ${esc(S.gig.item)} to ${BLD[S.gig.bid].name} · ${left > 0 ? left + ' min left' : 'LATE'}`; }
     if (S.errand) return `❗ Errand for ${S.errand.npc}: ${esc(S.errand.label)} → ${BLD[S.errand.bid].name}`;
     if (S.player.hunger < 20) return '🍛 You\'re starving! Eat something (or order on Bhookh).';
@@ -1561,6 +1587,7 @@
     { id: 'me', name: 'Profile', ico: '🧑', bg: '#64748b' },
     { id: 'reelz', name: 'Reelz', ico: '📸', bg: 'linear-gradient(135deg,#f58529,#dd2a7b,#8134af)' },
     { id: 'dhandha', name: 'Dhandha', ico: '🏪', bg: '#16a34a' },
+    { id: 'trade', name: 'Paisa Trade', ico: '📈', bg: '#0b3d2e' },
     { id: 'rewards', name: 'Rewards', ico: '🎁', bg: '#f43f5e' },
     { id: 'share', name: 'Share', ico: '📣', bg: '#0f172a' },
     { id: 'help', name: 'Help', ico: '❓', bg: '#0ea5e9' },
@@ -1599,7 +1626,7 @@
   function openApp(id, ...args) {
     if (args[0] && (id === 'chalo' || id === 'phatphat')) return rideQuote(id, args[0]);
     ({ chalo: rideApp, phatphat: rideApp, bhookh: bhookhApp, kaam: kaamApp, roof: roofApp, pay: payApp, yaari: yaariApp, goals: goalsApp, me: meApp, settings: settingsApp,
-      maps: () => { closePhone(); openMap(); }, help: () => openHelp(), reelz: reelzApp, dhandha: dhandhaApp, rewards: () => openRewards(), share: () => openShare() })[id](id, ...args);
+      maps: () => { closePhone(); openMap(); }, help: () => openHelp(), reelz: reelzApp, dhandha: dhandhaApp, trade: () => tradeApp(), rewards: () => openRewards(), share: () => openShare() })[id](id, ...args);
   }
 
   function placeGroups() {
@@ -1688,6 +1715,10 @@
     items.push({ section: 'Gig work' }, S.zipzap
       ? { icon: '📦', label: S.gig ? `Active: deliver to ${BLD[S.gig.bid].name}` : 'Accept a ZipZap delivery order', sub: `${S.stats.deliveries} delivered so far`, disabled: !!S.gig || hourF(S.time) < 8 || hourF(S.time) >= 23, onClick: startGig }
       : { icon: '📦', label: 'ZipZap delivery partner', sub: 'Register at the ZipZap hub on Sohna Road. Paid per order.', onClick: () => { setWaypoint(door(BLD.zipzap), BLD.zipzap.name); closePhone(); toast('Waypoint set to ZipZap hub.'); } });
+    const mv = myVehicle();
+    items.push({ icon: S.driver.online ? '🟢' : '🚘', label: S.driver.online ? `Online as a driver · ${S.driver.trip ? 'on a trip' : 'waiting for requests'}` : 'Drive passengers for Chalo / PhatPhat',
+      sub: mv ? `${S.driver.trips} trips · ${S.driver.rating}★ · uses your ${VEHICLES[mv].name}. ${S.driver.online ? 'Tap to go offline.' : 'Tap to go online.'}` : 'Needs your own scooter, bike or car (Raftaar Motors)', disabled: !mv && !S.driver.online,
+      onClick: () => { driverToggle(); kaamApp(); } });
     items.push({ section: 'Openings' }, ...Object.keys(JOBS).map(jobItem));
     items.push({ note: `Your skills — Coding ${S.player.skills.coding.toFixed(1)} · Communication ${S.player.skills.comm.toFixed(1)} · Fitness ${S.player.skills.fitness.toFixed(1)} · Style ${styleScore().toFixed(1)}`, blue: true });
     fillList(pad, items);
@@ -1746,6 +1777,8 @@
       { icon: '🎒', label: 'Items', sub: P.items.length ? P.items.map((k) => ITEMS[k].name).join(', ') : 'Nothing yet' },
       { icon: '🛵', label: 'Vehicles', sub: [...P.vehicles.map((k) => VEHICLES[k].name), P.rental ? 'ZipZap e-bike (rental)' : ''].filter(Boolean).join(', ') || 'None — book rides or rent an e-bike' },
       { section: 'Stats' },
+      { icon: '☕', label: `Golden Chai: ${S.chai.length}/${GOLDEN_CHAI.length} found`, sub: (() => { const n = nearestChaiHint(); return n ? `Nearest one is somewhere in ${n.district}, about ${n.km.toFixed(1)} km away` : 'You found them all!'; })() },
+      { icon: '📈', label: `Portfolio ${inr(portfolio())}`, sub: `${S.driver.trips} passenger trips · ${S.driver.rating}★ driver` },
       { icon: '📊', label: `${S.stats.rides} rides · ${S.stats.deliveries} deliveries · ${S.stats.shifts} shifts`, sub: `${S.stats.km.toFixed(1)} km driven · ${friendCount()} friends` },
     ]);
   }
@@ -1757,6 +1790,8 @@
       { icon: '📖', label: 'Help guide', sub: 'Controls, navigation, money, daily life, tips', onClick: () => openHelp('controls') },
       { icon: '💡', label: `Tips & hints: ${store.tips === false ? 'Off' : 'On'}`, sub: 'Helpful pop-ups the first time things happen, plus an occasional tip', onClick: () => { store.tips = store.tips === false; saveStore(); settingsApp(); } },
       !isTouch() && { icon: '⌨️', label: `Key legend: ${store.legend === false ? 'Hidden' : 'Shown'}`, sub: 'The row of shortcut keys at the bottom left', onClick: () => { store.legend = store.legend === false; saveStore(); renderKeyLegend(); settingsApp(); } },
+      use3D && { icon: '✨', label: `3D quality: ${{ high: 'High', medium: 'Medium', low: 'Low' }[window.GGL3D.quality]}`, sub: 'High = sharp shadows · Medium = lighter shadows · Low = fastest, for older phones',
+        onClick: () => { const order = ['high', 'medium', 'low'], q = order[(order.indexOf(window.GGL3D.quality) + 1) % 3]; store.gfxq = q; saveStore(); window.GGL3D.setQuality(q); settingsApp(); toast(`3D quality set to ${q}.`); } },
       { icon: store.sound === false ? '🔇' : '🔊', label: `Sound effects: ${store.sound === false ? 'Off' : 'On'}`, onClick: () => { store.sound = store.sound === false; saveStore(); settingsApp(); } },
       { icon: '🔄', label: 'Replay first-time hints', onClick: () => { S.hints = {}; toast('Hints will show again as things come up.', 'good'); } },
       { icon: use3D ? '🧊' : '🗺️', label: `Graphics: ${use3D ? '3D city' : '2D classic'}`, sub: can3D() ? `Switch to ${use3D ? '2D classic (fastest, for older phones)' : '3D city'}` : '3D needs WebGL, which this device does not support',
@@ -2193,7 +2228,7 @@
   function lifeScore(s = S) {
     const bizVal = BUSINESSES.reduce((t, b) => t + (s.biz && s.biz[b.id] ? b.cost : 0), 0);
     const friends = Object.values(s.friends || {}).filter((f) => f.fs >= 30).length;
-    return Math.round((s.player.money + s.player.savings + bizVal) / 1000 + ((s.reelz && s.reelz.followers) || 0) / 50 + (s.level || 1) * 40 + friends * 15);
+    return Math.round((s.player.money + s.player.savings + bizVal + portfolio(s)) / 1000 + ((s.reelz && s.reelz.followers) || 0) / 50 + (s.level || 1) * 40 + friends * 15);
   }
   const myCode = () => `${S.player.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 10).toUpperCase() || 'PLAYER'}-L${S.level}-S${lifeScore()}-D${dayOf(S.time)}`;
   function checkRival() {
@@ -2217,7 +2252,7 @@
     drawPerson(g, 80, 190, P.look, 0, 3.2);
     g.font = '800 26px system-ui, sans-serif'; g.fillText(P.name, 150, 130);
     g.font = '600 16px system-ui, sans-serif';
-    const lines = [`⭐ Level ${S.level} · ${titleFor(S.level)}`, `💰 Net worth ${inr(P.money + P.savings)}`, `📸 ${fmtNum(S.reelz.followers)} followers`, `💼 ${S.job ? JOBS[S.job.id].title : 'Hustling'}`, `🏆 Life Score ${lifeScore()}`];
+    const lines = [`⭐ Level ${S.level} · ${titleFor(S.level)}`, `💰 Net worth ${inr(P.money + P.savings + portfolio())}`, `📸 ${fmtNum(S.reelz.followers)} followers`, `💼 ${S.job ? JOBS[S.job.id].title : 'Hustling'}`, `🏆 Life Score ${lifeScore()}`];
     lines.forEach((l, i) => g.fillText(l, 150, 160 + i * 25));
     g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, H - 44, W, 44);
     g.fillStyle = '#fff'; g.font = '700 15px system-ui, sans-serif'; g.fillText(`Beat my code: ${myCode()}`, 28, H - 16);
@@ -2249,6 +2284,210 @@
     };
   }
 
+  // ---------- more to do: Golden Chai hunt, street races, driving passengers, stocks ----------
+  function ensureMore(s) {
+    s.chai = s.chai || [];
+    s.races = s.races || {};
+    s.driver = Object.assign({ online: false, trips: 0, rating: 4.8, ratings: 0, trip: null }, s.driver);
+    if (!s.market) {
+      s.market = { prices: {}, open: {}, hist: {}, hold: {}, hour: Math.floor(s.time / 60) };
+      for (const st of STOCKS) { s.market.prices[st.sym] = st.p; s.market.open[st.sym] = st.p; s.market.hist[st.sym] = [st.p]; }
+    }
+    return s;
+  }
+
+  // ----- Golden Chai cups -----
+  function checkChai() {
+    const P = S.player;
+    for (const c of GOLDEN_CHAI) {
+      if (S.chai.includes(c.id) || Math.abs(c.x - P.x) > 30 || Math.abs(c.y - P.y) > 30) continue;
+      S.chai.push(c.id);
+      const n = S.chai.length;
+      earn(250, 'Found a Golden Chai cup'); track('chaicup');
+      const milestone = { 10: 5000, 20: 15000, [GOLDEN_CHAI.length]: 50000 }[n];
+      if (milestone) { earn(milestone, `Golden Chai milestone ${n}`); celebrate(`☕ ${n} Golden Chai cups!`, `Milestone bonus ${inr(milestone)}`); }
+      else { toast(`☕✨ Golden Chai cup found! ${n}/${GOLDEN_CHAI.length} · +₹250`, 'good'); chime(); }
+      checkGoals();
+    }
+  }
+  function nearestChaiHint() {
+    const P = S.player;
+    let best = null, bd = 1e9;
+    for (const c of GOLDEN_CHAI) { if (S.chai.includes(c.id)) continue; const d = dist(c.x, c.y, P.x, P.y); if (d < bd) { bd = d; best = c; } }
+    return best ? { c: best, km: bd / PX_PER_KM, district: districtAt(best.x, best.y).name } : null;
+  }
+
+  // ----- street races -----
+  let race = null;
+  const raceLen = (r) => r.pts.reduce((s, p, i) => (i ? s + dist(p[0], p[1], r.pts[i - 1][0], r.pts[i - 1][1]) : s), dist(2110, 1319, r.pts[0][0], r.pts[0][1]));
+  const raceTimes = (r) => { const g = raceLen(r) / 270; return [g, g * 1.25, g * 1.55]; };
+  const fmtSec = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
+  function startRace(r) {
+    const P = S.player;
+    if (!P.riding) { toast('You need to be on a vehicle. Press F to ride (rent an e-bike at ZipZap, or buy one here).', 'bad'); return; }
+    if (!spend(r.fee, `${r.name} entry fee`)) return;
+    closeModal(); closePhone();
+    race = { r, idx: 0, t0: performance.now() + 3000, countdown: true };
+    celebrate('3… 2… 1…', `${r.name} · ${r.pts.length} checkpoints · gold under ${fmtSec(raceTimes(r)[0])}`);
+    setWaypoint({ x: r.pts[0][0], y: r.pts[0][1] }, 'Checkpoint 1');
+  }
+  function updateRace() {
+    if (!race) return;
+    const P = S.player, now = performance.now();
+    if (race.countdown) { if (now >= race.t0) { race.countdown = false; toast('🏁 GO GO GO!', 'good'); chime('big'); } return; }
+    if (!P.riding) { toast('❌ Race abandoned — you got off your vehicle.', 'bad'); race = null; S.waypoint = null; return; }
+    const [cx, cy] = race.r.pts[race.idx];
+    if (dist(P.x, P.y, cx, cy) < 55) {
+      race.idx++; chime();
+      if (race.idx >= race.r.pts.length) return finishRace();
+      const [nx, ny] = race.r.pts[race.idx];
+      setWaypoint({ x: nx, y: ny }, `Checkpoint ${race.idx + 1}`);
+    }
+  }
+  function finishRace() {
+    const r = race.r, t = (performance.now() - race.t0) / 1000;
+    race = null; S.waypoint = null;
+    const [g, s2, b] = raceTimes(r), medal = t <= g ? 0 : t <= s2 ? 1 : t <= b ? 2 : -1;
+    const prev = S.races[r.id] || { best: Infinity, medal: -1 }, pb = t < prev.best;
+    S.races[r.id] = { best: Math.min(prev.best, t), medal: medal >= 0 && (prev.medal < 0 || medal < prev.medal) ? medal : prev.medal };
+    track('race');
+    if (medal >= 0) { earn(r.prize[medal], `${r.name} prize`); celebrate(`${['🥇 GOLD', '🥈 SILVER', '🥉 BRONZE'][medal]}!`, `${r.name} in ${fmtSec(t)} · +${inr(r.prize[medal])}${pb ? ' · new personal best' : ''}`); }
+    else toast(`🏁 Finished ${r.name} in ${fmtSec(t)}. Bronze needs ${fmtSec(b)} — try a faster vehicle or avoid peak hours.`);
+    checkGoals(); save();
+  }
+  function raceItems() {
+    return RACES.map((r) => {
+      const [g, s2, b] = raceTimes(r), best = S.races[r.id];
+      return { icon: best && best.medal >= 0 ? ['🥇', '🥈', '🥉'][best.medal] : '🏁', label: `${r.name} · entry ${inr(r.fee)}`,
+        sub: `🥇 ${fmtSec(g)} · 🥈 ${fmtSec(s2)} · 🥉 ${fmtSec(b)} · prizes ${inr(r.prize[0])}/${inr(r.prize[1])}/${inr(r.prize[2])}${best ? ` · your best ${fmtSec(best.best)}` : ''}`,
+        disabled: !!race, onClick: () => startRace(r) };
+    });
+  }
+
+  // ----- driving passengers (Chalo / PhatPhat driver partner) -----
+  const myVehicle = () => S.player.vehicles.slice().sort((a, b) => VEHICLES[b].speed - VEHICLES[a].speed)[0] || null;
+  let tripTimer = 0;
+  function driverToggle() {
+    const D = S.driver;
+    if (!D.online && !myVehicle()) { toast('You need your own vehicle to drive for Chalo or PhatPhat. Raftaar Motors sells them.', 'bad'); return; }
+    D.online = !D.online;
+    if (!D.online) { if (D.trip) toast('Trip cancelled. Your rating dropped a little.', 'bad'); D.trip = null; S.waypoint = null; }
+    else { tripTimer = 3; toast(`🟢 You're online as a ${VEHICLES[myVehicle()].two ? 'PhatPhat bike-taxi' : 'Chalo'} driver. Ride requests will pop up nearby.`, 'good'); }
+  }
+  function updateDriver(dt) {
+    const D = S.driver;
+    if (!D.online) return;
+    const P = S.player;
+    if (!D.trip) {
+      tripTimer -= dt;
+      if (tripTimer > 0) return;
+      const near = BUILDINGS.filter((b) => b.solid && dist(door(b).x, door(b).y, P.x, P.y) > 250 && dist(door(b).x, door(b).y, P.x, P.y) < 1100);
+      if (!near.length) { tripTimer = 5; return; }
+      const pu = pick(near), pd = door(pu);
+      const far = BUILDINGS.filter((b) => b.solid && b !== pu && dist(door(b).x, door(b).y, pd.x, pd.y) > 600 && dist(door(b).x, door(b).y, pd.x, pd.y) < 2600);
+      const dest = pick(far), km = dist(pd.x, pd.y, door(dest).x, door(dest).y) / PX_PER_KM * 1.25;
+      const car = !VEHICLES[myVehicle()].two;
+      D.trip = { stage: 'pickup', name: pick(NPC_NAMES)[0], pu: { x: pd.x, y: pd.y, label: pu.name }, bid: dest.id, fare: Math.round(((car ? 60 : 30) + km * (car ? 28 : 16)) * surge()), km, t0: S.time, allowed: Math.round(10 + km * 3) };
+      setWaypoint(pd, `Pickup: ${D.trip.name}`);
+      toast(`📲 Ride request: ${D.trip.name} at ${pu.name} → ${dest.name} · ${inr(D.trip.fare)}`, 'good'); chime();
+      return;
+    }
+    const T = D.trip;
+    if (T.stage === 'pickup' && dist(P.x, P.y, T.pu.x, T.pu.y) < 45) {
+      if (!P.riding) { hint('pickupride', 'Get on your vehicle (F) to pick up the passenger.'); return; }
+      T.stage = 'drop'; T.t0 = S.time;
+      const d = door(BLD[T.bid]); setWaypoint(d, `Drop: ${BLD[T.bid].name}`);
+      toast(`🧍 ${T.name} hopped on. Drop them at ${BLD[T.bid].name}.`);
+    } else if (T.stage === 'drop') {
+      const d = door(BLD[T.bid]);
+      if (dist(P.x, P.y, d.x, d.y) < 55) {
+        const fast = S.time - T.t0 <= T.allowed, tip = fast ? randi(2, 8) * 10 : 0, stars = fast ? 5 : randi(3, 4);
+        D.rating = Math.round(((D.rating * D.ratings + stars) / (D.ratings + 1)) * 100) / 100; D.ratings++; D.trips++;
+        earn(T.fare + tip, `Driver trip with ${T.name}${tip ? ' + tip' : ''}`); track('drive'); track('earn', T.fare + tip);
+        toast(`💸 Trip done! ${inr(T.fare + tip)} earned · ${T.name} rated you ${'★'.repeat(stars)} (avg ${D.rating})`, 'good'); chime();
+        D.trip = null; S.waypoint = null; tripTimer = rand(4, 9);
+        checkGoals();
+      }
+    }
+  }
+
+  // ----- Paisa Trade stock market -----
+  const gauss = () => Math.sqrt(-2 * Math.log(Math.random() || 1e-9)) * Math.cos(2 * Math.PI * Math.random());
+  const marketOpen = () => { const h = hourF(S.time); return weekday(dayOf(S.time)) !== 'Sun' && h >= 9 && h < 21; };
+  function tickMarket() {
+    const M = S.market, hr = Math.floor(S.time / 60);
+    if (hr <= M.hour) return;
+    const steps = Math.min(48, hr - M.hour);
+    M.hour = hr;
+    for (let i = 0; i < steps; i++) {
+      for (const st of STOCKS) {
+        let p = M.prices[st.sym] * Math.exp(st.drift - (st.vol * st.vol) / 2 + st.vol * gauss());
+        M.prices[st.sym] = Math.max(5, Math.round(p * 100) / 100);
+        const h = M.hist[st.sym]; h.push(M.prices[st.sym]); if (h.length > 30) h.shift();
+      }
+      if (Math.random() < 0.06) {
+        const st = pick(STOCKS), up = Math.random() < 0.55, mv = rand(0.07, 0.2);
+        M.prices[st.sym] = Math.round(M.prices[st.sym] * (up ? 1 + mv : 1 - mv) * 100) / 100;
+        const news = up ? pick(['wins a giant government contract', 'reports record profits', 'raises a big funding round', 'goes viral on Reelz']) : pick(['faces a tax raid', 'misses earnings estimates', 'CEO resigns suddenly', 'gets hit by a data leak']);
+        if (steps <= 2) toast(`${up ? '📈' : '📉'} Market news: ${st.name} ${news} (${up ? '+' : '−'}${Math.round(mv * 100)}%)${M.hold[st.sym] ? ' — you hold this!' : ''}`, up ? 'good' : 'bad');
+      }
+    }
+  }
+  const portfolio = (s = S) => !s.market ? 0 : Object.entries(s.market.hold).reduce((t, [k, h]) => t + h.q * s.market.prices[k], 0);
+  function spark(arr, w = 90, h = 26) {
+    const mn = Math.min(...arr), mx = Math.max(...arr), sp = mx - mn || 1;
+    const pts = arr.map((v, i) => `${((i / Math.max(1, arr.length - 1)) * w).toFixed(1)},${(h - ((v - mn) / sp) * (h - 4) - 2).toFixed(1)}`).join(' ');
+    const up = arr[arr.length - 1] >= arr[0];
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" class="spark"><polyline points="${pts}" fill="none" stroke="${up ? '#16a34a' : '#dc2626'}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  }
+  function trade(sym, qty) {
+    const M = S.market, price = M.prices[sym], fee = 20;
+    if (!marketOpen()) { toast('Market is closed. Trading hours: 9 AM – 9 PM, Monday to Saturday.', 'bad'); return; }
+    const h = M.hold[sym] || { q: 0, avg: 0 };
+    if (qty > 0) {
+      if (!spend(qty * price + fee, `Bought ${qty} ${sym}`)) return;
+      h.avg = (h.avg * h.q + price * qty) / (h.q + qty); h.q += qty; M.hold[sym] = h;
+    } else {
+      const q = Math.min(h.q, -qty);
+      if (q <= 0) return;
+      earn(q * price - fee, `Sold ${q} ${sym}`);
+      const pl = (price - h.avg) * q;
+      h.q -= q; if (h.q <= 0) delete M.hold[sym];
+      toast(`${pl >= 0 ? '🤑 Profit' : '😬 Loss'} on ${sym}: ${inr(pl)}`, pl >= 0 ? 'good' : 'bad');
+    }
+    track('trade'); checkGoals();
+  }
+  function tradeApp(sel) {
+    const pad = appShell('trade');
+    const M = S.market, open = marketOpen();
+    const inv = Object.entries(M.hold).reduce((t, [k, h]) => t + h.q * h.avg, 0), val = portfolio();
+    if (sel) {
+      const st = STOCKS.find((x) => x.sym === sel), p = M.prices[sel], h = M.hold[sel], chg = (p / M.open[sel] - 1) * 100;
+      const maxQ = Math.max(0, Math.floor((S.player.money - 20) / p));
+      fillList(pad, [
+        { html: `<div class="note blue"><b>${st.icon} ${st.name}</b> · ${sel}<div class="big">${inr(p)} <small style="color:${chg >= 0 ? 'var(--good)' : 'var(--bad)'}">${chg >= 0 ? '▲' : '▼'} ${Math.abs(chg).toFixed(1)}% today</small></div>${spark(M.hist[sel], 280, 70)}${h ? `<br>You own <b>${h.q}</b> @ avg ${inr(h.avg)} · P/L <b style="color:${p >= h.avg ? 'var(--good)' : 'var(--bad)'}">${inr((p - h.avg) * h.q)}</b>` : ''}</div>` },
+        !open && { note: 'Market closed. Trading hours: 9 AM – 9 PM, Monday to Saturday.' },
+        { icon: '🟢', label: 'Buy 1 share', right: inr(p + 20), disabled: !open || maxQ < 1, onClick: () => { trade(sel, 1); tradeApp(sel); } },
+        { icon: '🟢', label: 'Buy 10 shares', right: inr(p * 10 + 20), disabled: !open || maxQ < 10, onClick: () => { trade(sel, 10); tradeApp(sel); } },
+        { icon: '🟢', label: `Buy max (${maxQ})`, disabled: !open || maxQ < 1, onClick: () => { trade(sel, maxQ); tradeApp(sel); } },
+        h && { icon: '🔴', label: 'Sell 1 share', disabled: !open, onClick: () => { trade(sel, -1); tradeApp(sel); } },
+        h && { icon: '🔴', label: `Sell all (${h.q})`, right: inr(h.q * p - 20), disabled: !open, onClick: () => { trade(sel, -h.q); tradeApp(sel); } },
+        { note: 'Flat ₹20 brokerage per order. Prices move every game hour; big news can swing them 7–20%. Never invest money you need for rent!', blue: true },
+        { icon: '‹', label: 'All stocks', onClick: () => tradeApp() },
+      ]);
+      return;
+    }
+    fillList(pad, [
+      { html: `<div class="note blue"><small>Portfolio value</small><div class="big">${inr(val)}</div>Invested ${inr(inv)} · P/L <b style="color:${val >= inv ? 'var(--good)' : 'var(--bad)'}">${inr(val - inv)}</b><br>${open ? '🟢 Market open' : '🔴 Market closed · opens 9 AM (Mon–Sat)'}</div>` },
+      ...STOCKS.map((st) => {
+        const p = M.prices[st.sym], chg = (p / M.open[st.sym] - 1) * 100, h = M.hold[st.sym];
+        return { icon: st.icon, label: `${st.name}`, sub: `${spark(M.hist[st.sym])}<br>${st.sym}${h ? ` · you own ${h.q}` : ''}`,
+          right: `${inr(p)}<br><small style="color:${chg >= 0 ? 'var(--good)' : 'var(--bad)'}">${chg >= 0 ? '▲' : '▼'}${Math.abs(chg).toFixed(1)}%</small>`, onClick: () => tradeApp(st.sym) };
+      }),
+    ]);
+  }
+  function marketNewDay() { for (const st of STOCKS) S.market.open[st.sym] = S.market.prices[st.sym]; }
+
   // ---------- help guide, hints and tips ----------
   const isTouch = () => document.body.classList.contains('is-touch');
   const kb = (k) => `<kbd class="k">${k}</kbd>`;
@@ -2264,7 +2503,9 @@
       { icon: '2️⃣', label: 'Get a job you qualify for', sub: 'Phone → KaamDhanda. Barista (Chai Chaupal, 7 AM) and factory helper (Udyog Vihar, 8 AM) need no skills.' },
       { icon: '3️⃣', label: 'Earn while you wait for your shift', sub: 'Register at the ZipZap hub on Sohna Road and deliver orders. Rent their e-bike for ₹199 so you arrive on time.' },
       { icon: '4️⃣', label: 'Upskill, then move up', sub: 'SkillUp Academy (Sector 14) raises Coding and Communication. CodeKraft pays ₹3,300 a shift at Coding 3.' },
-      { icon: '🏆', label: 'Follow your goals', sub: 'Phone → Goals lists 11 milestones, and each one pays a cash reward.' },
+      { icon: '🏆', label: 'Follow your goals', sub: `Phone → Goals lists ${GOALS.length} milestones, and each one pays a cash reward.` },
+      { icon: '⏱️', label: 'One game day = 15 real minutes', sub: 'Work shifts, sleep and long activities skip ahead. Rent is due every 7 game days.' },
+      { icon: '🎮', label: 'Bored? There\'s always more', sub: 'Street races at Raftaar Motors, driving passengers, the Golden Chai hunt, stocks on Paisa Trade, reels, businesses and daily challenges. See "Hustle & fame".' },
     ];
     if (tab === 'controls') return [
       { section: T ? 'Touch controls' : 'Keyboard and mouse' },
@@ -2323,6 +2564,10 @@
       { icon: '📸', label: 'Reelz: become an influencer', sub: 'Go to a photo spot (Cyber Square, Emerald Golf Club, Skyline Towers…) and post a reel. Style and a good mood mean more views. Viral hits explode your followers, and 1K / 10K / 100K / 1M followers unlock daily brand-deal pay.' },
       { icon: '🎲', label: 'Life events', sub: 'Every few game hours something happens: weddings, scam calls, a friend asking for a loan, a founder\'s pitch, a stray puppy. Your choice changes your money, friends and story.' },
       { icon: '💞', label: 'Love and pets', sub: 'Get a friend to 70 friendship and ask them out. A partner slows how fast your Social drains. Adopt Sheru the street dog when you meet him: he follows you and boosts your reels.' },
+      { icon: '🏁', label: 'Night Runs street races', sub: 'At Raftaar Motors (Sohna Road). Ride your vehicle through every orange checkpoint ring. Beat the gold, silver or bronze time for cash prizes.' },
+      { icon: '🚘', label: 'Drive passengers', sub: 'With your own vehicle, go online in KaamDhanda. Pick up the waving passenger and drop them at their stop. Fast trips earn tips and 5★.' },
+      { icon: '☕', label: 'Golden Chai hunt', sub: `${GOLDEN_CHAI.length} glowing golden cups are hidden across every district. Each pays ₹250, with big bonuses at 10, 20 and all of them. Phone → Profile hints at the nearest one.` },
+      { icon: '📈', label: 'Paisa Trade', sub: 'Buy and sell 6 fictional stocks (9 AM–9 PM, Mon–Sat). Prices move every game hour and news can swing them 7–20%.' },
       { icon: '📣', label: 'Share and challenge friends', sub: 'Phone → Share makes a brag card and a challenge code (like RAHUL-L7-S940-D6). Friends enter your code to race your Life Score, and you enter theirs.' },
     ];
     if (tab === 'life') return [
@@ -2395,6 +2640,10 @@
     if (P.money < 1500) hint('broke', 'Running low on cash? ZipZap deliveries pay right away, and goals (Phone → Goals) pay rewards.');
     if (S.home && S.home.nextDue - dayOf(S.time) <= 1 && P.money < HOMES[S.home.key].rent) hint('rentdue' + S.home.nextDue, `Rent of ${inr(HOMES[S.home.key].rent)} is due tomorrow and you can't cover it yet!`);
     if (S.job) hint('shift', 'Be at your workplace near your shift time, step into the yellow ring and press <b>E → Start shift</b>.');
+    const nc = nearestChaiHint();
+    if (nc && nc.km < 0.5) hint('chaicup', '✨ Something golden is glinting nearby… Golden Chai cups are hidden across the city. Find all of them for big bonuses!');
+    if (myVehicle()) hint('races', '🏁 You have wheels! Try the Night Runs street races at Raftaar Motors (Sohna Road), or drive passengers from the KaamDhanda app.');
+    if (S.level >= 3) hint('trade', '📈 New app: <b>Paisa Trade</b>. Buy fictional stocks and watch the market move every game hour.');
     if (S.level >= 2 || rewardsPending()) hint('rewards', 'Tap <b>🎁</b> (or press <b>G</b>) for your daily streak reward, a free spin and 3 daily challenges.');
     if (nearSpot()) hint('spot', '📸 This is a photo spot! Open <b>Reelz</b> on your phone and post a reel to gain followers.');
     if (S.level >= 2 && P.money >= 8000) hint('biz', '🏪 You can afford a hustle! Buy a Chai Tapri in the <b>Dhandha</b> app for passive income.');

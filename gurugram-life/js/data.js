@@ -306,3 +306,86 @@ const SPIN_PRIZES = [
   { t: '₹1,000', w: 14, cash: 1000, c: '#3b82f6' }, { t: 'Full energy', w: 10, energy: true, c: '#f2c14e' }, { t: '+500 fans', w: 8, followers: 500, c: '#e23744' },
   { t: '₹2,500', w: 7, cash: 2500, c: '#0ea5e9' }, { t: 'JACKPOT', w: 3, cash: 10000, c: '#111827' },
 ];
+
+// ---------- city fill, collectibles, races, stocks ----------
+// Background buildings that make blocks feel dense. Deterministic, so every
+// player sees the same city. Kept separate from BUILDINGS: no doors, no menus.
+const FILLERS = (() => {
+  let seed = 20260705;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const out = [];
+  const roadHit = (x, y, w, h) => ROADS_V.some((r) => x < r.x + r.w / 2 + 16 && x + w > r.x - r.w / 2 - 16) || ROADS_H.some((r) => y < r.y + r.w / 2 + 16 && y + h > r.y - r.w / 2 - 16);
+  const blocked = (x, y, w, h) => BUILDINGS.some((b) => x < b.x + b.w + 24 && x + w > b.x - 24 && y < b.y + b.h + 70 && y + h > b.y - 24)
+    || out.some((f) => x < f.x + f.w + 16 && x + w > f.x - 16 && y < f.y + f.h + 16 && y + h > f.y - 16)
+    || NAKAS.some((n) => Math.abs(n.x - (x + w / 2)) < w / 2 + 40 && Math.abs(n.y - (y + h / 2)) < h / 2 + 40);
+  const TALL = ['Cyber City', 'Golf Course Road', 'Sikanderpur', 'Golf Course Extension', 'MG Road', 'Sector 54'];
+  const MID = ['New Gurugram', 'Sohna Road', 'Sushant Lok', 'Southern Sectors', 'Udyog Vihar'];
+  const tones = ['#d9cfc0', '#cbb9a0', '#e3d6c3', '#c4a98c', '#d8c4b6', '#bfc6c9', '#e6e0d4', '#c9b8a8'];
+  for (const d of DISTRICTS) {
+    if (d.farm || d.green) continue;
+    const tall = TALL.includes(d.name), mid = MID.includes(d.name);
+    const cell = tall ? 150 : 100;
+    const lots = [];
+    for (let gy = d.y + 18; gy + cell * 0.5 < d.y + d.h - 18; gy += cell) for (let gx = d.x + 18; gx + cell * 0.5 < d.x + d.w - 18; gx += cell) lots.push([gx, gy]);
+    for (const [gx, gy] of lots) {
+      const w = Math.min(cell * (0.55 + rnd() * 0.3), d.x + d.w - 18 - gx), h = Math.min(cell * (0.5 + rnd() * 0.3), d.y + d.h - 18 - gy);
+      if (w < 34 || h < 30) continue;
+      const x = gx + rnd() * (cell - w) * 0.5, y = gy + rnd() * (cell - h) * 0.5;
+      if (roadHit(x, y, w, h) || blocked(x, y, w, h)) continue;
+      const r = rnd();
+      const style = tall ? (r < 0.55 ? 'glass' : r < 0.85 ? 'office' : 'resi') : mid ? (r < 0.6 ? 'resi' : r < 0.8 ? 'office' : 'shop') : (r < 0.6 ? 'shop' : 'resi');
+      const height = style === 'glass' ? 140 + rnd() * 260 : style === 'office' ? 70 + rnd() * 160 : style === 'resi' ? (mid || tall ? 90 + rnd() * 220 : 30 + rnd() * 40) : 22 + rnd() * 26;
+      out.push({ id: 'f' + out.length, x, y, w, h, solid: true, filler: true, style, height: Math.round(height), color: tones[Math.floor(rnd() * tones.length)] });
+    }
+  }
+  return out;
+})();
+
+// Hidden collectibles: Golden Chai cups scattered across the city.
+const GOLDEN_CHAI = (() => {
+  let seed = 4242;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const solid = (x, y) => BUILDINGS.concat(FILLERS).some((b) => b.solid && x > b.x - 14 && x < b.x + b.w + 14 && y > b.y - 14 && y < b.y + b.h + 14);
+  const road = (x, y) => ROADS_V.some((r) => Math.abs(x - r.x) < r.w / 2 + 10) || ROADS_H.some((r) => Math.abs(y - r.y) < r.w / 2 + 10);
+  const out = [];
+  for (const d of DISTRICTS) {
+    let placed = 0;
+    for (let i = 0; i < 80 && placed < (d.farm ? 3 : 2); i++) {
+      const x = d.x + 30 + rnd() * (d.w - 60), y = d.y + 30 + rnd() * (d.h - 60);
+      if (solid(x, y) || road(x, y)) continue;
+      out.push({ id: 'c' + out.length, x: Math.round(x), y: Math.round(y) });
+      placed++;
+    }
+  }
+  return out;
+})();
+
+// Street races start at Raftaar Motors. Checkpoints sit on roads.
+const RACES = [
+  { id: 'sohna', name: 'Sohna Sprint', fee: 300, prize: [2500, 1200, 600], pts: [[2110, 1100], [1650, 1100], [1650, 1850], [2400, 1850], [2400, 1100], [2110, 1100]] },
+  { id: 'cyber', name: 'Cyber City Loop', fee: 500, prize: [4500, 2200, 1000], pts: [[2400, 1100], [2400, 350], [1650, 350], [900, 350], [900, 1100], [1650, 1100], [2110, 1100]] },
+  { id: 'nh48', name: 'Expressway Dash', fee: 800, prize: [7000, 3500, 1500], pts: [[1650, 1100], [900, 1100], [200, 1100], [200, 1850], [200, 2450], [200, 1850], [900, 1850], [1650, 1850], [1650, 1100]] },
+];
+
+// Fictional stocks for the Paisa Trade app.
+const STOCKS = [
+  { sym: 'GGNI', name: 'GGN Infra', p: 420, vol: 0.03, drift: 0.0006, icon: '🏗️' },
+  { sym: 'CDKR', name: 'CodeKraft Tech', p: 1180, vol: 0.025, drift: 0.0008, icon: '💻' },
+  { sym: 'ZIPZ', name: 'ZipZap Delivery', p: 96, vol: 0.06, drift: 0.0005, icon: '📦' },
+  { sym: 'RFTR', name: 'Raftaar Motors', p: 640, vol: 0.02, drift: 0.0004, icon: '🛵' },
+  { sym: 'MOMO', name: 'Momo Mahal Foods', p: 210, vol: 0.035, drift: 0.0005, icon: '🥟' },
+  { sym: 'ARVF', name: 'Aravalli Fintech', p: 1520, vol: 0.04, drift: 0.0007, icon: '🏦' },
+];
+
+const BILLBOARDS = [
+  ['Chalo', 'Your ride in 2 minutes', '#14161c', '#ffd400'], ['Bhookh', 'Hungry? 30-min delivery', '#e23744', '#fff'],
+  ['PayKaro', 'Pay anyone. Instantly.', '#5f259f', '#fff'], ['Reelz', 'Go viral today', '#dd2a7b', '#fff'],
+  ['PhatPhat', 'Beat the jam', '#ffcc00', '#14161c'], ['Raftaar Motors', 'Zest 110 · ₹68,000', '#c0392b', '#fff'],
+  ['ZipZap', 'Deliver & earn', '#f2c14e', '#14161c'], ['Skyline Towers', 'Live above it all', '#1f3b70', '#fff'],
+];
+
+DAILY_TASKS.push(
+  { k: 'race', n: 1, t: 'Finish a street race' }, { k: 'chaicup', n: 2, t: 'Find 2 Golden Chai cups' },
+  { k: 'drive', n: 2, t: 'Complete 2 passenger trips as a driver' }, { k: 'trade', n: 1, t: 'Make a trade on Paisa Trade' },
+);
+Object.assign(XP_FOR, { race: 50, chaicup: 20, drive: 30, trade: 5 });

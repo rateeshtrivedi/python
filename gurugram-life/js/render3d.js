@@ -238,8 +238,9 @@ window.GGL3D = (() => {
   function makeVehicle(k) {
     const g = vehicleGeo(k), grp = new T.Group();
     const body = new T.Mesh(g.body, vehMat);
-    body.castShadow = !mobile;
+    body.castShadow = true;
     grp.add(body, new T.Mesh(g.lamps, lampMat));
+    if (headGlowMat) addHeadGlow(grp, g.L);
     if (!k.two) { const tl = new T.Mesh(BOX(0.5, 1.5, 2.5), tailMat); tl.position.set(-g.L / 2 - 0.2, 7, g.W / 2 - 2.5); const tr = tl.clone(); tr.position.z = -tl.position.z; grp.add(tl, tr); }
     return grp;
   }
@@ -275,7 +276,7 @@ window.GGL3D = (() => {
     if (look.hairStyle === 'long') { const l = new T.Mesh(G.long, m(look.hair)); l.position.set(-1.6, 17, 0); g.add(l); }
     if (look.hairStyle === 'bun') { const b = new T.Mesh(G.bun, m(look.hair)); b.position.set(-1.9, 20.8, 0); g.add(b); }
     if (look.hairStyle === 'cap') { const b = new T.Mesh(G.brim, m(hairCol)); b.position.set(2, 19.3, 0); g.add(b); }
-    g.traverse((o) => { if (o.isMesh) o.castShadow = !mobile; });
+    g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     g.userData = { legL, legR, armL, armR };
     g.scale.setScalar(0.9);
     return g;
@@ -426,13 +427,13 @@ window.GGL3D = (() => {
       arm.setMatrixAt(i, tmpM.compose(tmpP.set(p.x + off.x, 43.5, p.z + off.z), tmpQ, tmpS));
       const off2 = new T.Vector3(13, 0, 0).applyQuaternion(tmpQ);
       head.setMatrixAt(i, tmpM.compose(tmpP.set(p.x + off2.x, 42.6, p.z + off2.z), tmpQ, tmpS));
+      lampPositions.push({ x: p.x + off2.x, z: p.z + off2.z });
     });
-    pole.castShadow = !mobile;
+    pole.castShadow = true;
     scene.add(pole, arm, head);
   }
 
   function buildBuildings() {
-    const facades = {};
     roofMat = new T.MeshStandardMaterial({ map: canvasTex(64, 64, (g) => { g.fillStyle = '#6b6c6a'; g.fillRect(0, 0, 64, 64); noise(g, 64, 64, 400, 0.2); }, true), roughness: 0.95 });
     const tankGeo = new T.CylinderGeometry(4, 4, 8, 12), tankMat = stdMat('#1d1e1f', { roughness: 0.6 });
     const canopyMat = stdMat('#efefef', { roughness: 0.6 });
@@ -442,7 +443,7 @@ window.GGL3D = (() => {
     for (const b of BUILDINGS) {
       if (!b.solid) continue;
       const [H, style] = SPEC[b.id] || [40, 'shop'];
-      const fx = facades[style] || (facades[style] = facadeTextures(style));
+      const fx = getFacade(style);
       const tint = new T.Color('#ffffff').lerp(new T.Color(b.color), style === 'glass' ? 0.25 : 0.4).convertSRGBToLinear();
       const mat = new T.MeshStandardMaterial({ color: tint, map: fx.map, emissiveMap: fx.emissive, emissive: new T.Color(1, 1, 1), emissiveIntensity: 0,
         roughness: style === 'glass' ? 0.25 : 0.85, metalness: style === 'glass' ? 0.45 : 0.05 });
@@ -529,7 +530,7 @@ window.GGL3D = (() => {
       treeCrowns.setMatrixAt(i, tmpM.compose(tmpP.set(t.x, th + s * 0.7, t.y), tmpQ.setFromEuler(tmpE.set(0, Math.random() * 6, 0)), new T.Vector3(s, s * 1.05, s)));
       treeCrowns.setColorAt(i, c.set(t.c).offsetHSL((Math.random() - 0.5) * 0.04, 0, (Math.random() - 0.5) * 0.08).convertSRGBToLinear());
     });
-    treeTrunks.castShadow = treeCrowns.castShadow = !mobile;
+    treeTrunks.castShadow = treeCrowns.castShadow = true;
     scene.add(treeTrunks, treeCrowns);
   }
 
@@ -580,6 +581,233 @@ window.GGL3D = (() => {
     scene.add(rain);
   }
 
+  // ---------- visual upgrades: skyline fill, reflections, sky, night lights, palms, billboards ----------
+  const FAC = {};
+  const getFacade = (style) => FAC[style] || (FAC[style] = facadeTextures(style));
+  const radialTex = (inner, outer, size = 128) => canvasTex(size, size, (g, w, h) => {
+    const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    gr.addColorStop(0, inner); gr.addColorStop(1, outer);
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  });
+  let lampPositions = [], lampPoolMat, headGlowMat, cloudMesh, sunSprite;
+
+  function buildFillers() {
+    const byStyle = {};
+    for (const f of FILLERS) (byStyle[f.style] = byStyle[f.style] || []).push(f);
+    const tankPos = [];
+    for (const [style, list] of Object.entries(byStyle)) {
+      const fx = getFacade(style);
+      const A = { p: [], n: [], u: [], c: [] }, R = { p: [], n: [], u: [], c: [] };
+      for (const f of list) {
+        const H = f.height, g = BOX(f.w, H, f.h);
+        scaleUV(g, [f.h / TILE, f.h / TILE, 1, 1, f.w / TILE, f.w / TILE], [H / TILE, H / TILE, 1, 1, H / TILE, H / TILE], [0, 1, 4, 5]);
+        scaleUV(g, [1, 1, f.w / 60, f.w / 60, 1, 1], [1, 1, f.h / 60, f.h / 60, 1, 1], [2, 3]);
+        g.translate(f.x + f.w / 2, H / 2, f.y + f.h / 2);
+        const ng = g.toNonIndexed(), P = ng.attributes.position.array, N = ng.attributes.normal.array, U = ng.attributes.uv.array;
+        const col = new T.Color('#ffffff').lerp(new T.Color(f.color), style === 'glass' ? 0.15 : 0.55).convertSRGBToLinear();
+        for (let face = 0; face < 6; face++) {
+          if (face === 3) continue;
+          const D = face === 2 ? R : A;
+          for (let v = face * 6; v < face * 6 + 6; v++) { D.p.push(P[v * 3], P[v * 3 + 1], P[v * 3 + 2]); D.n.push(N[v * 3], N[v * 3 + 1], N[v * 3 + 2]); D.u.push(U[v * 2], U[v * 2 + 1]); D.c.push(col.r, col.g, col.b); }
+        }
+        boxes.push({ x0: f.x, x1: f.x + f.w, z0: f.y, z1: f.y + f.h, h: H });
+        if (style !== 'glass' && f.w > 40) tankPos.push([f.x + 10 + ((f.w - 20) * ((f.x * 7) % 10)) / 10, H + 4, f.y + 10 + ((f.h - 20) * ((f.y * 3) % 10)) / 10]);
+      }
+      const geo = new T.BufferGeometry(), nA = A.p.length / 3;
+      geo.setAttribute('position', new T.Float32BufferAttribute(A.p.concat(R.p), 3));
+      geo.setAttribute('normal', new T.Float32BufferAttribute(A.n.concat(R.n), 3));
+      geo.setAttribute('uv', new T.Float32BufferAttribute(A.u.concat(R.u), 2));
+      geo.setAttribute('color', new T.Float32BufferAttribute(A.c.concat(R.c), 3));
+      geo.addGroup(0, nA, 0); geo.addGroup(nA, R.p.length / 3, 1);
+      geo.computeBoundingSphere();
+      const mat = new T.MeshStandardMaterial({ map: fx.map, emissiveMap: fx.emissive, emissive: new T.Color(1, 1, 1), emissiveIntensity: 0, vertexColors: true,
+        roughness: style === 'glass' ? 0.2 : 0.85, metalness: style === 'glass' ? 0.55 : 0.05 });
+      facadeMats.push(mat);
+      const mesh = new T.Mesh(geo, [mat, roofMat]);
+      mesh.castShadow = mesh.receiveShadow = true;
+      scene.add(mesh);
+    }
+    const tanks = new T.InstancedMesh(new T.CylinderGeometry(4, 4, 8, 10), stdMat('#1d1e1f', { roughness: 0.6 }), tankPos.length);
+    tankPos.forEach((p, i) => tanks.setMatrixAt(i, tmpM.compose(tmpP.set(p[0], p[1], p[2]), tmpQ.identity(), tmpS)));
+    tanks.castShadow = true;
+    scene.add(tanks);
+  }
+
+  function buildContactShadows() {
+    const all = BUILDINGS.filter((b) => b.solid).concat(FILLERS);
+    const tex = canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 8, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); });
+    const geo = new T.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
+    const im = new T.InstancedMesh(geo, new T.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }), all.length);
+    all.forEach((b, i) => im.setMatrixAt(i, tmpM.compose(tmpP.set(b.x + b.w / 2, 0.4, b.y + b.h / 2), tmpQ.identity(), new T.Vector3(b.w * 1.35 + 30, 1, b.h * 1.35 + 30))));
+    im.renderOrder = 1;
+    scene.add(im);
+  }
+
+  function buildNightLights() {
+    const geo = new T.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
+    lampPoolMat = new T.MeshBasicMaterial({ map: radialTex('rgba(255,214,140,.9)', 'rgba(255,190,110,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0, toneMapped: false });
+    const pools = new T.InstancedMesh(geo, lampPoolMat, lampPositions.length);
+    lampPositions.forEach((p, i) => pools.setMatrixAt(i, tmpM.compose(tmpP.set(p.x, 0.5, p.z), tmpQ.identity(), new T.Vector3(110, 1, 110))));
+    pools.renderOrder = 2;
+    scene.add(pools);
+    headGlowMat = new T.MeshBasicMaterial({ map: radialTex('rgba(255,244,210,.85)', 'rgba(255,240,200,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0, toneMapped: false });
+  }
+  function addHeadGlow(grp, L) {
+    const g = new T.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2);
+    const m = new T.Mesh(g, headGlowMat);
+    m.scale.set(70, 1, 34); m.position.set(L / 2 + 34, 0.3, 0); m.renderOrder = 2;
+    grp.add(m);
+  }
+
+  function buildPalmsAndMedians() {
+    // Palms line Golf Course Road and its extension, as they do in the real city.
+    const pos = [];
+    for (const rx of [2400, 3150]) {
+      const r = ROADS_V.find((x) => x.x === rx);
+      for (const sd of [-1, 1]) for (let z = 60; z < WORLD.h; z += 95) {
+        if (ROADS_H.some((h) => Math.abs(z - h.y) < h.w / 2 + 40)) continue;
+        pos.push([rx + sd * (r.w / 2 + 16), z]);
+      }
+    }
+    const trunk = new T.InstancedMesh(new T.CylinderGeometry(1.1, 1.8, 46, 7), stdMat('#7a6248'), pos.length);
+    const fronds = [];
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; fronds.push(part(BOX(18, 0.6, 4), '#3f7d34', Math.cos(a) * 8, -2, Math.sin(a) * 8, 0, -a, -0.45)); }
+    fronds.push(part(new T.SphereGeometry(2.5, 8, 6), '#5a4632', 0, 0, 0));
+    const crown = new T.InstancedMesh(merge(fronds), new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: T.DoubleSide }), pos.length);
+    pos.forEach(([x, z], i) => {
+      trunk.setMatrixAt(i, tmpM.compose(tmpP.set(x, 23, z), tmpQ.identity(), tmpS));
+      crown.setMatrixAt(i, tmpM.compose(tmpP.set(x, 46, z), tmpQ.setFromEuler(tmpE.set(0, (i * 1.7) % 6.28, 0)), tmpS));
+    });
+    trunk.castShadow = crown.castShadow = true;
+    scene.add(trunk, crown);
+    // Raised medians with hedges on the big arterials.
+    const medMat = stdMat('#b4b0a6'), hedgeMat = stdMat('#4a7a35', { roughness: 1 });
+    const mk = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.receiveShadow = m.castShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); };
+    for (const r of ROADS_V.filter((x) => x.jam)) {
+      let s = 0;
+      for (const h of ROADS_H.map((h) => [h.y - h.w / 2 - 30, h.y + h.w / 2 + 30]).concat([[WORLD.h, WORLD.h]])) {
+        const len = h[0] - s; if (len > 40) { mk(BOX(7, 1.8, len), medMat, r.x, 0.9, s + len / 2); mk(BOX(4, 4, len - 10), hedgeMat, r.x, 3.4, s + len / 2); }
+        s = h[1];
+      }
+    }
+    for (const r of ROADS_H.filter((x) => x.jam)) {
+      let s = 0;
+      for (const v of ROADS_V.map((v) => [v.x - v.w / 2 - 30, v.x + v.w / 2 + 30]).concat([[WORLD.w, WORLD.w]])) {
+        const len = v[0] - s; if (len > 40) { mk(BOX(len, 1.8, 7), medMat, s + len / 2, 0.9, r.y); mk(BOX(len - 10, 4, 4), hedgeMat, s + len / 2, 3.4, r.y); }
+        s = v[1];
+      }
+    }
+  }
+
+  function billboardMesh(title, line, bg, fg, w) {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 200;
+    const g = c.getContext('2d');
+    g.fillStyle = bg; g.fillRect(0, 0, 512, 200);
+    g.fillStyle = fg; g.font = '800 76px system-ui, sans-serif'; g.textBaseline = 'middle'; g.fillText(title, 28, 80);
+    g.font = '600 34px system-ui, sans-serif'; g.globalAlpha = 0.9; g.fillText(line, 30, 152);
+    const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4;
+    const grp = new T.Group();
+    const face = new T.Mesh(new T.PlaneGeometry(w, w * 0.39), new T.MeshBasicMaterial({ map: t, toneMapped: false, side: T.DoubleSide }));
+    face.position.y = w * 0.2 + 6;
+    const frame = new T.Mesh(BOX(w + 3, w * 0.39 + 3, 1.5), stdMat('#2b2f36'));
+    frame.position.set(0, face.position.y, -1);
+    grp.add(face, frame);
+    [-w * 0.3, w * 0.3].forEach((x) => { const p = new T.Mesh(BOX(1.6, 8, 1.6), stdMat('#555')); p.position.set(x, 4, -1); grp.add(p); });
+    return grp;
+  }
+  function buildBillboards() {
+    const tall = FILLERS.filter((f) => f.height > 150).sort((a, b) => b.height - a.height).slice(0, 8);
+    tall.forEach((f, i) => {
+      const [t, l, bg, fg] = BILLBOARDS[i % BILLBOARDS.length];
+      const b = billboardMesh(t, l, bg, fg, Math.min(70, f.w * 0.9));
+      const nearestV = ROADS_V.reduce((a, r) => (Math.abs(r.x - f.x) < Math.abs(a.x - f.x) ? r : a));
+      const faceEast = nearestV.x > f.x + f.w / 2;
+      b.position.set(f.x + f.w / 2, f.height, f.y + f.h / 2);
+      b.rotation.y = faceEast ? Math.PI / 2 : -Math.PI / 2;
+      scene.add(b);
+    });
+    // Highway hoardings along NH-48
+    [[300, 600], [300, 1500], [300, 2250], [100, 900]].forEach(([x, z], i) => {
+      const [t, l, bg, fg] = BILLBOARDS[(i + 3) % BILLBOARDS.length];
+      const b = billboardMesh(t, l, bg, fg, 90);
+      const pole = new T.Mesh(BOX(4, 60, 4), stdMat('#5d6166', { metalness: 0.5 })); pole.position.set(0, -30, -2);
+      b.add(pole); b.position.set(x, 60, z); b.rotation.y = x < 200 ? Math.PI / 2 : -Math.PI / 2;
+      scene.add(b);
+    });
+  }
+
+  function buildSkyExtras() {
+    // Clouds
+    const ctex = canvasTex(512, 512, (g, w, h) => {
+      g.clearRect(0, 0, w, h);
+      for (let i = 0; i < 70; i++) {
+        const x = Math.random() * w, y = Math.random() * h, r = 20 + Math.random() * 70;
+        const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      }
+    }, true);
+    ctex.repeat.set(4, 4);
+    cloudMesh = new T.Mesh(new T.PlaneGeometry(16000, 16000), new T.MeshBasicMaterial({ map: ctex, transparent: true, depthWrite: false, fog: false, opacity: 0.8 }));
+    cloudMesh.rotation.x = Math.PI / 2; cloudMesh.position.set(WORLD.w / 2, 1300, WORLD.h / 2);
+    scene.add(cloudMesh);
+    sunSprite = new T.Sprite(new T.SpriteMaterial({ map: radialTex('rgba(255,250,235,1)', 'rgba(255,220,150,0)'), transparent: true, depthWrite: false, fog: false, blending: T.AdditiveBlending, toneMapped: false }));
+    sunSprite.scale.set(700, 700, 1);
+    scene.add(sunSprite);
+  }
+  // Gameplay markers: Golden Chai cups, race checkpoint, waiting passenger.
+  let chaiObjs = [], checkpointMesh, passengerMesh, passengerSprite;
+  function buildMarkers() {
+    const gold = new T.MeshStandardMaterial({ color: lin('#ffcc33'), metalness: 0.9, roughness: 0.25, emissive: lin('#7a5200'), emissiveIntensity: 0.6 });
+    const cupGeo = merge([part(new T.CylinderGeometry(3.2, 2.4, 6, 16), '#ffffff', 0, 0, 0), part(new T.TorusGeometry(1.8, 0.6, 6, 12), '#ffffff', 3.6, 0.3, 0), part(new T.CylinderGeometry(4.6, 4.6, 0.6, 18), '#ffffff', 0, -3.2, 0)]);
+    gold.vertexColors = true;
+    const glowMat = new T.SpriteMaterial({ map: radialTex('rgba(255,215,90,.9)', 'rgba(255,200,60,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
+    chaiObjs = GOLDEN_CHAI.map((c) => {
+      const g = new T.Group(), cup = new T.Mesh(cupGeo, gold), glow = new T.Sprite(glowMat);
+      cup.castShadow = true; glow.scale.set(34, 34, 1);
+      g.add(glow, cup); g.position.set(c.x, 12, c.y); g.userData = { id: c.id, cup };
+      scene.add(g);
+      return g;
+    });
+    checkpointMesh = new T.Mesh(new T.CylinderGeometry(50, 50, 70, 32, 1, true), new T.MeshBasicMaterial({ color: lin('#ff7b00'), transparent: true, opacity: 0.45, side: T.DoubleSide, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
+    checkpointMesh.visible = false;
+    scene.add(checkpointMesh);
+    passengerMesh = makePerson({ skin: '#c98f62', hair: '#1b1410', hairStyle: 'long', shirt: '#22a06b', pants: '#2f3a56' });
+    passengerSprite = textSprite('🙋', '#22a06b', 48); passengerSprite.scale.set(0.04, 0.04, 1);
+    passengerMesh.visible = passengerSprite.visible = false;
+    scene.add(passengerMesh, passengerSprite);
+  }
+  function updateMarkers(f, now) {
+    for (const o of chaiObjs) {
+      const got = f.chai.includes(o.userData.id), near = Math.abs(o.position.x - f.focus.x) < 900 && Math.abs(o.position.z - f.focus.y) < 900;
+      o.visible = !got && near;
+      if (o.visible) { o.userData.cup.rotation.y = now / 600; o.position.y = 12 + Math.sin(now / 300 + o.position.x) * 2; }
+    }
+    checkpointMesh.visible = !!f.checkpoint;
+    if (f.checkpoint) { checkpointMesh.position.set(f.checkpoint[0], 35, f.checkpoint[1]); checkpointMesh.rotation.y = now / 800; }
+    passengerMesh.visible = passengerSprite.visible = !!f.passenger;
+    if (f.passenger) {
+      passengerMesh.position.set(f.passenger.x, 0.6, f.passenger.y); passengerMesh.rotation.y = Math.PI / 2;
+      passengerMesh.userData.armR.rotation.x = -2.6 + Math.sin(now / 200) * 0.3;
+      passengerSprite.position.set(f.passenger.x, 30, f.passenger.y);
+    }
+  }
+
+  // Quality presets: shadows and resolution are the expensive parts.
+  let quality = 'high';
+  function setQuality(q) {
+    quality = q;
+    if (!ready) return;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q === 'high' ? 1.5 : q === 'medium' ? 1.25 : 1));
+    const sh = q !== 'low';
+    if (renderer.shadowMap.enabled !== sh || (sh && sun.shadow.mapSize.x !== (q === 'high' ? 2048 : 1024))) {
+      renderer.shadowMap.enabled = sh; sun.castShadow = sh;
+      sun.shadow.mapSize.set(q === 'high' ? 2048 : 1024, q === 'high' ? 2048 : 1024);
+      if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+      scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); });
+    }
+    cloudMesh.visible = q !== 'low';
+  }
+
   // ---------- init ----------
   function init(canvas, world) {
     if (ready) return true;
@@ -588,15 +816,15 @@ window.GGL3D = (() => {
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.toneMapping = T.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = !mobile;
+    renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
     scene = new T.Scene();
     scene.fog = new T.Fog(0xcfdcea, 500, 3000);
     camera = new T.PerspectiveCamera(55, 1, 2, 9000);
     hemi = new T.HemisphereLight(0xdfe9ff, 0x6b6450, 0.6);
     sun = new T.DirectionalLight(0xffffff, 1.6);
-    sun.castShadow = !mobile;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
     Object.assign(sun.shadow.camera, { left: -650, right: 650, top: 650, bottom: -650, near: 10, far: 3000 });
     sun.shadow.bias = -0.0006;
     sun.shadow.normalBias = 0.6;
@@ -611,8 +839,16 @@ window.GGL3D = (() => {
     buildMetro();
     buildTrees(world.trees);
     buildMisc(world.puddles);
+    buildFillers();
+    buildContactShadows();
+    buildNightLights();
+    buildPalmsAndMedians();
+    buildBillboards();
+    buildSkyExtras();
+    buildMarkers();
     attachControls(canvas);
     ready = true;
+    setQuality(world.quality || (mobile ? 'medium' : 'high'));
     return true;
   }
 
@@ -653,7 +889,7 @@ window.GGL3D = (() => {
       part(BOX(1.2, 1.4, 5.8), '#d94a2b', 4.2, 10.5, 0),
     ];
     const m = new T.Mesh(merge(parts), vehMat);
-    m.castShadow = !mobile;
+    m.castShadow = true;
     m.scale.setScalar(0.85);
     return m;
   }
@@ -703,6 +939,13 @@ window.GGL3D = (() => {
     lampHeadMat.emissiveIntensity = night * 3;
     stars.material.opacity = clamp(night - haze * 0.6, 0, 1) * 0.9;
     rain.visible = f.rain; puddleGroup.visible = f.rain;
+    lampPoolMat.opacity = night * 0.85;
+    headGlowMat.opacity = night * 0.75;
+    cloudMesh.material.opacity = f.rain ? 0.95 : 0.35 + haze * 0.3;
+    cloudMesh.material.color.copy(f.rain ? C('#8a929c') : lerpHex('#2a3150', '#ffffff', day)).convertSRGBToLinear();
+    sunSprite.visible = elev > -0.05 && !f.rain;
+    if (camera) sunSprite.position.set(camera.position.x + dir.x * 3800, camera.position.y + dir.y * 3800, camera.position.z + dir.z * 3800);
+    sunSprite.material.color.copy(elev > 0 ? lerpHex('#fff6e0', '#ff9a50', warm) : C('#ff8040')).convertSRGBToLinear();
   }
 
   function occlusion(fx, fz, pitch, d) {
@@ -824,6 +1067,8 @@ window.GGL3D = (() => {
       rain.position.set(cam.tx, 0, cam.tz);
     }
     updateDog(f, dt);
+    updateMarkers(f, now);
+    cloudMesh.material.map.offset.x += dt * 0.0015;
     placeCamera(f, dt);
     sky.position.copy(camera.position);
     stars.position.copy(camera.position);
@@ -839,7 +1084,8 @@ window.GGL3D = (() => {
   }
 
   return {
-    supported, init, setNPCs, render, resize,
+    supported, init, setNPCs, render, resize, setQuality,
+    get quality() { return quality; },
     get ready() { return ready; },
     get yaw() { return cam.yaw; },
     debug() { return { cam: camera && camera.position.toArray().map(Math.round), target: [cam.tx, cam.ty, cam.tz].map(Math.round), yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist }; },

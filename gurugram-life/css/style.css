@@ -205,3 +205,6 @@ kbd.k { display: inline-block; min-width: 1.7em; padding: 1px 6px; margin: 0 2px
 #confetti { position: fixed; inset: 0; z-index: 49; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #celebrate.show, #btn-gift.dot::after { animation: none; } }
 @media (max-width: 600px) { .pill.lvl { order: 3; } .xpbar { width: 36px; } }
+
+.spark { display: block; margin: 2px 0; }
+.item .rt small { font-weight: 600; }

@@ -18,8 +18,8 @@ It works on desktop and mobile. Touch devices get a joystick and action buttons.
 
 ### Graphics
 
-- **3D city (default):** a third-person camera with real-time sun shadows and a full day/night cycle. Office windows light up at night, and you get sunset skies, stars, monsoon rain with puddles, and AQI smog that thickens the haze. Buildings have rooftop water tanks, there is an elevated Rapid Link metro with a moving train, street lights, and traffic (cars, autos, buses, bikes) driving on the left.
-- **2D classic:** a top-down view for older phones. Switch in *Phone → Settings → Graphics*. The game also falls back to 2D automatically if WebGL or the CDN isn't available.
+- **3D city (default):** a dense skyline (130+ background buildings), palm-lined Golf Course Road, hedged medians, rooftop billboards and highway hoardings, drifting clouds and a sun, glowing street-light pools and headlights at night, and a third-person camera with real-time sun shadows and a full day/night cycle. Office windows light up at night, and you get sunset skies, stars, monsoon rain with puddles, and AQI smog that thickens the haze. Buildings have rooftop water tanks, there is an elevated Rapid Link metro with a moving train, street lights, and traffic (cars, autos, buses, bikes) driving on the left.
+- **2D classic:** a top-down view for older phones. Switch in *Phone → Settings → Graphics*, where you can also set 3D quality to High, Medium or Low. The game also falls back to 2D automatically if WebGL or the CDN isn't available.
 
 ## Features
 
@@ -43,6 +43,10 @@ It works on desktop and mobile. Touch devices get a joystick and action buttons.
 | **Life events** | 12 choice-driven events: scam calls, weddings, loans to friends, angel investing, a stray puppy, floods, power cuts, raises, dance trends, cricket nights, festivals and carpools. Some pay off days later. |
 | **Love & pets** | Date a close friend (a partner slows your Social drain and texts you good morning). Adopt Sheru the dog, who follows you around the 3D city and boosts your reels. |
 | **Share & challenge** | A brag card to screenshot, copy-ready brag text with the game link, and challenge codes (e.g. `RAHUL-L7-S940-D6`) that friends enter to race your Life Score. There is also a hall of fame for players on the same device. |
+| **Street races** | Night Runs at Raftaar Motors: three checkpoint routes with gold, silver and bronze times, cash prizes and personal bests. |
+| **Drive passengers** | Go online as a Chalo or PhatPhat driver with your own vehicle: pick up waving passengers, drop them off, and earn fares, tips and ratings. |
+| **Golden Chai hunt** | 37 glowing collectible cups hidden across every district, with bonuses at 10, 20 and all of them. |
+| **Paisa Trade** | Six fictional stocks that move every game hour, with market news shocks and flat ₹20 brokerage. Open 9 AM–9 PM, Mon–Sat. |
 | **Help & tips** | A six-section guide (press **H**, tap **❓**, or open *Phone → Help*): Start here, Controls, Getting around, Jobs & money, Daily life, Tips & tricks. First-time hints pop up when something becomes relevant (your first entrance, crossing a road, getting hungry, rain, peak traffic, your ride arriving). There is also an occasional tip, a key legend on desktop and a legend on the map. Hints and the legend can be turned off in Settings. |
 | **Goals** | Eleven milestones with cash rewards, such as saving ₹1,00,000, becoming a software engineer and living on Golf Course Road. |
 
