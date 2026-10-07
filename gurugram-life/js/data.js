@@ -270,7 +270,8 @@ const NAKAS = [
 ];
 
 // ---------- progression & hustle data ----------
-const SHARE_URL = 'https://claude.ai/artifact/WNB7SbEJFng3ZZczXmkHkp';
+// Public link added to brag text. Empty until the game is launched publicly.
+const SHARE_URL = '';
 
 const LEVEL_TITLES = [[1, 'Fresher'], [3, 'Hustler'], [5, 'Local Pro'], [8, 'Corporate Warrior'], [12, 'Startup Wala'], [16, 'Influencer'], [20, 'Gurugram Royalty'], [25, 'Millennium City Legend']];
 const XP_FOR = { deliver: 25, shift: 40, ride: 10, metro: 10, chat: 8, eat: 5, reel: 15, social: 20, train: 25, errand: 30, collect: 4, event: 15 };

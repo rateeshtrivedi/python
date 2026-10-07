@@ -2259,7 +2259,7 @@
   }
   function openShare() {
     closePhone(); closeMap();
-    const text = `I'm ${S.player.name}, a Level ${S.level} ${titleFor(S.level)} in Gurugram Life 🏙️ — ${inr(S.player.money + S.player.savings)} net worth, ${fmtNum(S.reelz.followers)} followers, Day ${dayOf(S.time)}. Life Score ${lifeScore()}. Think you can beat me? Enter my code ${myCode()} in the game 👉 ${SHARE_URL}`;
+    const text = `I'm ${S.player.name}, a Level ${S.level} ${titleFor(S.level)} in Gurugram Life 🏙️ — ${inr(S.player.money + S.player.savings)} net worth, ${fmtNum(S.reelz.followers)} followers, Day ${dayOf(S.time)}. Life Score ${lifeScore()}. Think you can beat me? Enter my code ${myCode()} in the game${SHARE_URL ? ` 👉 ${SHARE_URL}` : ''}`;
     const hof = Object.values(store.profiles).filter((p) => p.save).map((p) => ({ n: p.display, s: lifeScore(ensureProg(JSON.parse(JSON.stringify(p.save)))) }));
     if (S.rival) hof.push({ n: `${S.rival.name} (rival)`, s: S.rival.score });
     hof.sort((a, b) => b.s - a.s);
