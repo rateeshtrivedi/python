@@ -64,7 +64,7 @@ input:focus { border-color: var(--accent); }
 @media (max-width: 560px) { .create-grid { grid-template-columns: 1fr; } .preview-wrap canvas { height: 160px; width: auto; } }
 
 /* Game HUD */
-#game { position: absolute; inset: 0; display: block; touch-action: none; }
+#game, #game3d { position: absolute; inset: 0; display: block; touch-action: none; width: 100%; height: 100%; }
 #hud { position: absolute; top: 10px; left: 10px; right: 10px; pointer-events: none; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .hud-top { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
 .pill { background: var(--hud); color: var(--hud-ink); border-radius: 10px; padding: 6px 10px; font-size: 13px; font-weight: 600; backdrop-filter: blur(4px); }

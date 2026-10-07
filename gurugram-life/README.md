@@ -1,9 +1,9 @@
 # Gurugram Life 🏙️
 
-A lightweight, browser-based life-sim / open-world game set in **Gurugram, Haryana**.
+A lightweight, browser-based 3D life-sim / open-world game set in **Gurugram, Haryana**.
 Create a character, find a job, pay rent, make friends, book rides and explore the Millennium City.
 
-**No build step, no libraries, no downloads.** About 140 KB (uncompressed) of plain HTML, CSS and JavaScript, with every graphic drawn on a canvas.
+**No build step and no downloaded assets.** The game's own code is about 190 KB of plain HTML, CSS and JavaScript. The 3D city uses [Three.js](https://threejs.org) r128, loaded from a CDN (about 150 KB gzipped). Every building facade, road and texture is generated in code, so there are no model or image files to download.
 
 ## Play
 
@@ -15,6 +15,11 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
 It works on desktop and mobile. Touch devices get a joystick and action buttons.
+
+### Graphics
+
+- **3D city (default):** a third-person camera with real-time sun shadows and a full day/night cycle. Office windows light up at night, and you get sunset skies, stars, monsoon rain with puddles, and AQI smog that thickens the haze. Buildings have rooftop water tanks, there is an elevated Rapid Link metro with a moving train, street lights, and traffic (cars, autos, buses, bikes) driving on the left.
+- **2D classic:** a top-down view for older phones. Switch in *Phone → Settings → Graphics*. The game also falls back to 2D automatically if WebGL or the CDN isn't available.
 
 ## Features
 
@@ -37,7 +42,9 @@ It works on desktop and mobile. Touch devices get a joystick and action buttons.
 
 | Action | Keyboard | Touch |
 |---|---|---|
-| Move | WASD / arrow keys (Shift to jog) | Joystick |
+| Move (relative to the camera in 3D) | WASD / arrow keys (Shift to jog) | Joystick |
+| Turn / tilt camera (3D) | Drag with the mouse, or Z / X | Drag on the screen |
+| Zoom camera (3D) | Mouse wheel | — |
 | Interact / enter / talk | E | **E** button |
 | Phone (rides, jobs, rent, food…) | P | 📱 |
 | City map / waypoint / book ride to a spot | M | 🗺️ |
@@ -57,5 +64,6 @@ gurugram-life/
 ├── css/style.css   # all styling
 └── js/
     ├── data.js     # map, districts, businesses, jobs, homes, menus, rides
-    └── game.js     # engine: rendering, input, simulation, UI, saving
+    ├── render3d.js # Three.js 3D city: procedural buildings, people, vehicles, lighting
+    └── game.js     # simulation, input, 2D renderer, UI, saving
 ```

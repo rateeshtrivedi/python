@@ -331,10 +331,24 @@
     return s;
   }
 
+  let use3D = false;
+  const can3D = () => !!(window.GGL3D && window.GGL3D.supported());
+  function setGraphics(mode) {
+    use3D = mode === '3d' && can3D();
+    if (use3D && !window.GGL3D.ready) {
+      try { window.GGL3D.init($('#game3d'), { trees, puddles }); } catch (e) { console.warn('3D init failed, using 2D', e); use3D = false; }
+    }
+    if (use3D) window.GGL3D.setNPCs(npcs);
+    $('#game3d').classList.toggle('hidden', !use3D);
+    $('#game').classList.toggle('hidden', use3D);
+    resize();
+  }
+
   function startGame(state, fresh) {
     S = migrate(state);
     setupWorld();
     spawnNPCs();
+    setGraphics(store.gfx || '3d');
     ride = null;
     if (fresh) { genQuests(); save(); }
     showScreen('screen-game');
@@ -1083,7 +1097,7 @@
       if (L < 4) { const p = freePoint(n.home); n.tx = p.x; n.ty = p.y; n.wait = rand(1, 5); continue; }
       const nx = n.x + (dx / L) * n.spd * dt, ny = n.y + (dy / L) * n.spd * dt;
       if (solidAt(nx, ny, 9)) { n.tx = n.x; n.ty = n.y; n.wait = rand(0.3, 1); continue; }
-      n.x = nx; n.y = ny; n.phase += dt * 9;
+      n.x = nx; n.y = ny; n.phase += dt * 9; n.ang = Math.atan2(dy, dx);
     }
 
     updateRide(dt);
@@ -1096,10 +1110,16 @@
       if (keys.a || keys.arrowleft) mx -= 1;
       if (keys.d || keys.arrowright) mx += 1;
       mx += joy.x; my += joy.y;
+      if (use3D) {
+        // camera-relative: forward is where the camera looks
+        const yaw = window.GGL3D.yaw, fwd = -my, rt = mx;
+        mx = Math.cos(yaw) * fwd - Math.sin(yaw) * rt;
+        my = Math.sin(yaw) * fwd + Math.cos(yaw) * rt;
+      }
       const L = Math.hypot(mx, my);
       if (L > 1) { mx /= L; my /= L; }
       const V = P.riding ? VEHICLES[P.riding] : null;
-      let spd = V ? V.speed : keys.shift ? 210 : 135;
+      let spd = V ? V.speed : use3D ? (keys.shift ? 150 : 85) : (keys.shift ? 210 : 135);
       if (!V && P.energy < 15) spd *= 0.7;
       const road = roadAt(P.x, P.y);
       if (V && isPeak() && road && road.jam) spd *= V.two ? 0.75 : 0.4;
@@ -1189,6 +1209,7 @@
     cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
     cv.style.width = VW + 'px'; cv.style.height = VH + 'px';
     ZOOM = VW < 700 ? 0.72 : 1;
+    if (use3D && window.GGL3D.ready) window.GGL3D.resize(VW, VH);
   }
   window.addEventListener('resize', resize);
 
@@ -1413,6 +1434,18 @@
     drawMinimap();
   }
 
+  function render3D() {
+    const P = S.player, onboard = !!(ride && ride.status === 'onboard');
+    const focus = onboard ? ride.car : P;
+    window.GGL3D.render({
+      P, focus, onboard, followAng: onboard ? ride.car.ang : null, ride, rideType: ride ? RIDE_TYPES[ride.type] : null,
+      cars, npcs, carXY, quests: S.quests, waypoint: S.waypoint,
+      hour: hourF(S.time), dark: darkness(), rain: S.weather === 'rain', aqi: S.aqi,
+      vehTwo: P.riding ? VEHICLES[P.riding].two : false,
+    });
+    drawMinimap();
+  }
+
   const mm = $('#minimap'), mctx = mm.getContext('2d');
   function drawMinimap() {
     const W = mm.width, H = mm.height, P = S.player;
@@ -1426,6 +1459,11 @@
     if (S.job) { const d = door(BLD[JOBS[S.job.id].building]); dot(d.x, d.y, '#2563eb', 4); }
     if (S.waypoint) dot(S.waypoint.x, S.waypoint.y, '#ff3d71', 5);
     if (ride && ride.car && ride.status !== 'onboard') dot(ride.car.x, ride.car.y, '#ffd400', 4);
+    if (use3D) {
+      const yaw = window.GGL3D.yaw, cx = tx(focus.x), cy = ty(focus.y);
+      mctx.fillStyle = 'rgba(255,255,255,.35)'; mctx.beginPath(); mctx.moveTo(cx, cy);
+      mctx.arc(cx, cy, 26, yaw - 0.5, yaw + 0.5); mctx.closePath(); mctx.fill();
+    }
     mctx.strokeStyle = '#fff'; mctx.lineWidth = 2; dot(focus.x, focus.y, '#ff8a3d', 5); mctx.beginPath(); mctx.arc(tx(focus.x), ty(focus.y), 5, 0, Math.PI * 2); mctx.stroke();
   }
 
@@ -1442,11 +1480,12 @@
     $('#hud-money').textContent = inr(P.money);
     $('#hud-money').style.color = P.money < 0 ? '#ff8f8f' : '';
     setBar('#bar-health', P.health); setBar('#bar-hunger', P.hunger); setBar('#bar-energy', P.energy); setBar('#bar-social', P.social);
-    $('#hud-loc').textContent = '📍 ' + (ride && ride.status === 'onboard' ? `In a ${RIDE_TYPES[ride.type].label} · ${placeName(ride.car.x, ride.car.y)}` : placeName(P.x, P.y)) + (P.riding ? ` · 🛵 ${VEHICLES[P.riding].name}` : '');
+    $('#hud-loc').textContent = '📍 ' + (ride && ride.status === 'onboard' ? `In a ${RIDE_TYPES[ride.type].label} · ${placeName(ride.car.x, ride.car.y)}` : placeName(P.x, P.y)) + (P.riding ? ` · 🛵 ${VEHICLES[P.riding].name}` : '') + (S.waypoint ? ` · 📌 ${(dist(focus0().x, focus0().y, S.waypoint.x, S.waypoint.y) / PX_PER_KM).toFixed(1)} km` : '');
     $('#hud-task').innerHTML = taskText();
     $('#btn-veh').classList.toggle('off', !bestVehicle());
     $('#ph-time').textContent = clock(S.time);
   }
+  function focus0() { return ride && ride.status === 'onboard' ? ride.car : S.player; }
   function taskText() {
     if (ride) {
       if (ride.status === 'searching') return `🔎 ${RIDE_APPS[ride.app].name}: looking for a driver…`;
@@ -1665,7 +1704,9 @@
     const pad = appShell('settings');
     fillList(pad, [
       { icon: '💾', label: 'Save game', sub: 'Also autosaves every few seconds', onClick: () => { save(); toast('Game saved.', 'good'); } },
-      { icon: '🎮', label: 'Controls', sub: 'WASD/arrows move · Shift jog · E interact · P phone · M map · F vehicle · Esc close' },
+      { icon: '🎮', label: 'Controls', sub: 'WASD/arrows move · Shift jog · E interact · P phone · M map · F vehicle · Esc close · 3D: drag or Z/X to turn the camera, scroll to zoom' },
+      { icon: use3D ? '🧊' : '🗺️', label: `Graphics: ${use3D ? '3D city' : '2D classic'}`, sub: can3D() ? `Switch to ${use3D ? '2D classic (fastest, for older phones)' : '3D city'}` : '3D needs WebGL, which this device does not support',
+        disabled: !can3D() && !use3D, onClick: () => { store.gfx = use3D ? '2d' : '3d'; saveStore(); setGraphics(store.gfx); settingsApp(); toast(`Graphics set to ${use3D ? '3D' : '2D'}.`); } },
       { icon: '🚪', label: 'Sign out', sub: `Signed in as ${esc(store.profiles[user].display)}`, onClick: signOut },
       { icon: '🗑️', label: 'Delete this save & start over', sub: 'Cannot be undone', onClick: () => {
         closePhone();
@@ -1761,7 +1802,7 @@
     last = now;
     if (running && S) {
       if (!isUI()) update(dt);
-      render();
+      if (use3D) render3D(); else render();
       hudT += dt; goalT += dt;
       if (hudT > 0.2) { hudT = 0; updateHUD(); }
       if (goalT > 1) { goalT = 0; checkGoals(); }
@@ -1773,5 +1814,5 @@
   requestAnimationFrame(frame);
 
   // Exposed for automated smoke tests only.
-  window.__ggl = { get state() { return S; }, get ride() { return ride; }, passTime: (m) => passTime(m), openBuilding: (id) => openBuilding(BLD[id]) };
+  window.__ggl = { get use3D() { return use3D; }, get state() { return S; }, get ride() { return ride; }, passTime: (m) => passTime(m), openBuilding: (id) => openBuilding(BLD[id]) };
 })();

@@ -50,6 +50,7 @@
 <!-- Game -->
 <section id="screen-game" class="screen">
   <canvas id="game"></canvas>
+  <canvas id="game3d" class="hidden"></canvas>
   <div id="hud">
     <div class="hud-top">
       <div class="pill" id="hud-time"></div>
@@ -97,7 +98,9 @@
 </div>
 <div id="activity" class="hidden"><div class="act-box"><div id="act-text"></div><div class="act-bar"><s id="act-fill"></s></div></div></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/data.js"></script>
+<script src="js/render3d.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>
