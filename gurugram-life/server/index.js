@@ -55,7 +55,8 @@ app.use((req, res, next) => {
 const VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local';
 app.get('/healthz', (req, res) => res.json({ ok: true, players: world.players(), version: VERSION, websocket: '/ws' }));
 app.use('/vendor/three', express.static(path.join(ROOT, 'node_modules/three/build'), { maxAge: '7d', immutable: true }));
-app.use(express.static(path.join(ROOT, 'public'), { maxAge: '5m' }));
+// Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).
+app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: res => res.setHeader('Cache-Control', 'no-cache') }));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8 * 1024 });
 
