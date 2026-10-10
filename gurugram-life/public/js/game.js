@@ -671,7 +671,7 @@ function eventHelp(t) { return { baraat: 'Golf Course Road pe baraat nikal rahi 
 function eventSpot(t) { return { baraat: { x: -225, z: baraatZ() }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, flood: null, diwali: { x: 0, z: 40 } }[t]; }
 function appOnline() {
   openModal('Online players', net.solo ? 'Solo mode' : (G.peerCount || 1) + ' online', b => {
-    if (net.solo) b.append(el('p', { text: 'Tu solo mode mein khel rya se. Leaderboard, crews aur VIP plate ki boli mein rival log computer chalata se. Asli doston ke saath khelne ke liye game ka hosted version chahiye (README dekho).' }));
+    if (net.solo) { b.append(el('p', { text: window.GL_SOLO ? 'Tu solo mode mein khel rya se. Leaderboard, crews aur VIP plate ki boli mein rival log computer chalata se.' : 'Solo mode: multiplayer server se connection nahi bana. Wajah: ' + (G.soloReason || 'unknown') })); if (!window.GL_SOLO) b.append(itemRow('Try multiplayer again', 'Page reload karke server se dobara judega', 'Try again', () => location.reload())); }
     const muted = lsGet('gl_muted') || [];
     b.append(el('p', { text: 'Kisi ki chat band karni ho to Mute dabao. Sirf tujhe nahi dikhegi.' }));
     for (const [id, R] of REMOTES) { if (!R.info) continue; const m = muted.includes(id); b.append(itemRow((R.info.crew ? '[' + R.info.crew.tag + '] ' : '') + R.info.name, 'Level ' + R.info.level + ' · ' + R.info.title + (R.info.plate ? ' · ' + R.info.plate : '') + (R.info.belt ? ' · CHAMPION' : ''), m ? 'Unmute' : 'Mute', () => { const list = lsGet('gl_muted') || []; const i = list.indexOf(id); if (i >= 0) list.splice(i, 1); else list.push(id); lsSet('gl_muted', list); appOnline(); }, false, !m)); }
@@ -1277,9 +1277,15 @@ $('playBtn').onclick = () => {
   let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); lsSet('gl_color', selColor);
   $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); A.restoreRadio(); radioLabel();
   const hello = () => ({ token: lsGet('gl_token'), name: lsGet('gl_name'), color: lsGet('gl_color') });
-  const goSolo = () => { if (!G.started && !net.local) { net.connectLocal(hello); if (!window.GL_SOLO) setTimeout(() => toast('Server abhi busy se, isliye solo mode mein khel rya se. Thodi der baad refresh karke multiplayer try kar.'), 3000); } };
-  if (window.GL_SOLO) goSolo();
-  else { net.on('unreachable', goSolo); net.connect(hello); setTimeout(goSolo, 5000); }
+  const goSolo = reason => {
+    if (G.started || net.local) return; G.soloReason = reason || ''; net.connectLocal(hello);
+    if (window.GL_SOLO) return;
+    console.warn('Gurugram Life: multiplayer unavailable, playing solo. Reason:', reason);
+    const msg = reason === 'full' ? 'Server full se (bahut log online). Solo mode mein khel rya se; thodi der baad refresh karna.' : String(reason).startsWith('kicked') ? 'Server ne mana kiya: ' + reason.slice(8) + '. Abhi solo mode.' : 'Multiplayer server se connect nahi ho paya, isliye solo mode. Phone → Online mein "Try again" dabao.';
+    setTimeout(() => toast(msg, 'bad'), 2500);
+  };
+  if (window.GL_SOLO) goSolo('artifact');
+  else { $('loginNote').textContent = 'Server se connect ho rya se…'; net.on('unreachable', goSolo); net.connect(hello); setTimeout(() => goSolo('timed out after 15s (' + (net.lastClose || 'no reply') + ')'), 15000); }
 };
 function startGame(daily) {
   $('login').hidden = true; $('hud').hidden = false; G.started = true;

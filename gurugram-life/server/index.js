@@ -14,7 +14,7 @@ const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 const MAX_PLAYERS = Number(process.env.MAX_PLAYERS) || 300;   // beyond this, new visitors play solo
-const MAX_PER_IP = Number(process.env.MAX_PER_IP) || 8;       // tabs/devices from one network (homes and offices share IPs)
+const MAX_PER_IP = Number(process.env.MAX_PER_IP) || 20;      // tabs/devices from one network (homes, offices, colleges share IPs)
 const BACKUP_DAYS = 14;
 fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'world.json');
@@ -52,7 +52,8 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   next();
 });
-app.get('/healthz', (req, res) => res.json({ ok: true, players: world.players() }));
+const VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local';
+app.get('/healthz', (req, res) => res.json({ ok: true, players: world.players(), version: VERSION, websocket: '/ws' }));
 app.use('/vendor/three', express.static(path.join(ROOT, 'node_modules/three/build'), { maxAge: '7d', immutable: true }));
 app.use(express.static(path.join(ROOT, 'public'), { maxAge: '5m' }));
 const server = http.createServer(app);
@@ -67,7 +68,7 @@ const perIp = new Map();
 wss.on('connection', (ws, req) => {
   const ip = clientIp(req);
   if (wss.clients.size > MAX_PLAYERS || (perIp.get(ip) || 0) >= MAX_PER_IP) {
-    ws.send(JSON.stringify({ t: 'full' })); ws.close(); return;
+    console.warn('refused connection: full or per-IP limit', ip); ws.send(JSON.stringify({ t: 'full' })); ws.close(); return;
   }
   perIp.set(ip, (perIp.get(ip) || 0) + 1);
   ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
@@ -85,5 +86,5 @@ wss.on('connection', (ws, req) => {
 setInterval(() => { for (const ws of wss.clients) { if (!ws.isAlive) { ws.terminate(); continue; } ws.isAlive = false; try { ws.ping(); } catch {} } }, 30000);
 setInterval(() => console.log(new Date().toISOString(), 'players online:', world.players()), 600000);
 
-server.listen(PORT, () => console.log('Gurugram Life server on http://localhost:' + PORT));
+server.listen(PORT, () => console.log('Gurugram Life server on http://localhost:' + PORT + ' version ' + VERSION + ' data ' + DATA_DIR));
 export { server };

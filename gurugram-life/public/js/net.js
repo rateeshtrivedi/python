@@ -1,14 +1,14 @@
 // Connection to the game world: a WebSocket to the server (multiplayer), or the same world
 // rules running inside this browser (solo mode). The rest of the game can't tell the difference.
 export const net = {
-  ws: null, id: null, connected: false, solo: false, handlers: {}, pending: new Map(), seq: 0, hello: null, retry: 0, kicked: false, local: null,
+  ws: null, id: null, connected: false, solo: false, attempts: 0, lastClose: '', handlers: {}, pending: new Map(), seq: 0, hello: null, retry: 0, kicked: false, local: null,
   on(t, fn) { (this.handlers[t] || (this.handlers[t] = [])).push(fn); },
   emit(t, m) { for (const fn of this.handlers[t] || []) { try { fn(m); } catch (e) { console.error(e); } } },
   receive(m) {
     if (m.t === 'welcome') { this.connected = true; this.id = m.id; this.emit('status', true); }
     if (m.t === 'reply') { const p = this.pending.get(m.rid); if (p) { this.pending.delete(m.rid); clearTimeout(p.timer); p.resolve(m); } return; }
-    if (m.t === 'kicked') this.kicked = true;
-    if (m.t === 'full') { this.kicked = true; this.emit('unreachable'); return; }
+    if (m.t === 'kicked') { this.kicked = true; if (!this.connected) { this.emit('unreachable', 'kicked: ' + (m.reason || '')); return; } }
+    if (m.t === 'full') { this.kicked = true; this.emit('unreachable', 'full'); return; }
     this.emit(m.t, m);
   },
   transmit(obj) {
@@ -19,12 +19,15 @@ export const net = {
   connect(hello) {
     this.hello = hello;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let ws; try { ws = new WebSocket(proto + '//' + location.host + '/ws'); } catch { this.emit('unreachable'); return; }
+    let ws; try { ws = new WebSocket(proto + '//' + location.host + '/ws'); } catch (e) { this.emit('unreachable', 'cannot open socket: ' + e.message); return; }
     this.ws = ws;
     ws.onopen = () => { this.retry = 0; ws.send(JSON.stringify({ t: 'hello', ...this.hello() })); };
     ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } this.receive(m); };
-    ws.onclose = () => {
-      const was = this.connected; this.connected = false; if (was) this.emit('status', false); else if (this.retry === 0) this.emit('unreachable');
+    ws.onclose = e => {
+      this.lastClose = 'code ' + e.code + (e.reason ? ' ' + e.reason : '');
+      const was = this.connected; this.connected = false;
+      if (was) this.emit('status', false);
+      else if (!this.kicked && ++this.attempts >= 3) { this.emit('unreachable', 'no connection after 3 tries (' + this.lastClose + ')'); return; }
       for (const p of this.pending.values()) { clearTimeout(p.timer); p.resolve({ ok: false, error: 'Connection toot gaya, dobara koshish kar' }); }
       this.pending.clear();
       if (this.kicked || this.local) return;
