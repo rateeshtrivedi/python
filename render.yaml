@@ -1,0 +1,23 @@
+# Production deploy of Gurugram Life on Render (render.com → New → Blueprint → pick this repo).
+services:
+  - type: web
+    name: gurugram-life
+    runtime: node
+    rootDir: gurugram-life
+    region: singapore          # closest Render region to India
+    plan: starter              # always on; the free plan sleeps and loses saves on restart
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATA_DIR
+        value: /var/data
+      - key: MAX_PLAYERS
+        value: "200"            # Starter (0.5 CPU) handles about 200 crowded players; raise on a bigger plan
+    disk:                      # keeps player progress and daily backups across restarts and deploys
+      name: gurugram-data
+      mountPath: /var/data
+      sizeGB: 1

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Gurugram Life</title>
+<meta name="description" content="Gurugram Life: a 3D multiplayer game set in real Gurugram. Kamao, khao, party karo, show off karo aur lado.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gurugram Life">
+<meta property="og:title" content="Gurugram Life">
+<meta property="og:description" content="3D multiplayer Gurugram: VIP HR26 plates, Neon Nights club, baraat, road rage, crews and ilaaka wars. Free, in your browser.">
+<meta property="og:url" content="__ORIGIN__/">
+<meta property="og:image" content="__ORIGIN__/img/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Players dancing at the GURUGRAM sign in Rajiv Chowk, Gurugram Life">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Gurugram Life">
+<meta name="twitter:description" content="3D multiplayer Gurugram. Free, in your browser, on phone or laptop.">
+<meta name="twitter:image" content="__ORIGIN__/img/og-image.jpg">
+<meta name="theme-color" content="#d7331f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gurugram Life">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Mukta:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>html,body{margin:0}</style>
+<script type="importmap">{"imports":{"three":"/vendor/three/three.module.js"}}</script>
+</head>
+<body>
+<div id="game">
+  <canvas id="c" aria-label="Gurugram Life 3D world"></canvas>
+  <div id="hit"></div>
+  <div id="hangover" hidden></div>
+  <div id="hud" hidden>
+    <div id="stat"><div class="stripe"></div><div class="in">
+      <div class="row"><span id="pname">Player</span><span id="plv">Lv 1</span></div>
+      <div class="row"><span id="money">₹0</span><span id="ptitle">Naya Chhora</span></div>
+      <div class="blab"><span>XP</span><span id="xpt">0/100</span></div><div class="bar"><i id="xpb" style="background:var(--sarson)"></i></div>
+      <div class="blab"><span>Health</span><span id="hpt">100</span></div><div class="bar"><i id="hpb" style="background:var(--lal)"></i></div>
+      <div class="blab"><span>Bhookh (food)</span><span id="hut">80</span></div><div class="bar"><i id="hub" style="background:var(--hara)"></i></div>
+    </div></div>
+    <div id="loc">Rajiv Chowk</div>
+    <div id="banner" hidden></div>
+    <div id="ipl" hidden></div>
+    <div id="topbtns">
+      <button class="chip" id="net">Connecting…</button>
+      <button class="chip" id="musicBtn">Radio: off</button>
+      <button class="chip" id="helpBtn">Help</button>
+    </div>
+    <div id="mapwrap"><canvas id="mini" width="200" height="200"></canvas></div>
+    <div id="feed"></div>
+    <div id="job" hidden></div>
+    <div id="roastbox" hidden></div>
+    <div id="tut" hidden><div class="k" id="tutk">Walkthrough</div><p id="tutp"></p><button id="tutSkip">Skip walkthrough</button></div>
+    <div id="missions"><h4>Aaj ke kaam · Missions</h4><div id="mlist"></div></div>
+    <div id="chatlog"></div>
+    <div id="toasts"></div>
+    <div id="prompt" hidden></div>
+    <div id="invite" hidden></div>
+    <div id="selfie" hidden><button class="buy" id="snapBtn">Click photo</button><button class="buy alt" id="selfieClose">Back</button></div>
+    <div id="joy"><div id="knob"></div></div>
+    <div id="controls">
+      <button class="cbtn" id="bPhone">Phone<kbd>P</kbd></button>
+      <button class="cbtn" id="bChat">Chat<kbd>T</kbd></button>
+      <button class="cbtn green" id="bVeh">Gaadi<kbd>V</kbd></button>
+      <button class="cbtn" id="bDance">Dance<kbd>B</kbd></button>
+      <button class="cbtn" id="bHorn">Horn<kbd>H</kbd></button>
+      <button class="cbtn" id="bRun">Run<kbd>Shift</kbd></button>
+      <button class="cbtn" id="bSelfie">Selfie<kbd>C</kbd></button>
+      <button class="cbtn red" id="bPunch">Punch<kbd>F</kbd></button>
+      <button class="cbtn green" id="bAct">Action<kbd>E</kbd></button>
+    </div>
+  </div>
+
+  <div id="login">
+    <div class="plate">
+      <div class="stripe"></div>
+      <div class="top">
+        <h1>Gurugram <span>Life</span></h1>
+        <div class="tag">Cyber City ki chamak, Haryana ka swag. Kamao, party karo, show off karo, lado.</div>
+      </div>
+      <div class="body">
+        <div><label for="nameIn">Tera naam (your name)</label><input id="nameIn" maxlength="16" placeholder="e.g. Bunty Chaudhary" autocomplete="off"></div>
+        <div><label>Kurta ka rang (shirt colour)</label><div class="sw" id="swatches"></div></div>
+        <button class="go" id="playBtn">Chalo, Khelo!</button>
+        <p class="fine" id="loginNote">Free multiplayer. Your progress is saved to this browser's login key.</p>
+        <div class="hok"><span>HORN</span><span>OK</span><span>PLEASE</span></div>
+      </div>
+      <div class="stripe"></div>
+    </div>
+  </div>
+
+  <div id="modal" class="sheetwrap" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <header><div><h2 id="mTitle"></h2><div class="sub" id="mSub"></div></div><button class="x" id="mClose">Close</button></header>
+    <div class="scroll" id="mBody"></div>
+  </div></div>
+
+  <div id="chatbar" hidden>
+    <div class="taunts" id="taunts"></div>
+    <form id="chatform"><input id="chatin" maxlength="120" placeholder="Bol de kuch... (Enter to send)" autocomplete="off"><button class="buy" type="submit">Send</button><button class="buy alt" type="button" id="chatClose">Close</button></form>
+  </div>
+  <div id="fade"></div>
+</div>
+<script type="module" src="/js/game.js"></script>
+</body>
+</html>
