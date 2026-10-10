@@ -87,7 +87,7 @@ wss.on('connection', (ws, req) => {
   }
   perIp.set(ip, (perIp.get(ip) || 0) + 1);
   ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
-  const conn = world.connect(msg => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }, () => ws.close(), { ip });
+  const conn = world.connect(msg => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }, () => ws.close(), { ip }, text => { if (ws.readyState === 1) ws.send(text); });
   let msgs = 0; let windowStart = Date.now();
   ws.on('message', raw => {
     const t = Date.now(); if (t - windowStart > 1000) { windowStart = t; msgs = 0; } if (++msgs > 60) return; // flood guard

@@ -549,7 +549,7 @@ function botTick() {
 const byToken = new Map(Object.values(db.profiles).map(x => [x.token, x]));
 const newByIp = new Map();
 function mayCreate(ip) { if (!ip) return true; const t = Date.now(); const list = (newByIp.get(ip) || []).filter(x => t - x < 3600e3); if (list.length >= (opts.newAccountsPerIpHour || 30)) return false; list.push(t); newByIp.set(ip, list); return true; }
-function connect(out, closeFn, meta) {
+function connect(out, closeFn, meta, outRaw) {
   let c = null;
   return {
     message(m) {
@@ -563,7 +563,7 @@ function connect(out, closeFn, meta) {
       else if (m.name && name !== p.name) p.name = name;
       if (m.color !== undefined) p.color = clamp(Math.floor(num(m.color, p.color)), 0, D.SHIRTS.length - 1);
       const old = conns.get(p.id); if (old) { send(old, { t: 'kicked', reason: 'Yeh account doosre tab mein khul gaya' }); old.close(); conns.delete(p.id); }
-      c = { out, close: closeFn, p, st: null, cool: {} }; conns.set(p.id, c);
+      c = { out, outRaw, close: closeFn, p, st: null, cool: {} }; conns.set(p.id, c);
       p.lastSeen = Date.now(); ensureMissions(p); beltCheckDay();
       // daily reward (with PG rent)
       let daily = null; const td = today();
@@ -596,7 +596,8 @@ function connect(out, closeFn, meta) {
 // snapshot tick (every 100 ms): positions to everyone (interest-managed)
 const VIEW_RADIUS = 160, VIEW_MAX = 40; // each player receives at most the 40 nearest players in sight
 function tick100() {
-  const list = []; for (const o of conns.values()) if (o.st) { const s = o.st; o.entry = [o.p.id, Math.round(s.x * 10) / 10, Math.round(s.z * 10) / 10, Math.round(s.r * 100) / 100, s.a, s.v, s.in, s.hp, s.fx]; list.push(o); }
+  let raw = false; for (const c of conns.values()) { raw = !!c.outRaw; break; } // Node server: send pre-encoded text, encoding each player once per tick
+  const list = []; for (const o of conns.values()) if (o.st) { const s = o.st; o.entry = [o.p.id, Math.round(s.x * 10) / 10, Math.round(s.z * 10) / 10, Math.round(s.r * 100) / 100, s.a, s.v, s.in, s.hp, s.fx]; if (raw) o.entryJson = JSON.stringify(o.entry); list.push(o); }
   for (const c of conns.values()) {
     const me = c.st; let near = [];
     for (const o of list) {
@@ -607,10 +608,11 @@ function tick100() {
     }
     if (near.length > VIEW_MAX) { near.sort((a, b) => a[0] - b[0]); near = near.slice(0, VIEW_MAX); }
     const out = []; const seen = new Set();
-    for (const [, o] of near) { out.push(o.entry); seen.add(o.p.id); }
-    if (c.seen) for (const id of c.seen) if (!seen.has(id)) out.push([id, null]); // tell the client once when someone leaves view
+    for (const [, o] of near) { out.push(c.outRaw ? o.entryJson : o.entry); seen.add(o.p.id); }
+    if (c.seen) for (const id of c.seen) if (!seen.has(id)) out.push(c.outRaw ? JSON.stringify([id, null]) : [id, null]); // tell the client once when someone leaves view
     c.seen = seen;
-    c.out({ t: 's', p: out, n: conns.size });
+    if (c.outRaw) c.outRaw('{"t":"s","p":[' + out.join(',') + '],"n":' + conns.size + '}');
+    else c.out({ t: 's', p: out, n: conns.size });
   }
 }
 
