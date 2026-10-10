@@ -8,6 +8,7 @@ export const net = {
     if (m.t === 'welcome') { this.connected = true; this.id = m.id; this.emit('status', true); }
     if (m.t === 'reply') { const p = this.pending.get(m.rid); if (p) { this.pending.delete(m.rid); clearTimeout(p.timer); p.resolve(m); } return; }
     if (m.t === 'kicked') this.kicked = true;
+    if (m.t === 'full') { this.kicked = true; this.emit('unreachable'); return; }
     this.emit(m.t, m);
   },
   transmit(obj) {

@@ -20,23 +20,13 @@ Open the address in two browser windows to see multiplayer working.
 
 ## Put it online
 
-The game is a single Node.js server that serves the page and runs the multiplayer world over WebSockets. Any host that runs Node and supports WebSockets works.
+Step-by-step production guide (Render + your own .com domain + Cloudflare): see [DEPLOY.md](DEPLOY.md).
 
-**Render (simplest, free tier available)**
-1. Sign in at render.com with GitHub.
-2. New → Blueprint → pick this repository. Render reads `render.yaml` at the repo root.
-3. Deploy. You get a public `https://….onrender.com` link to share.
+`render.yaml` at the repo root deploys an always-on Starter service in Singapore with a 1 GB disk for player progress. For other hosts, the `Dockerfile` works anywhere Docker runs; mount a volume at `/data`.
 
-On the free plan the server sleeps after 15 minutes without visitors (the next visitor waits about a minute) and has no permanent disk, so player progress resets when it restarts. For a launch, use a paid plan and turn on the disk block in `render.yaml`.
+Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save location, default `./data`), `MAX_PLAYERS` (default 300) and `MAX_PER_IP` (default 8).
 
-**Docker (Railway, Fly.io, a VPS…)**
-```bash
-docker build -t gurugram-life gurugram-life
-docker run -p 3000:3000 -v gurugram-data:/data gurugram-life
-```
-Mount a volume at `/data` so progress survives restarts.
-
-Settings (environment variables): `PORT` (default 3000) and `DATA_DIR` (where `world.json` is saved; default `./data`).
+`npm run build:solo` writes `dist/gurugram-life-solo.html`, a single self-contained page that plays in solo mode with no server.
 
 ## What's in the game
 

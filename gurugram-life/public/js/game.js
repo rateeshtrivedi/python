@@ -1277,7 +1277,7 @@ $('playBtn').onclick = () => {
   let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); lsSet('gl_color', selColor);
   $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); A.restoreRadio(); radioLabel();
   const hello = () => ({ token: lsGet('gl_token'), name: lsGet('gl_name'), color: lsGet('gl_color') });
-  const goSolo = () => { if (!G.started && !net.local) net.connectLocal(hello); };
+  const goSolo = () => { if (!G.started && !net.local) { net.connectLocal(hello); if (!window.GL_SOLO) setTimeout(() => toast('Server abhi busy se, isliye solo mode mein khel rya se. Thodi der baad refresh karke multiplayer try kar.'), 3000); } };
   if (window.GL_SOLO) goSolo();
   else { net.on('unreachable', goSolo); net.connect(hello); setTimeout(goSolo, 5000); }
 };

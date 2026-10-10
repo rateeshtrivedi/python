@@ -545,7 +545,11 @@ function botTick() {
 }
 
 // ------------------------------------------------------------------ connections
-function connect(out, closeFn) {
+// token -> profile index, and a per-IP cap on new accounts so nobody can flood the save file
+const byToken = new Map(Object.values(db.profiles).map(x => [x.token, x]));
+const newByIp = new Map();
+function mayCreate(ip) { if (!ip) return true; const t = Date.now(); const list = (newByIp.get(ip) || []).filter(x => t - x < 3600e3); if (list.length >= 6) return false; list.push(t); newByIp.set(ip, list); return true; }
+function connect(out, closeFn, meta) {
   let c = null;
   return {
     message(m) {
@@ -553,9 +557,9 @@ function connect(out, closeFn) {
       if (!c) {
         if (m.t !== 'hello') return;
       if (m.t !== 'hello') return;
-      let p = typeof m.token === 'string' ? Object.values(db.profiles).find(x => x.token === m.token) : null;
+      let p = typeof m.token === 'string' ? byToken.get(m.token) || null : null;
       const name = D.cleanText(m.name, 16) || ('Chhora ' + Math.floor(Math.random() * 90 + 10));
-      if (!p) { p = newProfile(name, clamp(Math.floor(num(m.color, 0)), 0, D.SHIRTS.length - 1)); db.profiles[p.id] = p; }
+      if (!p) { if (!mayCreate(meta && meta.ip)) { out({ t: 'kicked', reason: 'Is network se bahut naye account ban gaye. Thodi der baad try karo' }); closeFn(); return; } p = newProfile(name, clamp(Math.floor(num(m.color, 0)), 0, D.SHIRTS.length - 1)); db.profiles[p.id] = p; byToken.set(p.token, p); }
       else if (m.name && name !== p.name) p.name = name;
       if (m.color !== undefined) p.color = clamp(Math.floor(num(m.color, p.color)), 0, D.SHIRTS.length - 1);
       const old = conns.get(p.id); if (old) { send(old, { t: 'kicked', reason: 'Yeh account doosre tab mein khul gaya' }); old.close(); conns.delete(p.id); }
