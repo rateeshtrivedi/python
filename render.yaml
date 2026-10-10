@@ -1,0 +1,20 @@
+# One-click deploy of Gurugram Life on Render (render.com → New → Blueprint → pick this repo).
+services:
+  - type: web
+    name: gurugram-life
+    runtime: node
+    rootDir: gurugram-life
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+    # Player progress lives in DATA_DIR. Render's free plan has no persistent disk, so progress
+    # resets when the service restarts. On a paid plan, uncomment to keep it:
+    # disk:
+    #   name: gurugram-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # and add an env var DATA_DIR=/var/data
