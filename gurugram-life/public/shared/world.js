@@ -563,8 +563,8 @@ function connect(out, closeFn, meta, outRaw) {
       else if (m.name && name !== p.name) p.name = name;
       if (m.color !== undefined) p.color = clamp(Math.floor(num(m.color, p.color)), 0, D.SHIRTS.length - 1);
       const old = conns.get(p.id); if (old) { send(old, { t: 'kicked', reason: 'Yeh account doosre tab mein khul gaya' }); old.close(); conns.delete(p.id); }
-      c = { out, outRaw, close: closeFn, p, st: null, cool: {} }; conns.set(p.id, c);
-      p.lastSeen = Date.now(); ensureMissions(p); beltCheckDay();
+      c = { out, outRaw, close: closeFn, p, st: null, cool: {}, since: Date.now() }; conns.set(p.id, c);
+      p.lastSeen = Date.now(); p.visits = (p.visits || 0) + 1; ensureMissions(p); beltCheckDay();
       // daily reward (with PG rent)
       let daily = null; const td = today();
       if (p.daily.last !== td) {
@@ -588,7 +588,7 @@ function connect(out, closeFn, meta, outRaw) {
     },
     close() {
       if (!c) return; if (conns.get(c.p.id) === c) { conns.delete(c.p.id); broadcast({ t: 'left', id: c.p.id }); }
-      c.p.lastSeen = Date.now(); dirty = true;
+      c.p.lastSeen = Date.now(); c.p.playMs = (c.p.playMs || 0) + (Date.now() - c.since); dirty = true;
     },
   };
 }
@@ -635,5 +635,19 @@ function tick1s() {
   botTick();
 }
 
-return { connect, tick100, tick1s, persist, players: () => conns.size };
+// owner stats (server /admin page): every real player, newest activity first
+function stats() {
+  const t = Date.now(), day = 864e5, list = [];
+  for (const p of Object.values(db.profiles)) {
+    if (p.bot) continue;
+    const c = conns.get(p.id), cr = p.crew && db.crews[p.crew];
+    list.push({ name: p.name, level: p.level, money: p.money, respect: p.respect, crew: cr ? cr.tag : '', plate: p.plate || '',
+      created: p.created, lastSeen: c ? t : p.lastSeen, visits: p.visits || 0, playMin: Math.round(((p.playMs || 0) + (c ? t - c.since : 0)) / 6e4), online: !!c });
+  }
+  list.sort((a, b) => b.lastSeen - a.lastSeen);
+  const since = ms => list.filter(p => p.lastSeen > t - ms).length, joined = ms => list.filter(p => p.created > t - ms).length;
+  return { total: list.length, online: conns.size, active24h: since(day), active7d: since(7 * day), new24h: joined(day), new7d: joined(7 * day), players: list };
+}
+
+return { connect, tick100, tick1s, persist, stats, players: () => conns.size };
 }
