@@ -55,6 +55,40 @@ app.use((req, res, next) => {
 });
 const VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local';
 app.get('/healthz', (req, res) => res.json({ ok: true, players: world.players(), version: VERSION, websocket: '/ws' }));
+// Owner page: who has played. Set ADMIN_KEY on the host to turn it on; the browser asks for it as the password.
+const ADMIN_KEY = process.env.ADMIN_KEY || '';
+function adminOk(req) {
+  const m = /^Basic (.+)$/.exec(req.headers.authorization || ''); if (!m) return false;
+  const pass = Buffer.from(m[1], 'base64').toString().replace(/^[^:]*:/, '');
+  const a = crypto.createHash('sha256').update(pass).digest(), b = crypto.createHash('sha256').update(ADMIN_KEY).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+app.use('/admin', (req, res, next) => {
+  if (ADMIN_KEY.length < 8) return res.status(404).send('Not found');
+  res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Robots-Tag', 'noindex');
+  if (!adminOk(req)) { res.setHeader('WWW-Authenticate', 'Basic realm="Gurugram Life owner"'); return res.status(401).send('Password chahiye'); }
+  next();
+});
+const esc = s => String(s).replace(/[&<>"']/g, ch => '&#' + ch.charCodeAt(0) + ';');
+const ist = ms => new Date(ms).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+app.get('/admin/players.csv', (req, res) => {
+  const s = world.stats(), q = v => '"' + String(v).replace(/^([=+\-@])/, "'$1").replace(/"/g, '""') + '"'; // ' stops spreadsheet formulas in names
+  const rows = [['name', 'level', 'money', 'respect', 'crew', 'plate', 'joined_ist', 'last_seen_ist', 'visits', 'minutes_played', 'online_now']]
+    .concat(s.players.map(p => [p.name, p.level, p.money, p.respect, p.crew, p.plate, ist(p.created), ist(p.lastSeen), p.visits, p.playMin, p.online ? 'yes' : 'no']));
+  res.type('text/csv').attachment('gurugram-life-players.csv').send(rows.map(r => r.map(q).join(',')).join('\n'));
+});
+app.get('/admin', (req, res) => {
+  const s = world.stats();
+  const card = (n, l) => `<div class=c><b>${n}</b><span>${l}</span></div>`;
+  const rows = s.players.map((p, i) => `<tr><td>${i + 1}</td><td>${p.online ? '<i></i>' : ''}${esc(p.name)}${p.crew ? ' <em>[' + esc(p.crew) + ']</em>' : ''}</td><td>${p.level}</td><td>₹${p.money.toLocaleString('en-IN')}</td><td>${p.visits}</td><td>${p.playMin}</td><td>${ist(p.created)}</td><td>${p.online ? 'online' : ist(p.lastSeen)}</td></tr>`).join('');
+  res.type('html').send(`<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Gurugram Life players</title>
+<style>body{margin:0;font:15px system-ui,sans-serif;background:#1b1410;color:#fff4d8;padding:16px}h1{color:#f6c026;margin:0 0 4px}p{margin:0 0 14px;opacity:.75}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}.c{background:#2a201a;border-radius:12px;padding:12px;border-bottom:4px solid #d7331f}.c b{display:block;font-size:28px;color:#f6c026}.c span{opacity:.8;font-size:13px}
+.w{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:640px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #3a2d24;white-space:nowrap}th{color:#f6c026;position:sticky;top:0;background:#1b1410}em{color:#8fd1ff;font-style:normal}i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#3ddc6a;margin-right:6px}a{color:#f6c026}</style>
+<h1>Gurugram Life: players</h1><p>Times in IST. Visits and minutes played are counted from the day this page was added. <a href="/admin/players.csv">Download CSV</a></p>
+<div class=g>${card(s.total, 'players ever')}${card(s.online, 'online now')}${card(s.active24h, 'played in last 24h')}${card(s.active7d, 'played in last 7 days')}${card(s.new24h, 'new in last 24h')}${card(s.new7d, 'new in last 7 days')}</div>
+<div class=w><table><tr><th>#</th><th>Name</th><th>Level</th><th>Money</th><th>Visits</th><th>Minutes</th><th>Joined</th><th>Last seen</th></tr>${rows || '<tr><td colspan=8>Abhi koi nahi</td></tr>'}</table></div>`);
+});
 app.use('/vendor/three', express.static(path.join(ROOT, 'node_modules/three/build'), { maxAge: '7d', immutable: true }));
 // The page needs absolute links for share previews (WhatsApp, Instagram, X): fill in this site's address.
 // PUBLIC_URL (e.g. https://gurugramlife.com) pins it; otherwise it comes from the request's host.

@@ -409,7 +409,7 @@ function districtBuilders() {
     npcStatic(world, n.x + 2, n.z - 1, -Math.PI / 2, 0xc9b27a, 'Traffic Police', 'cap'); npcStatic(world, n.x - 2, n.z + 1, Math.PI / 2, 0xc9b27a, null, 'cap');
     sign(world, 'TRAFFIC POLICE NAKA', 'Peeke gaadi na chalao · Challan ₹2,000', '#ffffff', '#d7331f', 10, 1.8, n.x + 12, 3.8, n.z - 8.5); }
   { const t = D.SPOTS.toll; for (const dz of [-6.6, -2.2, 2.2, 6.6]) bx(world, 3, 3, 1.4, 0xf5f5f5, t.x, 1.5, t.z + dz, { col: 'out' }); bx(world, 6, 0.8, 18, 0x2563b8, t.x, 4.4, t.z); sign(world, 'KHERKI DAULA TOLL PLAZA', 'Car ₹50 · FASTag lane', '#2563b8', '#ffffff', 16, 2.4, t.x - 3.1, 4.4, t.z, -Math.PI / 2); sign(world, 'KHERKI DAULA TOLL PLAZA', 'Car ₹50 · FASTag lane', '#2563b8', '#ffffff', 16, 2.4, t.x + 3.1, 4.4, t.z, Math.PI / 2); }
-  for (const r of ROADS) for (let t = -440; t <= 440; t += 55) { LAMPS.push([r + 8, t, -1, 0]); LAMPS.push([t, r + 8, 0, -1]); if (Math.random() < 0.5) tree(r - 9, t + 20, 0.9); }
+  for (const r of ROADS) for (let t = -440; t <= 440; t += 55) { LAMPS.push([r + 8, t, -1, 0]); LAMPS.push([t, r + 8, 0, -1]); if (Math.random() < 0.5 && !ROADS.some(q => Math.abs(t + 20 - q) < 10)) tree(r - 9, t + 20, 0.9); } // no trees in the middle of cross-streets
 }
 
 // ---------------- interiors
