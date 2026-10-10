@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "PORT=3000 node --watch server/index.js",
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs",
+    "build:solo": "node scripts/build-solo.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -17,5 +18,8 @@
     "express": "4.22.3",
     "three": "0.128.0",
     "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
   }
 }

@@ -606,7 +606,7 @@ function bottleService() { openModal('VIP bottle service', 'Poore club ko pata c
 function openPhone() {
   tutEvent('phone');
   openModal('Mera Phone', P.name + ' · ' + fmt(P.money) + ' · ' + D.RANKS[P.rank][0] + ' at TechNova', b => {
-    const apps = [['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Map', '#1a8a4a', 'M', appMap], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', appLeaderboard], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]];
+    const apps = [['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Map', '#1a8a4a', 'M', appMap], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]];
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
@@ -670,7 +670,8 @@ function appEvents() {
 function eventHelp(t) { return { baraat: 'Golf Course Road pe baraat nikal rahi se. Paas jaake B se naacho, ₹1,000 ke note udao', jam: 'Iffco Chowk pe mahajam. Phansi gaadiyon ko chai becho (E)', flood: 'Kuch sectors mein paani bhar gaya. Chalo aur Jhatpat pe 2x surge', holi: 'Sohna Road pe Holi. G dabao, logon pe rang daalo', diwali: 'Diwali ki raat. Rocket chhodo (phone → Events, ya Action)', ipl: 'Cyber Hub big screen pe match. Cheer karo aur dekho' }[t] || ''; }
 function eventSpot(t) { return { baraat: { x: -225, z: baraatZ() }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, flood: null, diwali: { x: 0, z: 40 } }[t]; }
 function appOnline() {
-  openModal('Online players', (G.peerCount || 1) + ' online', b => {
+  openModal('Online players', net.solo ? 'Solo mode' : (G.peerCount || 1) + ' online', b => {
+    if (net.solo) b.append(el('p', { text: 'Tu solo mode mein khel rya se. Leaderboard, crews aur VIP plate ki boli mein rival log computer chalata se. Asli doston ke saath khelne ke liye game ka hosted version chahiye (README dekho).' }));
     const muted = lsGet('gl_muted') || [];
     b.append(el('p', { text: 'Kisi ki chat band karni ho to Mute dabao. Sirf tujhe nahi dikhegi.' }));
     for (const [id, R] of REMOTES) { if (!R.info) continue; const m = muted.includes(id); b.append(itemRow((R.info.crew ? '[' + R.info.crew.tag + '] ' : '') + R.info.name, 'Level ' + R.info.level + ' · ' + R.info.title + (R.info.plate ? ' · ' + R.info.plate : '') + (R.info.belt ? ' · CHAMPION' : ''), m ? 'Unmute' : 'Mute', () => { const list = lsGet('gl_muted') || []; const i = list.indexOf(id); if (i >= 0) list.splice(i, 1); else list.push(id); lsSet('gl_muted', list); appOnline(); }, false, !m)); }
@@ -1107,13 +1108,14 @@ function makeCard(photo) {
   const cr = G.myCrew; x.fillText((cr ? 'Crew [' + cr.tag + '] · ' : '') + 'Net worth ' + fmt(D.netWorth(P)), 50, ph + 225);
   const bl = P.bling.map(b => D.BLING[b].name).join(', '); x.font = '600 34px Mukta, sans-serif'; x.fillStyle = '#e8c27a'; x.fillText(bl ? 'Bling: ' + bl : 'Party score ' + P.party + ' · KOs ' + (P.c.kos || 0), 50, ph + 275);
   if (P.plate) { x.fillStyle = '#ffffff'; rrect(x, W - 430, ph + 50, 380, 110, 12); x.fill(); x.strokeStyle = '#111'; x.lineWidth = 6; x.stroke(); x.fillStyle = '#111'; x.font = '800 66px "Baloo 2", sans-serif'; x.textAlign = 'center'; x.fillText(P.plate, W - 240, ph + 130); x.font = '700 22px Mukta, sans-serif'; x.fillText('IND', W - 400, ph + 150); }
-  x.textAlign = 'left'; x.fillStyle = '#ffffff'; x.font = '800 54px "Baloo 2", sans-serif'; x.fillText('Gurugram Life', 50, H - 70); x.font = '600 30px Mukta, sans-serif'; x.fillStyle = '#d9c7a3'; x.textAlign = 'right'; x.fillText(location.host, W - 50, H - 72);
+  x.textAlign = 'left'; x.fillStyle = '#ffffff'; x.font = '800 54px "Baloo 2", sans-serif'; x.fillText('Gurugram Life', 50, H - 70); x.font = '600 30px Mukta, sans-serif'; x.fillStyle = '#d9c7a3'; x.textAlign = 'right'; x.fillText(window.GL_SOLO ? 'Haryana ka swag' : location.host, W - 50, H - 72);
   x.fillStyle = 'rgba(27,20,16,.65)'; rrect(x, 30, 30, 420, 70, 35); x.fill(); x.fillStyle = '#f6c026'; x.textAlign = 'left'; x.font = '800 40px "Baloo 2", sans-serif'; x.fillText('Mera Gurugram', 55, 80);
   const url = c.toDataURL('image/jpeg', 0.9); ev('card'); tutEvent('card');
   openModal('Mera Gurugram card', 'Download karo ya seedha share karo', b => {
     b.append(el('img', { src: url, class: 'cardimg', alt: 'Mera Gurugram card for ' + P.name }));
-    const a = el('a', { href: url, download: 'mera-gurugram-' + P.name.replace(/\W+/g, '-') + '.jpg', class: 'buy', style: 'text-align:center;text-decoration:none;display:block;padding:10px', text: 'Download photo' }); b.append(a);
-    const text = 'Main ' + (P.plate ? P.plate + ' wala ' : '') + P.name + ' hoon, Gurugram Life mein ' + D.respectTitle(P.respect) + '! Aaja khel: ' + location.origin;
+    if (window.GL_SOLO) b.append(el('p', { text: 'Photo save karne ke liye image pe long-press (phone) ya right-click → Save image (computer) karo.' }));
+    else b.append(el('a', { href: url, download: 'mera-gurugram-' + P.name.replace(/\W+/g, '-') + '.jpg', class: 'buy', style: 'text-align:center;text-decoration:none;display:block;padding:10px', text: 'Download photo' }));
+    const text = 'Main ' + (P.plate ? P.plate + ' wala ' : '') + P.name + ' hoon, Gurugram Life mein ' + D.respectTitle(P.respect) + '! Aaja khel: ' + (window.GL_SHARE_URL || location.origin);
     if (navigator.canShare) b.append(el('button', { class: 'buy alt', style: 'padding:10px', text: 'Share (WhatsApp, Instagram...)', onclick: async () => { try { const blob = await (await fetch(url)).blob(); const file = new File([blob], 'mera-gurugram.jpg', { type: 'image/jpeg' }); if (navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text }); else await navigator.share({ text }); } catch {} } }));
     b.append(el('button', { class: 'buy alt', style: 'padding:10px', text: 'Copy invite message', onclick: async e => { try { await navigator.clipboard.writeText(text); e.target.textContent = 'Copied!'; } catch { toast(text); } } }));
     b.append(el('a', { class: 'buy', style: 'text-align:center;text-decoration:none;display:block;padding:10px;background:#25d366', href: 'https://wa.me/?text=' + encodeURIComponent(text), target: '_blank', rel: 'noopener', text: 'Send on WhatsApp' }));
@@ -1225,7 +1227,7 @@ $('chatform').addEventListener('submit', e => { e.preventDefault(); sendChat($('
 $('chatClose').onclick = closeChat;
 for (const t of TAUNTS) $('taunts').append(el('button', { type: 'button', text: t, onclick: () => { sendChat(t); closeChat(); } }));
 
-function setNetChip() { const n = $('net'); n.classList.toggle('online', net.connected); n.textContent = net.connected ? 'Online: ' + (G.peerCount || 1) : 'Reconnecting…'; }
+function setNetChip() { const n = $('net'); if (net.solo) { n.classList.remove('online'); n.textContent = 'Solo mode'; return; } n.classList.toggle('online', net.connected); n.textContent = net.connected ? 'Online: ' + (G.peerCount || 1) : 'Reconnecting…'; }
 net.on('status', setNetChip);
 net.on('welcome', m => {
   P = m.profile; G.myId = m.id; lsSet('gl_token', m.token); G.timeOffset = m.serverTime - Date.now() / 1000;
@@ -1274,8 +1276,10 @@ $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn
 $('playBtn').onclick = () => {
   let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); lsSet('gl_color', selColor);
   $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); A.restoreRadio(); radioLabel();
-  net.connect(() => ({ token: lsGet('gl_token'), name: lsGet('gl_name'), color: lsGet('gl_color') }));
-  setTimeout(() => { if (!G.started) { $('playBtn').disabled = false; $('playBtn').textContent = 'Chalo, Khelo!'; $('loginNote').textContent = 'Server se connect nahi ho paya. Internet check karke dobara try kar.'; } }, 12000);
+  const hello = () => ({ token: lsGet('gl_token'), name: lsGet('gl_name'), color: lsGet('gl_color') });
+  const goSolo = () => { if (!G.started && !net.local) net.connectLocal(hello); };
+  if (window.GL_SOLO) goSolo();
+  else { net.on('unreachable', goSolo); net.connect(hello); setTimeout(goSolo, 5000); }
 };
 function startGame(daily) {
   $('login').hidden = true; $('hud').hidden = false; G.started = true;
