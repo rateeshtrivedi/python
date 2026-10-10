@@ -16,7 +16,7 @@ services:
       - key: DATA_DIR
         value: /var/data
       - key: MAX_PLAYERS
-        value: "300"
+        value: "200"            # Starter (0.5 CPU) handles about 200 crowded players; raise on a bigger plan
     disk:                      # keeps player progress and daily backups across restarts and deploys
       name: gurugram-data
       mountPath: /var/data
