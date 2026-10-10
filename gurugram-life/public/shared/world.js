@@ -548,7 +548,7 @@ function botTick() {
 // token -> profile index, and a per-IP cap on new accounts so nobody can flood the save file
 const byToken = new Map(Object.values(db.profiles).map(x => [x.token, x]));
 const newByIp = new Map();
-function mayCreate(ip) { if (!ip) return true; const t = Date.now(); const list = (newByIp.get(ip) || []).filter(x => t - x < 3600e3); if (list.length >= 30) return false; list.push(t); newByIp.set(ip, list); return true; }
+function mayCreate(ip) { if (!ip) return true; const t = Date.now(); const list = (newByIp.get(ip) || []).filter(x => t - x < 3600e3); if (list.length >= (opts.newAccountsPerIpHour || 30)) return false; list.push(t); newByIp.set(ip, list); return true; }
 function connect(out, closeFn, meta) {
   let c = null;
   return {

@@ -24,6 +24,7 @@ const world = createWorld({
   load: () => JSON.parse(fs.readFileSync(DB_FILE, 'utf8')),
   save: json => { const tmp = DB_FILE + '.tmp'; fs.writeFile(tmp, json, err => { if (!err) fs.rename(tmp, DB_FILE, () => {}); }); },
   bots: false,
+  newAccountsPerIpHour: Number(process.env.NEW_ACCOUNTS_PER_IP_HOUR) || 30,
 });
 setInterval(() => world.tick100(), 100);
 setInterval(() => world.tick1s(), 1000);
@@ -55,8 +56,21 @@ app.use((req, res, next) => {
 const VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local';
 app.get('/healthz', (req, res) => res.json({ ok: true, players: world.players(), version: VERSION, websocket: '/ws' }));
 app.use('/vendor/three', express.static(path.join(ROOT, 'node_modules/three/build'), { maxAge: '7d', immutable: true }));
+// The page needs absolute links for share previews (WhatsApp, Instagram, X): fill in this site's address.
+// PUBLIC_URL (e.g. https://gurugramlife.com) pins it; otherwise it comes from the request's host.
+const INDEX_HTML = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
+function siteOrigin(req) {
+  if (/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(PUBLIC_URL)) return PUBLIC_URL;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  if (!/^[a-z0-9.-]+(:\d+)?$/i.test(host)) return '';
+  return (req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http') + '://' + host;
+}
+app.get(['/', '/index.html'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(INDEX_HTML.split('__ORIGIN__').join(siteOrigin(req)));
+});
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).
-app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: res => res.setHeader('Cache-Control', 'no-cache') }));
+app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8 * 1024 });
 
