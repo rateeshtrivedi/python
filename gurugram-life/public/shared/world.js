@@ -594,16 +594,22 @@ function connect(out, closeFn, meta) {
 }
 
 // snapshot tick (every 100 ms): positions to everyone (interest-managed)
+const VIEW_RADIUS = 160, VIEW_MAX = 40; // each player receives at most the 40 nearest players in sight
 function tick100() {
-  const list = [...conns.values()].filter(c => c.st);
+  const list = []; for (const o of conns.values()) if (o.st) { const s = o.st; o.entry = [o.p.id, Math.round(s.x * 10) / 10, Math.round(s.z * 10) / 10, Math.round(s.r * 100) / 100, s.a, s.v, s.in, s.hp, s.fx]; list.push(o); }
   for (const c of conns.values()) {
-    const me = c.st; const out = [];
+    const me = c.st; let near = [];
     for (const o of list) {
       if (o === c) continue; const s = o.st;
-      if (me && s.in !== me.in) { out.push([o.p.id, null]); continue; }
-      if (me && !s.in && dist(s, me) > 320) { out.push([o.p.id, null]); continue; }
-      out.push([o.p.id, Math.round(s.x * 10) / 10, Math.round(s.z * 10) / 10, Math.round(s.r * 100) / 100, s.a, s.v, s.in, s.hp, s.fx]);
+      if (me && s.in !== me.in) continue;
+      const d = me && !s.in ? dist(s, me) : 0; if (d > VIEW_RADIUS) continue;
+      near.push([d, o]);
     }
+    if (near.length > VIEW_MAX) { near.sort((a, b) => a[0] - b[0]); near = near.slice(0, VIEW_MAX); }
+    const out = []; const seen = new Set();
+    for (const [, o] of near) { out.push(o.entry); seen.add(o.p.id); }
+    if (c.seen) for (const id of c.seen) if (!seen.has(id)) out.push([id, null]); // tell the client once when someone leaves view
+    c.seen = seen;
     c.out({ t: 's', p: out, n: conns.size });
   }
 }
