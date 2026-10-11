@@ -94,7 +94,7 @@ export const EARN = {
 export const MISSIONS = [
   { t: 'Eat at Sher-e-Haryana Dhaba', k: 'eat_dhaba', n: 1, r: 300 },
   { t: 'Complete Jhatpat deliveries', k: 'deliveries', n: 2, r: 450 },
-  { t: 'Visit Metro Grand Mall', k: 'visit_mall', n: 1, r: 200 },
+  { t: 'Visit Ambience Mall', k: 'visit_mall', n: 1, r: 200 },
   { t: 'Work a shift at TechNova', k: 'shifts', n: 1, r: 400 },
   { t: 'Throw punches', k: 'punches', n: 6, r: 150 },
   { t: 'Knock someone out', k: 'kos', n: 1, r: 350 },
@@ -115,7 +115,7 @@ export const MISSIONS = [
 // District grid: i,j in -2..2; block centre = (i*150, j*150). Place names are real Gurugram localities.
 export const DIST = [
   [-2, -2, 'Sikanderpur', 'towers', { metro: 'Sikanderpur' }],
-  [-1, -2, 'MG Road', 'mall'],
+  [-1, -2, 'Ambience Island', 'mall'],
   [0, -2, 'DLF Cyber City', 'office', { metro: 'Cyber City' }],
   [1, -2, 'Cyber Hub', 'cyberhub'],
   [2, -2, 'NH-48 Auto Mile', 'dealer'],
@@ -189,8 +189,8 @@ export function cleanText(s, max) {
 // Street races: checkpoints follow real roads (corners sit on junctions). Each win unlocks the next rival.
 // minMs: no car can finish faster (route length / 52 units per second, top speed with NOS), so the server rejects anything quicker.
 export const RACES = [
-  { id: 'sheetla', name: 'Sheetla Mata Road Sprint', rival: 'Monu Dahiya', veh: 'chhotu', color: 0xdedede, skill: 0.9, prize: 600,
-    pts: [[-10, 75], [75, 75], [75, 225], [225, 225], [225, 330]],
+  { id: 'ambience', name: 'Ambience Mall Sprint', rival: 'Monu Dahiya', veh: 'chhotu', color: 0xdedede, skill: 0.9, prize: 600,
+    pts: [[-150, -225], [-75, -225], [-75, 75], [40, 75]], // out of the Ambience Mall gate, down MG Road, onto Sheetla Mata Road
     taunt: ['Oye naye! Race lagegi? Haar gaya to chai tere taraf se!', 'Chal dekh lete hain kitna dum se tere mein'],
     win: ["Arre! Beginner's luck se yeh. Rematch kar!", 'Theek se, agli baar dekh lunga'], lose: ['Ghar ja ke cycle chala, chhore!', 'Chai tere taraf se. Rematch?'] },
   { id: 'golf', name: 'Golf Course Road Run', rival: 'Jassi Sandhu', veh: 'desert', color: 0x2e6bd1, skill: 0.98, prize: 1000,

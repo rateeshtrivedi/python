@@ -32,8 +32,8 @@ const SHOP_COLORS = ['#d7331f', '#1a8a4a', '#2563b8', '#f6c026', '#8b3fc4', '#e8
 const XROAD = { '-375': 'Southern Peripheral Road', '-225': 'Golf Course Road', '-75': 'MG Road', '75': 'Sohna Road', '225': 'Old Railway Road', '375': 'Badshahpur Road' };
 const ZROAD = { '-375': 'NH-48', '-225': 'Dwarka Expressway', '-75': 'Huda City Centre Road', '75': 'Sheetla Mata Road', '225': 'Basai Road', '375': 'Golf Course Ext. Road' };
 const ROADS = D.ROADS, DIST = D.DIST;
-const INTERIOR_NAMES = { mall: 'Metro Grand Mall', office: 'TechNova Towers, Floor 7', theka: 'Desi Theka No.1', dhaba: 'Sher-e-Haryana Dhaba', club: 'Neon Nights, Sector 29' };
-const DOOR_NAMES = { mall: 'MG Road', office: 'DLF Cyber City', theka: 'Sohna Road', dhaba: 'Sector 29', club: 'Sector 29' };
+const INTERIOR_NAMES = { mall: 'Ambience Mall', office: 'TechNova Towers, Floor 7', theka: 'Desi Theka No.1', dhaba: 'Sher-e-Haryana Dhaba', club: 'Neon Nights, Sector 29' };
+const DOOR_NAMES = { mall: 'Ambience Island', office: 'DLF Cyber City', theka: 'Sohna Road', dhaba: 'Sector 29', club: 'Sector 29' };
 
 // ================================================================ LOCAL STATE (per device)
 const L = Object.assign({ hunger: 80, tut: 0, drinks: 0 }, lsGet('gl_local') || {});
@@ -260,9 +260,9 @@ function districtBuilders() {
         break;
       }
       case 'mall': {
-        building(world, cx, cz - 12, 66, 40, 22, 'glass'); sign(world, 'METRO GRAND MALL', 'MG Road · 150+ brands · Food court · Cinema', '#1b1410', '#f6c026', 34, 5, cx, 17, cz + 8.06);
-        door(world, cx, cz + 8, 8); DOORS.mall = { x: cx, z: cz + 11 }; zone('out', cx, cz + 10.5, 4.5, () => 'Enter Metro Grand Mall', () => enterInterior('mall'));
-        PICKUPS.push({ name: 'Metro Grand Mall food court', x: cx, z: cz + 12 });
+        building(world, cx, cz - 12, 66, 40, 22, 'glass'); sign(world, 'AMBIENCE MALL', 'NH-48 · 150+ brands · Food court · Cinema', '#1b1410', '#f6c026', 34, 5, cx, 17, cz + 8.06);
+        door(world, cx, cz + 8, 8); DOORS.mall = { x: cx, z: cz + 11 }; zone('out', cx, cz + 10.5, 4.5, () => 'Enter Ambience Mall', () => enterInterior('mall'));
+        PICKUPS.push({ name: 'Ambience Mall food court', x: cx, z: cz + 12 });
         for (let k = 0; k < 6; k++) { const car = makeVehicle(pick(['chhotu', 'desert', 'cruiser']), pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0x151515, 0xf3b61f])); car.position.set(cx - 40 + k * 16, 0.2, cz + 40); car.rotation.y = Math.PI / 2 * (k % 2 ? 1 : -1); world.add(car); addCol('out', cx - 40 + k * 16 - 2.5, cx - 40 + k * 16 + 2.5, cz + 38, cz + 42); }
         building(world, cx - 50, cz - 50, 18, 18, 30, 'concrete'); building(world, cx + 50, cz - 50, 18, 18, 36, 'concrete'); break;
       }
@@ -450,7 +450,7 @@ function buildInteriors() {
     const wa = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 5.6, 0.2, 24), new THREE.MeshLambertMaterial({ color: 0x3fa9d6, emissive: 0x0b3a55 })); wa.position.set(ox - 5, 1, oz + 5); g.add(wa);
     cyl(g, 0.6, 4, 0xe6dccb, ox - 5, 2.5, oz + 5); sph(g, 1, 0xf6c026, ox - 5, 4.8, oz + 5); addCol('mall', ox - 11, ox + 1, oz - 1, oz + 11);
     for (const ez of [oz - 8, oz + 8]) { bx(g, 3, 0.5, 16, 0x8a8a8a, ox - W / 2 + 8, 4, ez).rotation.x = 0.5; bx(g, 0.2, 1, 16, 0x333333, ox - W / 2 + 6.4, 4.8, ez).rotation.x = 0.5; bx(g, 0.2, 1, 16, 0x333333, ox - W / 2 + 9.6, 4.8, ez).rotation.x = 0.5; addCol('mall', ox - W / 2 + 6, ox - W / 2 + 10, ez - 8, ez + 8); }
-    sign(g, 'METRO GRAND MALL', 'Welcome! Namaste! Ram Ram!', '#1b1410', '#f6c026', 22, 3.4, ox, 12.5, oz + D2 / 2 - 0.4, Math.PI);
+    sign(g, 'AMBIENCE MALL', 'Welcome! Namaste! Ram Ram!', '#1b1410', '#f6c026', 22, 3.4, ox, 12.5, oz + D2 / 2 - 0.4, Math.PI);
     bx(g, 4, 1.1, 2, 0xf28c1b, ox - 25, 0.55, oz + 20, { col: 'mall' }); sign(g, 'CHAI POINT', null, '#f28c1b', '#1b1410', 4, 0.9, ox - 25, 2.6, oz + 21.05);
     zone('mall', ox - 25, oz + 22.5, 3, () => 'Chai Point: cutting chai (₹20)', () => buyFood('m_chai', 'chai'));
     for (let k = 0; k < 4; k++) SHOPPERS.push({ zone: 'mall', x0: ox - 35, x1: ox + 15, z0: oz - 15, z1: oz + 28 });
@@ -618,7 +618,7 @@ function appRide() { openModal('Chalo Driver', 'Passenger le jao, paise kamao' +
 function appDelivery() { openModal('Jhatpat Food', '10 minute delivery, Gurugram style' + (G.ev?.type === 'flood' ? ' · FLOOD SURGE 2x' : ''), b => { if (G.job) { b.append(el('p', { text: 'Current job: ' + jobText() }), itemRow('Cancel current job', '', 'Cancel', () => { endJob(); closeModal(); }, false, true)); return; } b.append(el('p', { text: 'Paidal bhi chalega, par gaadi se jaldi hoga.' }), itemRow('Accept a delivery order', 'Restaurant se uthao, sector mein pahunchao', 'Accept', () => { closeModal(); startJob('delivery'); })); }); }
 function appGarage() { openModal('Garage', 'V to ride your selected vehicle · H for pressure horn', b => { if (!P.vehicles.length) { b.append(el('p', { text: 'Garage khaali se. Chaudhary Motors (NH-48 Auto Mile) se gaadi le, ya Iffco Chowk pe e-scooter rent kar.' }), itemRow('Set GPS to Chaudhary Motors', '', 'Set GPS', () => { setWaypoint(300, -300, 'Chaudhary Motors'); closeModal(); })); return; } for (const t of P.vehicles) { const m = P.mods[t] || {}; const mods = Object.keys(m).filter(k => m[k] !== false).map(k => D.MODS[k].name).join(', '); b.append(itemRow(D.VEH[t].name, (P.cur === t ? 'Selected' : 'Tap to select') + (mods ? ' · ' + mods : ''), P.cur === t ? 'Selected' : 'Select', () => { net.send('setcur', { v: t }); P.cur = t; appGarage(); }, P.cur === t)); } b.append(itemRow('Modify at Sandhu Car Accessories', 'Horn, film, bull bar, neon, stickers, plates', 'GPS', () => { setWaypoint(345, -255, 'Sandhu Car Accessories'); closeModal(); }, false, true)); }); }
 function homePos() { const h = D.HOUSES[P.home] || D.HOUSES.pg; if (P.home === 'farm') return { x: D.SPOTS.farmLawn.x, z: D.SPOTS.farmLawn.z }; return { x: h.at[0] * 150 + (h.at[0] < 0 ? 40 : -40), z: h.at[1] * 150 + 66 }; }
-function appHome() { const h = D.HOUSES[P.home]; openModal('Ghar: ' + h.name, 'Sleep to restore health and cure the hangover', b => { b.append(itemRow('Go home', 'Free auto ride home', 'Go', () => { closeModal(); fadeTo('Ghar ja rya se...', 1200, () => { const p = homePos(); teleport(p.x, p.z, 0); }); }), itemRow('Sleep till morning', 'Full health, hangover gayab', 'Sleep', () => { closeModal(); fadeTo('Zzz... so rya se', 2200, () => { G.hp = 100; DAY.t = 0.28; G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal(); const p = homePos(); teleport(p.x, p.z, 0); toast('Subah ho gayi! Ram Ram.'); }); }), itemRow('Buy a better home', 'Yadav Estates, DLF Phase 3', 'GPS', () => { setWaypoint(-300, -103, 'Yadav Estates'); closeModal(); }, false, true)); if (P.houses.includes('farm')) b.append(itemRow('Host a farmhouse party', 'Sab players ko invite jaega', fmt(D.MISC.party[1]), () => hostParty(), !!G.party)); }); }
+function appHome() { const h = D.HOUSES[P.home]; openModal('Ghar: ' + h.name, 'Sleep to restore health and cure the hangover', b => { b.append(itemRow('Go home', 'Free auto ride home', 'Go', () => { closeModal(); fadeTo('Ghar ja rya se...', 1200, () => { const p = homePos(); teleport(p.x, p.z, 0); }); }), itemRow('So jao', 'Full health, hangover gayab', 'Sleep', () => { closeModal(); fadeTo('Zzz... so rya se', 2200, () => { G.hp = 100;  G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal(); const p = homePos(); teleport(p.x, p.z, 0); toast('Neend poori! Ram Ram.'); }); }), itemRow('Buy a better home', 'Yadav Estates, DLF Phase 3', 'GPS', () => { setWaypoint(-300, -103, 'Yadav Estates'); closeModal(); }, false, true)); if (P.houses.includes('farm')) b.append(itemRow('Host a farmhouse party', 'Sab players ko invite jaega', fmt(D.MISC.party[1]), () => hostParty(), !!G.party)); }); }
 async function appLeaderboard(tab) {
   tab = tab || 'rich'; const r = await net.req('lb', {}); const lb = (r.ok && r.lb) || G.lb || {};
   openModal('Gurugram Top 10', 'Sabse bada kaun? Live rankings', b => {
@@ -1131,9 +1131,10 @@ function makeCard(photo) {
 }
 
 // ================================================================ DAY / NIGHT
-const DAY = { t: 0.3, len: 600 }; const tmpC = new THREE.Color();
+// DAY.t = fraction of the day in Gurugram (IST, UTC+5:30); DAY.fixed pins it for promo captures
+const DAY = { t: 0.3, fixed: false }; const tmpC = new THREE.Color();
 function updateDay(dt) {
-  DAY.t = (DAY.t + dt / DAY.len) % 1; let t = DAY.t; if (G.ev?.type === 'diwali') t = 0.92;
+  if (!DAY.fixed) DAY.t = ((Date.now() + (G.timeOffset || 0) * 1000 + 5.5 * 3600e3) % 864e5) / 864e5; let t = DAY.t; if (G.ev?.type === 'diwali') t = 0.92;
   const sunH = Math.sin((t - 0.25) * Math.PI * 2); const day = clamp(sunH * 1.6 + 0.3, 0, 1); const dusk = clamp(1 - Math.abs(sunH) * 4, 0, 1); const night = 1 - day;
   if (G.inside) { const club = G.inside === 'club'; scene.background.copy(club ? SKY_CLUB : SKY_IN); scene.fog.color.copy(scene.background); hemi.intensity = club ? 0.6 : 1.05; sun.intensity = club ? 0.2 : 0.45; for (const m of NIGHT_MATS) m.emissiveIntensity = 0; return; }
   tmpC.copy(SKY_NIGHT).lerp(SKY_DAY, day); tmpC.lerp(SKY_DUSK, dusk * 0.6); if (G.ev?.type === 'flood') tmpC.lerp(new THREE.Color(0x6b7680), 0.6); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
@@ -1281,7 +1282,7 @@ function showPartyInvite(p) { const box = $('invite'); box.hidden = false; box.t
 // Races: checkpoint gates on real roads vs a named rival. Win to unlock the next rival; rematch is one tap.
 const RACE_SPOTS = [];
 const fmtT = ms => { const s = ms / 1000; return Math.floor(s / 60) + ':' + (s % 60).toFixed(1).padStart(4, '0'); };
-const raceWon = id => !!(P && P.raceWins && P.raceWins[id]);
+const raceWon = id => !!(P && P.raceWins && (P.raceWins[id] || (id === D.RACES[0].id && P.raceWins.sheetla)));
 const raceUnlocked = i => i === 0 || raceWon(D.RACES[i - 1].id);
 function raceGates(R) {
   const out = []; let s = 0;
@@ -1389,7 +1390,7 @@ async function finishRace() {
   say(r.spot.car, pick(won ? r.R.win : r.R.lose), 4);
   if (won) for (let k = 0; k < 3; k++) setTimeout(() => firework(G.x + rnd(-20, 20), G.z + rnd(-20, 20)), 300 + k * 450);
   let res = { ok: false }; if (done) res = await net.req('race', { id: r.R.id, ms, won }).catch(() => ({ ok: false }));
-  step(r.R.id === 'sheetla' ? 'race1_done' : r.R.id === 'golf' && r.won ? 'race2_won' : 'race_more');
+  step(r.R.id === D.RACES[0].id ? 'race1_done' : r.R.id === 'golf' && r.won ? 'race2_won' : 'race_more');
   if (G.race !== r) return;
   if (r.intro && G.story) { setTimeout(() => { if (G.race === r) storyGo('fight'); }, 1300); return; }
   setTimeout(() => { if (G.race === r) showRaceResult(r, ms, done, res); }, 1500);
@@ -1464,7 +1465,7 @@ function quest(title, sub) {
   const n = G.story ? BEATS.indexOf(G.story.beat) + 1 : 0; q.append(el('small', { text: 'Pehla Din · ' + n + '/5' }), el('b', { text: title }));
   if (sub) q.append(el('span', { text: sub })); q.append(el('button', { type: 'button', class: 'skip', text: 'Skip', onclick: skipStory }));
 }
-function startStory() { G.story = { beat: 'race' }; step('story_start'); startRace('sheetla', { intro: true }); }
+function startStory() { G.story = { beat: 'race' }; step('story_start'); startRace(D.RACES[0].id, { intro: true }); }
 function skipStory() { if (!G.story) return; const s = G.story; G.story = null; quest(null); step('story_skip'); if (s.monu) dropMonu(); if (G.race) cleanupRace(); $('raceres').hidden = true; endStoryCommon(); toast('Story skip. Phone (P) mein sab kuch hai.'); }
 function endStoryCommon() { L.loanerOK = 1; saveLocal(); if (!P.tutDone) { P.tutDone = true; net.send('tutdone', {}); } }
 function storyGo(beat) { if (!G.story) return; G.story.beat = beat; G.story.t0 = now(); step('b_' + beat); ({ fight: beatFight, swag: beatSwag, chase: beatChase, club: beatClub, done: beatDone })[beat](); }
@@ -1510,7 +1511,7 @@ function beatDone() {
   step('debut_done'); quest(null); const s = G.story; G.story = null; endStoryCommon();
   const goal = sapnaGoal(); const next = D.RACES[1];
   showCard('Pehla Din poora!', 'Race, ladai, swag, police, party: sab ek din mein. Ab asli khel.', [
-    [raceUnlocked(1) ? 'Race 2: ' + next.rival + ' (₹' + (next.prize * 2).toLocaleString('en-IN') + ')' : 'Rematch: ' + D.RACES[0].rival, () => { if (G.inside) exitInterior(); setTimeout(() => startRace(raceUnlocked(1) ? next.id : 'sheetla'), G.inside ? 700 : 0); }],
+    [raceUnlocked(1) ? 'Race 2: ' + next.rival + ' (₹' + (next.prize * 2).toLocaleString('en-IN') + ')' : 'Rematch: ' + D.RACES[0].rival, () => { if (G.inside) exitInterior(); setTimeout(() => startRace(raceUnlocked(1) ? next.id : D.RACES[0].id), G.inside ? 700 : 0); }],
     ['Dangal: Pehlwan Bhola (₹1,000)', () => { $('raceres').hidden = true; if (G.inside) exitInterior(); setWaypoint(AKHARA.x, AKHARA.z, 'Akhara, Leisure Valley'); }, 'alt2'],
     ['Club mein naacho', () => { $('raceres').hidden = true; }, 'alt'],
   ], goal ? 'Tera sapna: ' + goal.name + ' (' + fmt(goal.price) + '). Races sabse tez paisa dete hain.' : null);
@@ -1564,10 +1565,10 @@ $('playBtn').onclick = () => {
 };
 function startGame(daily) {
   $('login').hidden = true; $('hud').hidden = false; G.started = true;
-  player = makeChar(D.SHIRTS[P.color]); scene.add(player); applyMyLook(); G.x = rnd(-9, 9); G.z = 46 + rnd(-2, 4); G.r = Math.PI; G.yaw = Math.PI;
+  player = makeChar(D.SHIRTS[P.color]); scene.add(player); applyMyLook(); G.x = DOORS.mall.x + rnd(-3, 3); G.z = DOORS.mall.z + 37; G.r = Math.PI; G.yaw = Math.PI; G.pitch = 0.12; // Ambience Mall entrance, looking at the mall
   updateHUD(); renderMissions(); setNetChip(); G.startedAt = now();
   const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length);
-  step('play'); if (fresh) setTimeout(startStory, 900);
+  step('play'); bigText('AMBIENCE MALL', 'Gurugram · ' + clockText(), 2); if (fresh) setTimeout(startStory, 2300);
   else { toast('Ram Ram, ' + P.name + '! Wapas aa gaya.'); if (daily && daily.streak > 1) setTimeout(() => toast('Day ' + daily.streak + ' streak: +' + fmt(daily.amt) + ' wallet mein', 'money'), 9000); }
 }
 

@@ -31,9 +31,9 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 ## What's in the game
 
 **City and earning**
-- 25 real Gurugram areas, Rapid Metro stations, day–night cycle, autos, buses, trucks and cows on the road.
+- 25 real Gurugram areas, Rapid Metro stations, day and night that follow real Gurugram time (IST), autos, buses, trucks and cows on the road.
 - Jhatpat food delivery, Chalo rides, office shifts and promotions at TechNova Towers, side jobs from Ramphal Ahlawat (a land-rich crorepati in Badshahpur), and missions that never run out.
-- Walk-in interiors: Metro Grand Mall, TechNova office, Desi Theka No.1, Sher-e-Haryana Dhaba and Neon Nights club.
+- Walk-in interiors: Ambience Mall (where every player starts), TechNova office, Desi Theka No.1, Sher-e-Haryana Dhaba and Neon Nights club.
 
 **Show-off**
 - Live VIP number plate auctions (HR26 0001, 0007, 0786…) and random HR26 plates.
