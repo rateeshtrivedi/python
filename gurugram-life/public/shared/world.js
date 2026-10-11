@@ -417,6 +417,26 @@ function handle(c, m) {
     case 'unshade': { if (p.outfit.shades) { p.outfit.shades = false; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'name': { const n = D.cleanText(m.name, 16); if (n.length >= 2 && rateOk(c, 'name', 30)) { p.name = n; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'tutdone': { p.tutDone = true; dirty = true; break; }
+    case 'races': { reply({ ok: true, rec: raceTops(), best: p.raceBest || {}, wins: p.raceWins || {} }); break; }
+    case 'race': { // a finished street race: personal best, route record, prize
+      const R = D.RACES.find(r => r.id === m.id); if (!R) return reply({ ok: false, error: 'Unknown race' });
+      const ms = Math.round(num(m.ms)); if (!(ms >= R.minMs && ms < 600000)) return reply({ ok: false, error: 'Time not valid' });
+      if (!rateOk(c, 'race', R.minMs / 1000 * 0.8)) return reply({ ok: false, error: 'Thoda ruk ke' });
+      const won = !!m.won; p.raceBest = p.raceBest || {}; p.raceWins = p.raceWins || {};
+      const pb = p.raceBest[R.id]; const newPb = !pb || ms < pb; if (newPb) p.raceBest[R.id] = ms;
+      const firstWin = won && !p.raceWins[R.id]; if (won) p.raceWins[R.id] = (p.raceWins[R.id] || 0) + 1;
+      db.races = db.races || {}; const top = db.races[R.id] || (db.races[R.id] = []);
+      const oldRec = top[0] ? top[0].ms : Infinity; const mine = top.find(e => e.id === p.id);
+      if (mine) { if (ms < mine.ms) { mine.ms = ms; mine.name = p.name; } } else top.push({ id: p.id, name: p.name, ms });
+      top.sort((a, b) => a.ms - b.ms); if (top.length > 20) top.length = 20;
+      const rank = top.findIndex(e => e.id === p.id) + 1;
+      if (ms < oldRec && oldRec !== Infinity) announce(p.name + ' ne ' + R.name + ' ka record tod diya: ' + (ms / 1000).toFixed(1) + 's!', 'showoff');
+      const amt = won ? R.prize * (firstWin ? 2 : 1) : Math.round(R.prize * 0.15);
+      credit(c, amt, (won ? 'Race jeeti: ' : 'Race: ') + R.name); addXP(c, won ? 60 : 20); if (won) p.respect += firstWin ? 10 : 2;
+      dirty = true; sendProfile(c);
+      reply({ ok: true, ms, pb: p.raceBest[R.id], newPb, rank, top: top.slice(0, 5).map(e => ({ name: e.name, ms: e.ms })), amt, firstWin });
+      break;
+    }
     case 'bid': {
       if (!auction) return reply({ ok: false, error: 'Abhi koi boli nahi chal rahi' });
       const min = Math.max(D.PLATE_START_BID, Math.ceil(auction.bid * 1.1 / 1000) * 1000);
@@ -581,7 +601,7 @@ function connect(out, closeFn, meta, outRaw) {
         turf: turfView(), crews: crewList(), ann: announcements.slice(-8), belt: db.belt, lb: lbCache || leaderboards(), serverTime: now(),
       });
       broadcast(pinfo(c));
-      if (conns.size > 1) broadcast({ t: 'toast', text: p.name + ' Gurugram mein aa gaya! (' + conns.size + ' online)' }, x => x !== c);
+      if (conns.size > 1) broadcast({ t: 'toast', text: p.name + ' Gurugram mein aa gaya! (' + conns.size + ' online)', kind: 'join' }, x => x !== c);
       return;
       }
       try { handle(c, m); } catch (e) { console.error('handler error', m && m.t, e); }
@@ -634,6 +654,8 @@ function tick1s() {
   if (slow % 60 === 0) beltCheckDay();
   botTick();
 }
+
+function raceTops() { const o = {}; for (const R of D.RACES) o[R.id] = ((db.races || {})[R.id] || []).slice(0, 5).map(e => ({ name: e.name, ms: e.ms })); return o; }
 
 // owner stats (server /admin page): every real player, newest activity first
 function stats() {

@@ -185,3 +185,30 @@ export function netWorth(p) {
 export function cleanText(s, max) {
   return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
+
+// Street races: checkpoints follow real roads (corners sit on junctions). Each win unlocks the next rival.
+// minMs: no car can finish faster (route length / 52 units per second, top speed with NOS), so the server rejects anything quicker.
+export const RACES = [
+  { id: 'sheetla', name: 'Sheetla Mata Road Sprint', rival: 'Monu Dahiya', veh: 'chhotu', color: 0xdedede, skill: 0.9, prize: 600,
+    pts: [[-10, 75], [75, 75], [75, 225], [225, 225], [225, 330]],
+    taunt: ['Oye naye! Race lagegi? Haar gaya to chai tere taraf se!', 'Chal dekh lete hain kitna dum se tere mein'],
+    win: ["Arre! Beginner's luck se yeh. Rematch kar!", 'Theek se, agli baar dekh lunga'], lose: ['Ghar ja ke cycle chala, chhore!', 'Chai tere taraf se. Rematch?'] },
+  { id: 'golf', name: 'Golf Course Road Run', rival: 'Jassi Sandhu', veh: 'desert', color: 0x2e6bd1, skill: 0.98, prize: 1000,
+    pts: [[-225, 330], [-225, -225], [-75, -225], [-75, -375], [60, -375]],
+    taunt: ['Golf Course Road meri se, paaji. Aaja!', 'Thar di power dekhega?'],
+    win: ['Oye hoye! Changa chalaya', 'Lucky si tu, rematch kar'], lose: ['Balle balle! Mera road, meri race', 'Hor practice kar, paaji'] },
+  { id: 'cyber', name: 'Cyber City Loop', rival: 'Pinky Yadav', veh: 'desert', color: 0xff5fa2, skill: 1.02, prize: 1400,
+    pts: [[-75, -280], [-75, -375], [75, -375], [75, -225], [-75, -225], [-75, -300]],
+    taunt: ['Office se pehle ek loop? Haarne ke liye ready?', 'Corners pe brake lagana seekh le pehle'],
+    win: ['Hmm, not bad. Kal phir', 'Ok ok, maan gayi'], lose: ['Corners pe dheela pad gaya!', 'Bye bye, slowpoke'] },
+  { id: 'nh48', name: 'NH-48 Drag', rival: 'Rocky Gujjar', veh: 'cruiser', color: 0x151515, skill: 1.06, prize: 2000,
+    pts: [[-420, -375], [260, -375]],
+    taunt: ['Seedhi sadak, full race. NOS hai tere paas?', 'Highway ka raja main hoon'],
+    win: ['Kaise?! NOS mein kya daala tha?', 'Rematch, abhi ke abhi!'], lose: ['Highway pe bachche nahi chalte', 'Drift karke NOS bhar, fir aaiyo'] },
+  { id: 'badshahpur', name: 'Badshahpur Night Run', rival: 'Chaudhary Saab', veh: 'cruiser', color: 0xf6c026, skill: 1.1, prize: 3500,
+    pts: [[375, -300], [375, 75], [225, 75], [225, 375], [-75, 375], [-75, 300]],
+    taunt: ['Gurugram ka street king banna se? Pehle mujhe hara', 'Badshahpur mera ilaaka se, chhore'],
+    win: ['Aaj se tu Gurugram ka Street King. Ram Ram!', 'Jeet gaya... par kal fir aaunga'], lose: ['Abhi bachcha se tu', 'Street King ka taj itna sasta nahi'] },
+];
+export function raceLen(r) { let s = 0; for (let i = 1; i < r.pts.length; i++) s += Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]); return s; }
+for (const r of RACES) r.minMs = Math.round(raceLen(r) / 52 * 1000);
