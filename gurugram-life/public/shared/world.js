@@ -417,6 +417,9 @@ function handle(c, m) {
     case 'unshade': { if (p.outfit.shades) { p.outfit.shades = false; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'name': { const n = D.cleanText(m.name, 16); if (n.length >= 2 && rateOk(c, 'name', 30)) { p.name = n; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'tutdone': { p.tutDone = true; dirty = true; break; }
+    case 'step': { // first-session funnel for the owner page: the first time each player reaches a milestone
+      const k = String(m.k || ''); if (!FUNNEL.some(f => f[0] === k)) return; p.steps = p.steps || {}; if (!p.steps[k]) { p.steps[k] = Date.now(); dirty = true; } break;
+    }
     case 'races': { reply({ ok: true, rec: raceTops(), best: p.raceBest || {}, wins: p.raceWins || {} }); break; }
     case 'race': { // a finished street race: personal best, route record, prize
       const R = D.RACES.find(r => r.id === m.id); if (!R) return reply({ ok: false, error: 'Unknown race' });
@@ -657,6 +660,8 @@ function tick1s() {
 
 function raceTops() { const o = {}; for (const R of D.RACES) o[R.id] = ((db.races || {})[R.id] || []).slice(0, 5).map(e => ({ name: e.name, ms: e.ms })); return o; }
 
+const FUNNEL = [['play', 'Pressed Khelo'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
+
 // owner stats (server /admin page): every real player, newest activity first
 function stats() {
   const t = Date.now(), day = 864e5, list = [];
@@ -668,7 +673,8 @@ function stats() {
   }
   list.sort((a, b) => b.lastSeen - a.lastSeen);
   const since = ms => list.filter(p => p.lastSeen > t - ms).length, joined = ms => list.filter(p => p.created > t - ms).length;
-  return { total: list.length, online: conns.size, active24h: since(day), active7d: since(7 * day), new24h: joined(day), new7d: joined(7 * day), players: list };
+  const real = Object.values(db.profiles).filter(p => !p.bot); const funnel = FUNNEL.map(([k, label]) => ({ k, label, n: real.filter(p => p.steps && p.steps[k]).length }));
+  return { funnel, total: list.length, online: conns.size, active24h: since(day), active7d: since(7 * day), new24h: joined(day), new7d: joined(7 * day), players: list };
 }
 
 return { connect, tick100, tick1s, persist, stats, players: () => conns.size };
