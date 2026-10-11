@@ -136,3 +136,29 @@ export function sfx(k, vol = 1) {
   else if (k === 'nos') { noise(t, 0.9, 0.22, 500, 0.4, 'lowpass', d); const o = osc('sawtooth', 70, t, 0.8, 0.06, d); o.frequency.exponentialRampToValueAtTime(160, t + 0.7); }
   else if (k === 'shutter') { noise(t, 0.04, 0.4, 3000, 1, 'highpass', d); noise(t + 0.07, 0.04, 0.3, 2500, 1, 'highpass', d); }
 }
+
+// ---- situation music: a fight theme (drums + low riff) and a dhol bhangra for baraats and dancing.
+// Percussion-led on purpose; the radio ducks while one plays and comes back after.
+function dholTilli(t, dest, v = 1) { osc('triangle', 430, t, 0.07, 0.22 * v, dest).frequency.exponentialRampToValueAtTime(320, t + 0.05); noise(t, 0.05, 0.22 * v, 2600, 2, 'bandpass', dest); }
+function chimta(t, dest, v = 1) { noise(t, 0.1, 0.09 * v, 7200, 5, 'bandpass', dest); osc('square', 3150, t, 0.05, 0.02 * v, dest); }
+function clap(t, dest, v = 1) { for (let i = 0; i < 3; i++) noise(t + i * 0.012, 0.06, 0.18 * v, 1500, 1.2, 'bandpass', dest); }
+function taiko(t, dest, v = 1) { const o = osc('sine', 120, t, 0.45, 0.9 * v, dest); o.frequency.exponentialRampToValueAtTime(42, t + 0.3); noise(t, 0.08, 0.3 * v, 400, 0.8, 'lowpass', dest); }
+function stab(t, midi, dest, v = 1) { const c = Music.ctx; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(1800, t); lp.frequency.exponentialRampToValueAtTime(300, t + 0.25); lp.connect(dest); for (const k of [0, 7, 12]) osc('sawtooth', mtof(midi + k), t, 0.28, 0.07 * v, lp); }
+const THEMES = {
+  fight: { step: 60 / 142 / 4, len: 32, play(s, t, d) { const b = s % 16; if ([0, 3, 6, 8, 10, 14].includes(b)) taiko(t, d, b === 0 ? 1 : 0.75); if (b === 4 || b === 12) clap(t, d, 1.1); if (b % 2 === 0) noise(t, 0.03, 0.06, 9000, 1, 'highpass', d); const riff = [40, 0, 0, 40, 0, 0, 43, 0, 45, 0, 46, 0, 45, 0, 43, 0]; const n = riff[b]; if (n) { const o = osc('sawtooth', mtof(n - 12), t, 0.16, 0.12, d); o.frequency.setValueAtTime(mtof(n - 12), t); } if (s % 32 === 0) stab(t, 52, d); } },
+  bhangra: { step: 60 / 104 / 3, len: 24, play(s, t, d) { const k = s % 12, pos = k % 3, beat = Math.floor(k / 3); if (pos === 0) dholBass(t, d, beat % 2 === 0 ? 0.95 : 0.7); if (pos === 2) dholBass(t, d, 0.5); if (pos === 1 || (pos === 2 && beat === 3)) dholTilli(t, d, pos === 1 ? 1 : 0.7); if (pos === 0 && (beat === 1 || beat === 3)) { chimta(t, d); clap(t, d, 0.7); } if (s % 24 === 21) dholTilli(t + 0.07, d, 0.8); } },
+};
+const Theme = { cur: null, timer: null, step: 0, next: 0, gain: null };
+export function setTheme(id) {
+  if (Theme.cur === id) return; Theme.cur = id; if (!Music.ctx) return; const c = Music.ctx;
+  if (!Theme.gain) { Theme.gain = c.createGain(); Theme.gain.gain.value = 0; Theme.gain.connect(c.destination); }
+  const g = Theme.gain.gain; g.cancelScheduledValues(c.currentTime);
+  if (id) {
+    g.setTargetAtTime(clamp(Music.vol * 1.6, 0.18, 0.55), c.currentTime, 0.25); Theme.step = 0; Theme.next = c.currentTime + 0.05;
+    if (!Theme.timer) Theme.timer = setInterval(() => { const T = THEMES[Theme.cur]; if (!T) return; while (Theme.next < c.currentTime + 0.12) { T.play(Theme.step, Theme.next, Theme.gain); Theme.next += T.step; Theme.step++; } }, 25);
+    for (const a of [Radio.live, Radio.audio]) if (a) a.volume = Music.vol * 0.25;
+  } else {
+    g.setTargetAtTime(0, c.currentTime, 0.35); setTimeout(() => { if (!Theme.cur) { clearInterval(Theme.timer); Theme.timer = null; } }, 1500);
+    for (const a of [Radio.live, Radio.audio]) if (a) a.volume = Music.vol;
+  }
+}

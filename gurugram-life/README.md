@@ -59,6 +59,18 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **Radio**: real Haryanvi and Punjabi songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
 
+**Joining**: name → character creator (ladka/ladki, skin, 5 hairstyles each, hair colour, T-shirt/kurta/jacket or kurti/jacket/saree, colours, pants, moonchh/daadhi or bindi/jhumke, cap/pagdi/dupatta, kaala chashma, and Chacha's car) with a live 3D preview → choose where to start (Ambience Mall runs the Pehla Din story).
+
+**Controls**: click once for mouse-look; W A S D, Space jump (handbrake in a car), Shift run (NOS in a car), left-click or Q punch, E action, F car, Tab menu, M 3D map. Phones: joystick, Jump/NOS, Punch, Gaadi, a contextual Action button and one Menu button.
+
+**City**: shop rows with local signboards along every block, a skyline ring, ~170 instanced pedestrians plus crowds near doors, more traffic, potholes, waterlogging and garbage piles, a police thana. Cars knock people down and crash into traffic. The 3D map (M) flies over the city with pins for work, food, police, shopping, party, races, cars, hospital and metro; tap a pin to set GPS.
+
+**Computer players**: with fewer than 4 people online, up to 3 "(AI)" players walk and drive the roads nearby, chat, greet newcomers, reply sometimes and fight back. They are not counted as online players.
+
+**Levels**: each day a player gets 3 tasks for their next level; XP stops at full until they are done.
+
+**Music**: a fight theme during fights and a dhol bhangra at baraats or when dancing outdoors; the radio ducks under them.
+
 **Street races**: five races on real roads (Sheetla Mata Road, Golf Course Road, Cyber City, NH-48, Badshahpur), each against a named rival; winning unlocks the next one. New players start straight into the first race. Driving has NOS (filled by drifting, near misses with traffic and checkpoints), drift smoke and a speed camera. Personal bests and the top 20 times per race are kept on the server.
 
 ## How it's built

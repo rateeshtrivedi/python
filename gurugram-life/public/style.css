@@ -217,3 +217,48 @@ body.racing #banner,body.racing #missions,body.racing #feed,body.racing #loc,bod
 .cbtn.pulse{animation:glowy .5s ease-in-out infinite alternate;background:#2a8cff!important}
 body.racing #quest{display:none!important}
 @media (max-width:700px){#bigtxt{top:31%}#quest{top:calc(240px + env(safe-area-inset-top,0px));left:12px;transform:none;max-width:calc(100% - 24px)}#quest b{font-size:16px}}
+/* character creator + start place picker */
+#creator,#startpick{position:absolute;inset:0;display:flex;pointer-events:none}
+#creator > *,#startpick > *{pointer-events:auto}
+.cpanel,.spanel{width:min(420px,100%);height:100%;background:var(--cream);color:var(--ink);display:flex;flex-direction:column;box-shadow:8px 0 40px rgba(0,0,0,.35)}
+.chead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 6px}.chead h2,.spanel h2{margin:0;font:800 26px var(--display)}
+.spanel h2{padding:14px 18px 6px}
+.crows{flex:1;overflow-y:auto;padding:6px 18px 12px;display:grid;gap:12px;align-content:start}
+.crow label{display:block;font:700 12px var(--display);letter-spacing:.1em;text-transform:uppercase;color:#7a4a1b;margin-bottom:5px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}.seg button{font:700 14px var(--display);padding:7px 12px;border-radius:10px;border:2px solid #d9b26a;background:#fffaf0;color:var(--ink)}
+.seg button.on{background:var(--lal);border-color:var(--lal);color:#fff}
+.dots{display:flex;flex-wrap:wrap;gap:8px}.dots button{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #d9b26a}.dots button.on{box-shadow:0 0 0 3px var(--lal)}
+.cfoot{display:flex;gap:10px;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid #e8d6ae}.cfoot .go{flex:1;margin:0}
+.chint{position:absolute;right:18px;bottom:18px;background:rgba(27,20,16,.8);color:var(--cream);border-radius:10px;padding:6px 12px;font:700 13px var(--display)}
+.splaces{flex:1;overflow-y:auto;padding:8px 18px 12px;display:grid;gap:10px;align-content:start}
+.splace{display:block;text-align:left;width:100%;padding:12px 14px;border-radius:14px;border:2px solid #d9b26a;background:#fffaf0;color:var(--ink)}
+.splace b{display:block;font:800 18px var(--display)}.splace span{font:600 13px var(--body);color:#6b5a48}
+.splace.rec{border-color:var(--lal);background:#fff1e6}.splace.rec b::after{content:' · Recommended';color:var(--lal);font-size:13px}
+@media (max-width:700px){#creator,#startpick{flex-direction:column;justify-content:flex-end}.cpanel{width:100%;height:58%;border-radius:18px 18px 0 0}.spanel{width:100%;height:78%;border-radius:18px 18px 0 0}.chint{top:14px;bottom:auto;right:auto;left:50%;transform:translateX(-50%)}}
+
+/* simple controls: a few big buttons, everything else behind Menu */
+#controls{grid-template-columns:repeat(2,auto)!important;align-items:end;justify-items:end;gap:12px!important}
+#controls .cbtn{width:68px!important;height:68px!important;font-size:13px!important}
+#controls .cbtn.big{width:88px!important;height:88px!important;font-size:16px!important;border-color:#2a8cff;background:rgba(20,50,90,.85)}
+#controls .cbtn.gold{background:var(--sarson);color:var(--ink);border-color:#9b7410}#controls .cbtn.gold kbd{color:#5b4a2a}
+#controls .cbtn.menu{grid-column:1/-1;width:auto!important;height:44px!important;border-radius:22px;padding:0 18px;flex-direction:row;gap:8px}
+body:not(.touch) #controls .touchonly{display:none}
+body:not(.touch) #bAct{display:none}
+#keyhint{position:absolute;left:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));background:rgba(27,20,16,.82);border-radius:12px;padding:8px 12px;font:600 13px/1.5 var(--body);max-width:320px;pointer-events:none}
+#keyhint kbd{display:inline-block;min-width:22px;text-align:center;background:var(--cream);color:var(--ink);border-radius:5px;padding:0 5px;margin-right:4px;font:800 12px var(--display)}
+body.touch #keyhint{display:none}
+#lockhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.85);pointer-events:none;display:none}
+body.locked #lockhint{display:block}
+
+/* 3D map */
+body.mapmode #hud{display:none!important}
+#map3d{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between}
+#map3d > *{pointer-events:auto}
+#map3d .mtop{display:flex;justify-content:space-between;align-items:center;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 6px;background:linear-gradient(rgba(27,20,16,.85),rgba(27,20,16,0))}
+#map3d .mtop b{font:800 24px var(--display);color:var(--sarson)}
+#map3d .mchips{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));left:12px;right:12px;display:flex;flex-wrap:wrap;gap:6px}
+#map3d .mchips button{font:700 13px var(--display);padding:6px 12px;border-radius:99px;background:rgba(27,20,16,.82);color:#fff;border:2px solid var(--c)}
+#map3d .mchips button.on{background:var(--c)}
+#map3d .mhint{align-self:center;margin-bottom:calc(16px + env(safe-area-inset-bottom,0px));background:rgba(27,20,16,.82);border-radius:12px;padding:6px 14px;font:700 13px var(--display);pointer-events:none}
+@media (max-width:700px){#loc{left:16px!important;right:auto!important;transform:none!important;bottom:calc(166px + env(safe-area-inset-bottom,0px))!important;max-width:150px!important}}
+#missions .m.done{color:#8fe3a6;text-decoration:line-through;opacity:.8}
