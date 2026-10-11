@@ -43,7 +43,7 @@ function announce(text, kind) {
 }
 function dist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 function placeName(st) {
-  if (st.in) return { mall: 'Metro Grand Mall', office: 'TechNova Towers', theka: 'Desi Theka No.1', dhaba: 'Sher-e-Haryana Dhaba', club: 'Neon Nights' }[st.in] || 'Gurugram';
+  if (st.in) return { mall: 'Ambience Mall', office: 'TechNova Towers', theka: 'Desi Theka No.1', dhaba: 'Sher-e-Haryana Dhaba', club: 'Neon Nights' }[st.in] || 'Gurugram';
   const d = D.districtAt(st.x, st.z); return d ? d[2] : 'Gurugram ki sadak';
 }
 function crewOf(p) { return p.crew && db.crews[p.crew] ? db.crews[p.crew] : null; }
@@ -273,7 +273,7 @@ function handleBuy(c, m) {
     if (id === 'metro') after = () => { track(c, 'metro'); addXP(c, 10); };
     if (id === 'lucky') after = () => {
       const r = Math.random(); const prize = r < 0.45 ? 0 : r < 0.7 ? 100 : r < 0.86 ? 300 : r < 0.95 ? 500 : r < 0.99 ? 1000 : 5000;
-      if (prize) credit(c, prize, 'Lucky draw'); c.lastPrize = prize; if (prize >= 1000) announce(p.name + ' ne Metro Grand Mall lucky draw mein ' + fmt(prize) + ' jeete!', 'showoff');
+      if (prize) credit(c, prize, 'Lucky draw'); c.lastPrize = prize; if (prize >= 1000) announce(p.name + ' ne Ambience Mall lucky draw mein ' + fmt(prize) + ' jeete!', 'showoff');
     };
     if (id === 'bottle') after = () => { p.party += 50; p.respect += 10; announce(p.name + ' ne Neon Nights mein poore club ke liye bottle mangwayi! Sab ki taraf se cheers!', 'party'); broadcast({ t: 'fx', fx: 'bottle', by: p.id }, x => x.st?.in === 'club'); };
     if (id === 'notes') after = () => { p.party += 5; p.respect += 10; track(c, 'showoff'); announce(p.name + ' ne baraat mein ' + fmt(1000) + ' ke note udaye!', 'party'); broadcast({ t: 'fx', fx: 'notes', x: c.st?.x, z: c.st?.z }); };
