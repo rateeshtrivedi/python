@@ -183,7 +183,7 @@ body.touch #chatlog{left:170px;width:calc(100% - 420px)}
 #racehud{position:absolute;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:rgba(27,20,16,.88);border:2px solid var(--sarson);border-radius:16px;padding:6px 18px;font:800 20px var(--display);white-space:nowrap;font-variant-numeric:tabular-nums;pointer-events:none}
 #racehud b{font-size:30px;line-height:1}#racehud .p1{color:var(--sarson)}#racehud .p2{color:#ff8a7a}#racehud small{font:600 13px var(--body);color:var(--muted)}
 #bigtxt{position:absolute;left:0;right:0;top:17%;text-align:center;pointer-events:none;animation:slam .35s cubic-bezier(.2,1.6,.4,1)}
-#bigtxt b{display:block;font:800 clamp(56px,13vw,120px)/1 var(--display);color:var(--sarson);text-shadow:0 6px 0 #7a1608,0 0 30px rgba(0,0,0,.6);letter-spacing:1px}
+#bigtxt b{display:block;padding:0 12px;font:800 clamp(34px,min(9vw,11vh),84px)/1.02 var(--display);text-wrap:balance;color:var(--sarson);text-shadow:0 6px 0 #7a1608,0 0 30px rgba(0,0,0,.6);letter-spacing:1px}
 #bigtxt small{display:inline-block;margin-top:10px;font:800 20px var(--display);background:rgba(27,20,16,.85);padding:4px 16px;border-radius:12px}
 @keyframes slam{from{transform:scale(2.4);opacity:0}to{transform:scale(1);opacity:1}}
 #combo{position:absolute;left:50%;top:58%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none}
@@ -204,3 +204,16 @@ body.touch #chatlog{left:170px;width:calc(100% - 420px)}
 #raceres .btns{display:grid;gap:8px;margin-top:12px}#raceres .big{font-size:18px;padding:12px}#raceres .alt2{background:var(--neela);color:#fff}
 body.racing #banner,body.racing #missions,body.racing #feed,body.racing #loc,body.racing #job,body.racing #chatlog,body.racing #tut{display:none!important}
 @media (max-width:700px){body.racing #stat,body.racing #topbtns{display:none!important}#racehud{font-size:16px;gap:9px;padding:5px 12px;max-width:calc(100% - 150px);left:12px;transform:none}#racehud b{font-size:24px}#racehud small{display:none}#racehint{bottom:auto;top:calc(64px + env(safe-area-inset-top,0px));left:12px;transform:none;font-size:12px;white-space:normal;max-width:calc(100% - 150px)}#speedo{left:auto;right:auto;left:50%;bottom:calc(196px + env(safe-area-inset-bottom,0px));min-width:120px}#speedo b{font-size:26px}}
+/* Pehla Din objective + Sapna goal */
+#quest{position:absolute;left:50%;top:calc(52px + env(safe-area-inset-top,0px));transform:translateX(-50%);min-width:260px;max-width:min(460px,calc(100% - 32px));background:var(--cream);color:var(--ink);border-radius:14px;padding:7px 54px 8px 14px;border:3px solid var(--lal);box-shadow:0 8px 24px rgba(0,0,0,.35);animation:pop .3s ease-out;pointer-events:auto}
+#quest small{display:block;font:700 11px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--lal)}
+#quest b{display:block;font:800 19px/1.15 var(--display)}#quest span{display:block;font:600 14px var(--body);color:#5b4a3a}
+#quest .skip{position:absolute;right:10px;top:8px;font:700 12px var(--display);color:var(--neela);text-decoration:underline}
+#sapna{display:block;width:100%;margin-top:6px;padding:5px 7px 6px;border-radius:9px;background:rgba(246,192,38,.12);border:1px solid rgba(246,192,38,.45);text-align:left;color:inherit;cursor:pointer}
+#sapna .blab span:first-child{color:var(--sarson);text-transform:none;letter-spacing:0;font-weight:700;font-size:12px}
+#sapna .bar i{background:linear-gradient(90deg,var(--sarson),#ffe27a)}
+#sapna.ready{animation:glowy 1.2s ease-in-out infinite alternate;border-color:var(--sarson)}
+@keyframes glowy{from{box-shadow:0 0 0 0 rgba(246,192,38,.0)}to{box-shadow:0 0 14px 2px rgba(246,192,38,.8)}}
+.cbtn.pulse{animation:glowy .5s ease-in-out infinite alternate;background:#2a8cff!important}
+body.racing #quest{display:none!important}
+@media (max-width:700px){#bigtxt{top:31%}#quest{top:calc(240px + env(safe-area-inset-top,0px));left:12px;transform:none;max-width:calc(100% - 24px)}#quest b{font-size:16px}}
