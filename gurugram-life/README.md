@@ -57,7 +57,9 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **City-wide events** (every few minutes, same for everyone): baraat, Iffco Chowk mahajam, monsoon flood with surge pay, Holi colours, Diwali fireworks, IPL screening at Cyber Hub.
 
-**Radio**: two stations of original Haryanvi and Punjabi-style music generated in the browser, plus "Meri Playlist" for players' own song files.
+**Radio**: real Haryanvi and Punjabi songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
+
+**Street races**: five races on real roads (Sheetla Mata Road, Golf Course Road, Cyber City, NH-48, Badshahpur), each against a named rival; winning unlocks the next one. New players start straight into the first race. Driving has NOS (filled by drifting, near misses with traffic and checkpoints), drift smoke and a speed camera. Personal bests and the top 20 times per race are kept on the server.
 
 ## How it's built
 

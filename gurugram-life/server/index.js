@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createWorld } from '../public/shared/world.js';
+import { stations } from './stations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -55,6 +56,7 @@ app.use((req, res, next) => {
 });
 const VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local';
 app.get('/healthz', (req, res) => res.json({ ok: true, players: world.players(), version: VERSION, websocket: '/ws' }));
+app.get('/api/stations', async (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.json(await stations().catch(() => ({ har: [], pun: [] }))); });
 // Owner page: who has played. Set ADMIN_KEY on the host to turn it on; the browser asks for it as the password.
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 function adminOk(req) {

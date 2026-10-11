@@ -534,9 +534,11 @@ function buildInteriors() {
 }
 
 // ================================================================ HUD
-function toast(msg, cls) { const t = el('div', { class: 'toast' + (cls ? ' ' + cls : ''), text: msg }); $('toasts').prepend(t); while ($('toasts').children.length > 3) $('toasts').lastChild.remove(); setTimeout(() => t.remove(), 3800); }
+// At most two short toasts at a time, never the same text twice
+function toast(msg, cls) { const box = $('toasts'); for (const c of box.children) if (c.textContent === msg) return; const t = el('div', { class: 'toast' + (cls ? ' ' + cls : ''), text: msg }); box.prepend(t); while (box.children.length > 2) box.lastChild.remove(); setTimeout(() => t.remove(), 3200); }
 A.hooks.toast = toast; A.hooks.label = radioLabel;
-function feed(text, kind) { const d = el('div', { class: kind || '', text }); $('feed').prepend(d); while ($('feed').children.length > 5) $('feed').lastChild.remove(); setTimeout(() => d.remove(), 16500); }
+// City news: quiet for the first 20 s and during races, at most three lines
+function feed(text, kind) { if (G.race || now() - (G.startedAt || 0) < 20) return; const d = el('div', { class: kind || '', text }); $('feed').prepend(d); while ($('feed').children.length > 3) $('feed').lastChild.remove(); setTimeout(() => d.remove(), 10500); }
 function updateHUD() {
   if (!P) return;
   $('pname').textContent = P.name; $('plv').textContent = 'Lv ' + P.level; $('money').textContent = fmt(P.money); $('ptitle').textContent = D.respectTitle(P.respect) + ' · ' + P.respect + ' R';
@@ -606,7 +608,7 @@ function bottleService() { openModal('VIP bottle service', 'Poore club ko pata c
 function openPhone() {
   tutEvent('phone');
   openModal('Mera Phone', P.name + ' · ' + fmt(P.money) + ' · ' + D.RANKS[P.rank][0] + ' at TechNova', b => {
-    const apps = [['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Map', '#1a8a4a', 'M', appMap], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]];
+    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Map', '#1a8a4a', 'M', appMap], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]];
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
@@ -774,11 +776,11 @@ function mount(type) {
   if (G.inside) return toast('Andar gaadi nahi chalti, bhai'); if (G.veh) return;
   G.veh = type; G.vs = 0; playerVeh = makeVehicle(type, null, (P.mods && P.mods[type]) || {}, type === 'rent' ? null : P.plate); scene.add(playerVeh);
   player.visible = D.VEH[type].kind === 2; if (player.visible) sitChar(player); G.dance = false;
-  A.sfx('engine'); toast('Chal pade ' + D.VEH[type].name + ' pe!');
+  if (!G.quietMount) { A.sfx('engine'); toast('Chal pade ' + D.VEH[type].name + ' pe!'); }
   if (L.drinks > 0 && G.tipsy > now()) setTimeout(() => toast('Peeke chala rya se? Iffco Chowk naka pe dhyaan rakhiyo!', 'bad'), 1200);
 }
-function dismount() { if (!G.veh) return; scene.remove(playerVeh); playerVeh = null; if (G.veh === 'rent') { G.rented = false; toast('Rental khatam. Bhaago scooter wapas.'); } G.veh = null; G.vs = 0; player.visible = true; player.position.y = 0; G.x += Math.cos(G.r) * 1.8; G.z -= Math.sin(G.r) * 1.8; resolve(G, 0.6); }
-function toggleVehicle() { if (G.veh) return dismount(); if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); mount(P.cur && P.vehicles.includes(P.cur) ? P.cur : P.vehicles[0]); }
+function dismount() { if (!G.veh) return; if (G.race) cleanupRace(); if (G.loaner) { G.loaner = false; toast('Chacha ki gaadi wapas. Apni gaadi Chaudhary Motors (NH-48) se le!'); } G.slip = 0; scene.remove(playerVeh); playerVeh = null; if (G.veh === 'rent') { G.rented = false; toast('Rental khatam. Bhaago scooter wapas.'); } G.veh = null; G.vs = 0; player.visible = true; player.position.y = 0; G.x += Math.cos(G.r) * 1.8; G.z -= Math.sin(G.r) * 1.8; resolve(G, 0.6); }
+function toggleVehicle() { if (G.veh) { if (G.race && G.race.phase !== 'done') return quitRace(); return dismount(); } if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); mount(P.cur && P.vehicles.includes(P.cur) ? P.cur : P.vehicles[0]); }
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
 function exitInterior() { const key = G.inside; const d = DOORS[key]; fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
@@ -796,11 +798,12 @@ const keys = {}; let joyX = 0, joyY = 0, runBtn = false;
 window.addEventListener('keydown', e => {
   if (document.activeElement && (document.activeElement.tagName === 'INPUT')) { if (e.key === 'Escape') { closeChat(); document.activeElement.blur(); } return; }
   if (G.minigame && e.key.startsWith('Arrow')) { G.minigame.press(e.key); e.preventDefault(); return; }
-  if (e.key === 'Escape') { if (!$('modal').hidden) closeModal(); else if (G.selfie) endSelfie(); return; }
+  if (e.key === 'Escape') { if (!$('modal').hidden) closeModal(); else if (G.selfie) endSelfie(); else if (!$('raceres').hidden) cleanupRace(); return; }
+  if (!$('raceres').hidden && $('modal').hidden && G.race) { if (e.key === 'Enter') { e.preventDefault(); return startRace(G.race.R.id); } if (e.code === 'KeyN' && D.RACES[G.race.i + 1] && raceUnlocked(G.race.i + 1)) return startRace(D.RACES[G.race.i + 1].id); }
   if (!G.started || !$('modal').hidden) return;
   keys[e.code] = true;
   const k = e.code;
-  if (k === 'KeyE') doAction(); if (k === 'KeyF') punch(); if (k === 'KeyV') toggleVehicle(); if (k === 'KeyT') { e.preventDefault(); openChat(); } if (k === 'KeyP') openPhone(); if (k === 'KeyM') A.toggleMusic(); if (k === 'KeyR') A.nextStation();
+  if (k === 'KeyE') doAction(); if (k === 'KeyF') punch(); if (k === 'KeyV') toggleVehicle(); if (k === 'KeyT') { e.preventDefault(); openChat(); } if (k === 'KeyP') openPhone(); if (k === 'KeyM') A.toggleMusic(); if (k === 'KeyR') A.nextStation(); if (k === 'ShiftLeft' || k === 'ShiftRight') e.preventDefault();
   if (k === 'KeyB') toggleDance(); if (k === 'KeyH') horn(); if (k === 'KeyC') startSelfie(); if (k === 'KeyG') throwColor();
   if (k.startsWith('Arrow') || k === 'Space') e.preventDefault();
 });
@@ -820,7 +823,8 @@ window.addEventListener('touchstart', () => document.body.classList.add('touch')
 if (matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch');
 const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.started) fn(); });
 tap('bAct', doAction); tap('bPunch', punch); tap('bVeh', toggleVehicle); tap('bChat', openChat); tap('bPhone', openPhone); tap('bDance', toggleDance); tap('bHorn', horn); tap('bSelfie', startSelfie);
-$('bRun').addEventListener('pointerdown', e => { e.preventDefault(); runBtn = !runBtn; $('bRun').style.background = runBtn ? 'var(--hara)' : ''; });
+$('bRun').addEventListener('pointerdown', e => { e.preventDefault(); if (G.veh) { nosHeld = true; return; } runBtn = !runBtn; $('bRun').style.background = runBtn ? 'var(--hara)' : ''; });
+for (const ev2 of ['pointerup', 'pointercancel', 'pointerleave']) $('bRun').addEventListener(ev2, () => { nosHeld = false; });
 $('helpBtn').onclick = openHelp; $('musicBtn').onclick = appRadio; $('net').onclick = appOnline;
 
 let nearZone = null;
@@ -846,15 +850,17 @@ function updatePlayer(dt) {
   ix = clamp(ix, -1, 1); iy = clamp(iy, -1, 1); if (G.tipsy > now()) ix += Math.sin(now() * 2.3) * 0.35;
   const ox = G.x, oz = G.z; let moving = false; const slow = (inFlood(G.x, G.z) ? 0.55 : 1) * (G.hangover ? 0.8 : 1);
   if (G.veh) {
-    const V = D.VEH[G.veh]; let max = V.speed * slow; if (G.ev?.type === 'jam' && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 90) max = Math.min(max, 6);
-    const target = iy * max * (iy < 0 ? 0.35 : 1); G.vs += (target - G.vs) * Math.min(1, dt * (iy * G.vs < 0 ? 3 : 1.2)); if (Math.abs(iy) < 0.05) G.vs *= Math.pow(0.6, dt); if (blocked) G.vs *= 0.9;
+    const V = D.VEH[G.veh]; let max = V.speed * slow; const locked = G.race && G.race.phase === 'count'; if (locked) iy = Math.min(iy, 0) * 0;
+    G.nosOn = !locked && nosKey() && (G.nos || 0) > 0.02 && iy > 0.2; if (G.nosOn) { max *= 1.38; G.nos = Math.max(0, G.nos - dt * 0.3); if (!G.nosSfx || now() - G.nosSfx > 0.9) { G.nosSfx = now(); A.sfx('nos'); } } if (G.ev?.type === 'jam' && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 90) max = Math.min(max, 6);
+    const target = iy * max * (iy < 0 ? 0.35 : 1); G.vs += (target - G.vs) * Math.min(1, dt * (iy * G.vs < 0 ? 3 : G.nosOn ? 2.6 : 1.2)); if (locked) G.vs = 0; if (Math.abs(iy) < 0.05) G.vs *= Math.pow(0.6, dt); if (blocked) G.vs *= 0.9;
     G.r -= ix * dt * 1.9 * clamp(G.vs / 10, -1, 1); G.x += Math.sin(G.r) * G.vs * dt; G.z += Math.cos(G.r) * G.vs * dt;
     if (resolve(G, playerVeh.userData.rad)) { if (Math.abs(G.vs) > 12) { A.sfx('crash'); G.hp -= 3; flashHit(); } G.vs *= 0.4; }
     if (!drag && now() - (G.lookAt || 0) > 1.2) G.yaw = angLerp(G.yaw, G.r, dt * 2.5);
     moving = Math.abs(G.vs) > 0.5; playerVeh.position.set(G.x, 0.2, G.z); playerVeh.rotation.y = G.r; playerVeh.rotation.z = V.kind === 2 ? ix * -0.15 * clamp(G.vs / 10, 0, 1) : 0;
     if (V.kind === 2) { player.position.set(G.x - Math.sin(G.r) * 0.25, 0.55, G.z - Math.cos(G.r) * 0.25); player.rotation.y = G.r; sitChar(player); }
-    checkBump();
+    checkBump(); driveThrills(dt, ix, iy);
   } else {
+    G.nosOn = false; driveThrills(dt, 0, 0);
     const fx = Math.sin(G.yaw), fz = Math.cos(G.yaw), rx = -Math.cos(G.yaw), rz = Math.sin(G.yaw);
     let dx = fx * iy + rx * ix, dz = fz * iy + rz * ix; const m = Math.hypot(dx, dz);
     if (m > 0.1) { dx /= Math.max(1, m); dz /= Math.max(1, m); const run = keys.ShiftLeft || keys.ShiftRight || runBtn || Math.hypot(joyX, joyY) > 0.95; const sp = (run ? 11 : 6) * (L.hunger <= 0 ? 0.6 : 1) * slow; G.x += dx * sp * dt; G.z += dz * sp * dt; G.r = angLerp(G.r, Math.atan2(dx, dz), Math.min(1, dt * 12)); moving = true; G.running = run; if (G.dance) G.dance = false; }
@@ -931,7 +937,7 @@ async function joinParty() { const r = await net.req('party_join', {}); if (!r.o
 
 // ---------------- naka, toll, chase, hangover, road rage
 let chaseJeep = null;
-function checkNakaToll() {
+function checkNakaToll() { if (G.race) return;
   if (!G.veh || G.inside) return;
   const n = D.SPOTS.naka; if (G.nakaCD < now() && Math.hypot(G.x - n.x, G.z - n.z) < 9) {
     G.nakaCD = now() + 90; const drunk = G.tipsy > now() || (G.drankAt && now() - G.drankAt < 180); const film = (P.mods[G.veh] || {}).film && Math.random() < 0.4;
@@ -1159,23 +1165,26 @@ function drawMini() {
 }
 
 // ================================================================ RADIO UI
-function radioLabel() { const b = $('musicBtn'); if (!A.Radio.playing) { b.textContent = 'Radio: off'; b.classList.remove('on'); return; } const st = A.Radio.override === 'club' ? { freq: 'DJ' } : A.STATIONS.find(x => x.id === A.Radio.st); b.textContent = st.freq + ' · ' + A.nowPlaying(); b.classList.add('on'); }
+function radioLabel() { const b = $('musicBtn'); if (!A.Radio.playing) { b.textContent = 'Radio: off'; b.classList.remove('on'); return; } const st = A.STATIONS.find(x => x.id === A.Radio.st); b.textContent = (A.Radio.override === 'club' ? 'CLUB' : st.freq) + ' · ' + A.nowPlaying(); b.classList.add('on'); }
 function appRadio() {
-  openModal('Gurugram Radio', 'R: next station · M: radio on/off', b => {
+  openModal('Gurugram Radio', 'Asli gaane, live · M: on/off · R: next station', b => {
     const cur = A.STATIONS.find(s => s.id === A.Radio.st);
-    b.append(el('div', { class: 'item', style: 'background:var(--ink);color:var(--cream);border-color:var(--ink)' }, el('div', { class: 't' }, el('b', { text: A.Radio.playing ? (A.Radio.override === 'club' ? 'Neon Nights DJ set' : cur.freq + ' · ' + cur.name) : 'Radio off', style: 'color:var(--sarson)' }), el('small', { text: A.Radio.playing ? 'Now playing: ' + A.nowPlaying() : 'Tune a station below', style: 'color:var(--muted)' }))));
+    b.append(el('div', { class: 'item', style: 'background:var(--ink);color:var(--cream);border-color:var(--ink)' }, el('div', { class: 't' }, el('b', { text: A.Radio.playing ? (A.Radio.override === 'club' ? 'Neon Nights: Punjabi live' : cur.name) : 'Radio off', style: 'color:var(--sarson)' }), el('small', { text: A.Radio.playing ? 'Now playing: ' + A.nowPlaying() : 'Neeche station chuno', style: 'color:var(--muted)' }))));
     const ctr = el('div', { class: 'pad', style: 'grid-template-columns:repeat(3,1fr)' });
-    ctr.append(el('button', { type: 'button', text: '⏮', 'aria-label': 'Previous song', onclick: () => { A.skipTrack(-1); appRadio(); } }), el('button', { type: 'button', text: A.Radio.playing ? '⏸' : '▶', 'aria-label': A.Radio.playing ? 'Pause' : 'Play', onclick: () => { A.toggleMusic(); appRadio(); } }), el('button', { type: 'button', text: '⏭', 'aria-label': 'Next song', onclick: () => { A.skipTrack(1); appRadio(); } })); b.append(ctr);
+    ctr.append(el('button', { type: 'button', text: '⏮', 'aria-label': 'Previous', onclick: () => { A.skipTrack(-1); setTimeout(appRadio, 50); } }), el('button', { type: 'button', text: A.Radio.playing ? '⏸' : '▶', 'aria-label': A.Radio.playing ? 'Pause' : 'Play', onclick: () => { A.toggleMusic(); setTimeout(appRadio, 50); } }), el('button', { type: 'button', text: '⏭', 'aria-label': 'Next', onclick: () => { A.skipTrack(1); setTimeout(appRadio, 50); } })); b.append(ctr);
     const vol = el('input', { type: 'range', min: '0', max: '1', step: '0.05', id: 'vol', style: 'width:100%' }); vol.value = A.Music.vol; vol.oninput = () => A.setVolume(+vol.value); b.append(el('label', { for: 'vol', text: 'Volume', style: 'font-weight:700' }), vol);
     b.append(el('h3', { text: 'Stations' }));
-    for (const s of A.STATIONS) { const on = A.Radio.playing && A.Radio.st === s.id; const dis = s.id === 'mine' && !A.Radio.list.length; b.append(itemRow(s.freq + ' · ' + s.name, s.sub + (dis ? ' · add songs below first' : ''), on ? 'On air' : 'Tune in', () => { A.setStation(s.id); appRadio(); }, on || dis)); }
-    if (A.Radio.st !== 'mine') { b.append(el('h3', { text: 'Is station pe' })); for (const i of A.stTracks()) { const tr = A.TRACKS[i]; const on = A.Radio.playing && A.Music.ti === i; b.append(itemRow(tr.name, tr.sub + ' · ' + tr.bpm + ' bpm', on ? 'Playing' : 'Play', () => { A.playTrack(i); appRadio(); }, on)); } }
-    b.append(el('h3', { text: 'Meri Playlist: your Haryanvi & Punjabi songs' }), el('p', { text: 'Add song files from your phone or computer (MP3, M4A, OGG, WAV). They stay saved in this browser and play in the game.' }));
+    for (const s of A.STATIONS) { const on = A.Radio.playing && A.Radio.st === s.id; const dis = s.id === 'mine' && !A.Radio.list.length; b.append(itemRow(s.name, s.sub + (dis ? ' · add songs below first' : ''), on ? 'On air' : 'Tune in', () => { A.setStation(s.id); setTimeout(appRadio, 50); }, on || dis)); }
+    if (A.Radio.st !== 'mine') {
+      const chans = A.channelList(); const ci = A.Radio.ci[A.Radio.override === 'club' ? 'pun' : A.Radio.st];
+      b.append(el('h3', { text: 'Live channels' }), el('p', { text: chans.length ? 'Yeh asli radio stations hain jo internet pe live chalte hain, isliye beech mein RJ ya ad bhi aa sakta hai. Gaana pasand nahi? ⏭ dabao.' : 'Channels load ho rahe hain… (internet chahiye)' }));
+      chans.slice(0, 12).forEach((c, i) => { const on = A.Radio.playing && i === ci; b.append(itemRow(c.name, on ? 'Chal raha hai' : 'Live', on ? 'Playing' : 'Play', () => { A.playChannel(i); setTimeout(appRadio, 50); }, on)); });
+      if (!chans.length) A.loadStations().then(() => { if (!$('modal').hidden && $('mTitle').textContent === 'Gurugram Radio') appRadio(); });
+    }
+    b.append(el('h3', { text: 'Meri Playlist: your Haryanvi & Punjabi songs' }), el('p', { text: 'Apne phone ya computer se gaane add karo (MP3, M4A, OGG, WAV). Yeh is browser mein save rehte hain.' }));
     const inp = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.aac,.ogg,.wav,.opus,.flac', id: 'songIn', multiple: '', style: 'display:none' }); inp.onchange = async () => { await A.addSongs([...inp.files]); inp.value = ''; appRadio(); };
     b.append(inp, el('label', { for: 'songIn', class: 'buy', style: 'text-align:center;display:block;padding:10px', text: '+ Add songs' }));
     A.Radio.list.forEach((s, i) => { const on = A.Radio.playing && A.Radio.st === 'mine' && A.Radio.idx === i; const row = itemRow(s.name, (on ? 'Playing now' : 'Song ' + (i + 1)) + (s.temp ? ' · this session only' : ''), on ? 'Playing' : 'Play', () => { A.Radio.idx = i; if (A.Radio.st !== 'mine' || !A.Radio.playing) A.setStation('mine'); else A.playMine(); appRadio(); }, on); row.append(el('button', { type: 'button', class: 'buy alt', text: 'Remove', 'aria-label': 'Remove ' + s.name, onclick: () => A.removeSong(s.id).then(appRadio) })); b.append(row); });
-    b.append(el('h3', { text: 'Find more songs' }), el('p', { text: 'These open in a new tab.' }));
-    const links = el('div', { style: 'display:flex;flex-wrap:wrap;gap:8px' }); for (const [t, u] of [['Haryanvi hits on YouTube', 'https://www.youtube.com/results?search_query=haryanvi+hit+songs'], ['Punjabi hits on YouTube', 'https://www.youtube.com/results?search_query=punjabi+hit+songs'], ['Haryanvi on JioSaavn', 'https://www.jiosaavn.com/search/haryanvi'], ['Punjabi on Spotify', 'https://open.spotify.com/search/punjabi%20hits']]) links.append(el('a', { href: u, target: '_blank', rel: 'noopener', class: 'buy alt', style: 'text-decoration:none', text: t })); b.append(links);
   });
 }
 
@@ -1233,7 +1242,6 @@ net.on('welcome', m => {
   P = m.profile; G.myId = m.id; lsSet('gl_token', m.token); G.timeOffset = m.serverTime - Date.now() / 1000;
   G.ev = m.event; G.auction = m.auction; G.party = m.party; G.roast = m.roast; G.turf = m.turf; G.belt = m.belt; G.lb = m.lb;
   for (const pi of m.players) applyInfo(pi);
-  for (const a of m.ann) feed(a.text, a.kind);
   buildFlood(); if (G.ev?.type === 'ipl') drawIpl(G.ev.data); renderRoast();
   if (!G.started) startGame(m.daily); else { applyMyLook(); updateHUD(); renderMissions(); }
 });
@@ -1241,7 +1249,7 @@ net.on('profile', m => { const crewChanged = P && P.crew !== m.p.crew; P = m.p; 
 net.on('pi', applyInfo);
 net.on('s', m => { updateSnapshot(m.p); if (m.n !== G.peerCount) { G.peerCount = m.n; setNetChip(); } });
 net.on('left', m => removeRemote(m.id));
-net.on('toast', m => { toast(m.text, m.kind); if (m.sfx) A.sfx(m.sfx); });
+net.on('toast', m => { if (m.kind === 'join') return feed(m.text, 'event'); toast(m.text, m.kind); if (m.sfx) A.sfx(m.sfx); });
 net.on('ann', m => { feed(m.text, m.kind); });
 net.on('chat', m => { const muted = lsGet('gl_muted') || []; if (muted.includes(m.id)) return; const mine = m.id === P?.id; chatLine(m.name + (mine ? ' (you)' : ''), m.text, m.tag); if (mine) say(player, m.text, 5); else { const R = REMOTES.get(m.id); if (R && R.visible) say(R, m.text, 5); A.sfx('chat'); } });
 net.on('dmg', m => { takeHit(m.d, m.name); if (Math.random() < 0.5) toast(m.name + ' ne kaan ke neeche baja diya!', 'bad'); });
@@ -1267,6 +1275,180 @@ net.on('roadrage', m => { G.beef = { with: m.with, name: m.name, until: now() + 
 net.on('kicked', m => { fadeTo(m.reason + '. Yeh tab band kar do.', 999999, null); });
 function showPartyInvite(p) { const box = $('invite'); box.hidden = false; box.textContent = ''; box.append(el('b', { text: p.hostName + ' ki Bhondsi farmhouse party! DJ, lights, sab kuch.' })); const row = el('div', { class: 'row' }); row.append(el('button', { class: 'buy', text: 'Join party', onclick: () => { box.hidden = true; joinParty(); } }), el('button', { class: 'buy alt', text: 'Baad mein', onclick: () => { box.hidden = true; } })); box.append(row); clearTimeout(G.inviteT); G.inviteT = setTimeout(() => { box.hidden = true; }, 25000); }
 
+// ================================================================ STREET RACES + DRIVING THRILLS (NOS, drift, near miss)
+// Races: checkpoint gates on real roads vs a named rival. Win to unlock the next rival; rematch is one tap.
+const RACE_SPOTS = [];
+const fmtT = ms => { const s = ms / 1000; return Math.floor(s / 60) + ':' + (s % 60).toFixed(1).padStart(4, '0'); };
+const raceWon = id => !!(P && P.raceWins && P.raceWins[id]);
+const raceUnlocked = i => i === 0 || raceWon(D.RACES[i - 1].id);
+function raceGates(R) {
+  const out = []; let s = 0;
+  for (let i = 1; i < R.pts.length; i++) {
+    const [ax, az] = R.pts[i - 1], [bx2, bz] = R.pts[i]; const len = Math.hypot(bx2 - ax, bz - az); const n = Math.max(1, Math.round(len / 140));
+    for (let k = 1; k <= n; k++) out.push({ x: ax + (bx2 - ax) * k / n, z: az + (bz - az) * k / n, h: Math.atan2(bx2 - ax, bz - az), s: s + len * k / n, corner: k === n && i < R.pts.length - 1 });
+    s += len;
+  }
+  return out;
+}
+function pathAt(R, s) { // point on the route at distance s, nudged into the right-hand lane
+  let acc = 0;
+  for (let i = 1; i < R.pts.length; i++) {
+    const [ax, az] = R.pts[i - 1], [bx2, bz] = R.pts[i]; const len = Math.hypot(bx2 - ax, bz - az);
+    if (s <= acc + len || i === R.pts.length - 1) { const t = clamp((s - acc) / len, 0, 1); const dx = (bx2 - ax) / len, dz = (bz - az) / len; return { x: ax + (bx2 - ax) * t + dz * 3, z: az + (bz - az) * t - dx * 3, h: Math.atan2(dx, dz), toCorner: i < R.pts.length - 1 ? acc + len - s : 1e9 }; }
+    acc += len;
+  }
+}
+function gateMesh() {
+  const g = new THREE.Group(); const ring = new THREE.Mesh(new THREE.TorusGeometry(7.2, 0.5, 8, 36), new THREE.MeshBasicMaterial({ color: 0xf6c026, transparent: true, opacity: 0.95 }));
+  ring.position.y = 6.5; g.add(ring); for (const s2 of [-7.6, 7.6]) bx(g, 0.5, 13, 0.5, 0x1b1410, s2, 6.5, 0);
+  g.userData.ring = ring; g.visible = false; scene.add(g); return g;
+}
+const GATES = [gateMesh(), gateMesh(), gateMesh()];
+const raceArrow = (() => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: 0xf6c026 }); const cone = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.2, 4), m); cone.rotation.x = Math.PI / 2; cone.position.z = 0.6; g.add(cone); const tail = new THREE.Mesh(BOX, m); tail.scale.set(0.5, 0.25, 1.4); tail.position.z = -0.9; g.add(tail); g.visible = false; scene.add(g); return g; })();
+function buildRaceSpots() {
+  D.RACES.forEach((R, i) => {
+    const [x0, z0] = R.pts[0], [x1, z1] = R.pts[1]; const h = Math.atan2(x1 - x0, z1 - z0);
+    const arch = new THREE.Group(); arch.position.set(x0, 0, z0); arch.rotation.y = h; scene.add(arch);
+    for (const s2 of [-8, 8]) bx(arch, 0.6, 9, 0.6, 0x1b1410, s2, 4.5, 0);
+    for (const ry of [0, Math.PI]) sign(arch, 'RACE ' + (i + 1) + ' · ' + R.name, 'vs ' + R.rival, '#d7331f', '#fff4d8', 17, 2.6, 0, 9.4, ry ? -0.05 : 0.05, ry);
+    const car = makeVehicle(R.veh, R.color); const p = pathAt(R, -10); car.position.set(p.x, 0.05, p.z); car.rotation.y = h; scene.add(car);
+    const lab = labelSprite(R.rival + ' · Race?', { fs: 30, scale: 0.6, bg: 'rgba(215,51,31,.92)', fg: '#fff4d8' }); lab.position.y = 4.4; car.add(lab);
+    const spot = { R, i, car, lab, x: x0, z: z0, h, home: { x: p.x, z: p.z, h }, tauntT: 0 }; RACE_SPOTS.push(spot);
+    ZONES.push({ zone: 'out', x: x0, z: z0, r: 16, label: () => G.race ? null : raceUnlocked(i) ? 'Race lagao: ' + R.name + ' vs ' + R.rival : 'Locked: pehle ' + D.RACES[i - 1].rival + ' ko hara', act: () => raceUnlocked(i) ? startRace(R.id) : toast('Pehle ' + D.RACES[i - 1].name + ' jeet', 'bad') });
+  });
+}
+function bestCar() { const own = (P.vehicles || []).filter(v => D.VEH[v]); own.sort((a, b) => D.VEH[b].speed - D.VEH[a].speed); return own[0] || null; }
+function startRace(id, opts) {
+  opts = opts || {}; const i = D.RACES.findIndex(r => r.id === id); const R = D.RACES[i]; if (!R) return;
+  if (G.race) cleanupRace(); if (G.inside) return toast('Pehle bahar aa'); if (G.selfie) endSelfie(); closeModal(); $('raceres').hidden = true;
+  const spot = RACE_SPOTS[i]; G.dance = false; G.chase = null; if (chaseJeep) chaseJeep.visible = false;
+  const want = G.veh && D.VEH[G.veh].kind === 4 ? G.veh : bestCar() || 'desert';
+  if (G.veh !== want) { if (G.veh) dismount(); G.loaner = !(P.vehicles || []).includes(want); G.quietMount = true; mount(want); G.quietMount = false; }
+  const start = pathAt(R, 0); const lx = start.x - Math.cos(start.h) * 6, lz = start.z + Math.sin(start.h) * 6; // player in the left lane
+  G.x = lx; G.z = lz; G.r = G.yaw = start.h; G.vs = 0; G.pitch = 0.28; G.nos = Math.max(G.nos || 0, 0.35);
+  playerVeh.position.set(G.x, 0.2, G.z); playerVeh.rotation.y = G.r; camera.position.set(G.x - Math.sin(G.r) * 14, 6, G.z - Math.cos(G.r) * 14);
+  spot.car.position.set(start.x, 0.05, start.z); spot.car.rotation.y = start.h; spot.lab.visible = false;
+  G.race = { R, i, spot, gates: raceGates(R), cp: 0, phase: 'count', goAt: now() + (opts.intro ? 5.5 : 3.6), rv: { s: 0, v: 0, done: 0 }, total: D.raceLen(R), intro: !!opts.intro, beeps: 0 };
+  document.body.classList.add('racing'); $('racehud').hidden = false; showGates();
+  say(spot.car, pick(R.taunt), 3.5); A.sfx('engine');
+  if (opts.intro) bigText('RACE LAGEGI?', R.rival + ' ne challenge kiya!', 2.6);
+  $('racehint').hidden = false; $('racehint').textContent = document.body.classList.contains('touch') ? 'Joystick: chalao · NOS button dabake rakho: boost' : 'W / ↑: race · A D: steer · Shift: NOS boost';
+}
+function showGates() { const r = G.race; GATES.forEach((g, k) => { const gt = r && r.gates[r.cp + k]; g.visible = !!gt && k < 2; if (!gt) return; g.position.set(gt.x, 0, gt.z); g.rotation.y = gt.h; const last = r.cp + k === r.gates.length - 1; g.userData.ring.material.color.setHex(last ? 0xff3b30 : k === 0 ? 0xf6c026 : 0xfff4d8); g.userData.ring.material.opacity = k === 0 ? 0.95 : 0.4; g.scale.setScalar(k === 0 ? 1 : 0.9); }); }
+function raceProgress() { const r = G.race; const gt = r.gates[Math.min(r.cp, r.gates.length - 1)]; const prev = r.cp ? r.gates[r.cp - 1].s : 0; return clamp(gt.s - Math.hypot(gt.x - G.x, gt.z - G.z), prev, gt.s); }
+function updateRace(dt) {
+  const r = G.race; if (!r) return; const t = now();
+  if (r.phase === 'count') {
+    const left = r.goAt - t; const n = Math.ceil(left);
+    if (left <= 3 && n !== r.beeps) { r.beeps = n; if (n > 0) { bigText(String(n), '', 0.8); A.sfx('beep'); } }
+    if (left <= 0) {
+      r.phase = 'go'; r.t0 = t; bigText('GO!', '', 0.8); A.sfx('go');
+      const thr = keys.KeyW || keys.ArrowUp || joyY > 0.5; if (thr) { G.vs = D.VEH[G.veh].speed * 0.55; G.nos = Math.min(1, (G.nos || 0) + 0.3); popText('PERFECT START! +NOS', 'gold'); }
+      say(r.spot.car, pick(['Chal!', 'Pakad ke dikha!', 'Bye bye!']), 1.5);
+    }
+  }
+  // rival
+  const rv = r.rv;
+  if (r.phase !== 'count' && !rv.done) {
+    const top = D.VEH[G.veh] ? D.VEH[G.veh].speed : 30; const here = pathAt(r.R, rv.s); let target = top * r.R.skill;
+    if (here.toCorner < 28) target = Math.min(target, 15);
+    const gap = rv.s - raceProgress(); const assist = !P.raceWins || !Object.keys(P.raceWins).length;
+    if (gap > 35) target *= assist ? 0.62 : 0.84; else if (gap > 15 && assist) target *= 0.8; else if (gap < -35) target *= 1.18;
+    rv.v += (target - rv.v) * Math.min(1, dt * 1.6); rv.s += rv.v * dt;
+    if (rv.s >= r.total) { rv.done = t - r.t0; rv.s = r.total; if (r.phase === 'go') { toast(r.R.rival + ' finish line pe pahunch gaya!', 'bad'); say(r.spot.car, 'Main jeet gaya!', 2.5); } }
+  }
+  const p = pathAt(r.R, rv.s); const car = r.spot.car; const k2 = Math.min(1, dt * 8);
+  car.position.x += (p.x - car.position.x) * k2; car.position.z += (p.z - car.position.z) * k2; car.rotation.y = angLerp(car.rotation.y, p.h, Math.min(1, dt * 6));
+  // gates
+  if (r.phase === 'go') {
+    const gt = r.gates[r.cp]; if (gt && Math.hypot(gt.x - G.x, gt.z - G.z) < 11) {
+      r.cp++; A.sfx('cp'); G.nos = Math.min(1, (G.nos || 0) + 0.12); burst(gt.x, 6, gt.z, 0xf6c026, 18, { speed: 7, life: 0.9 });
+      if (r.cp >= r.gates.length) finishRace(); else showGates();
+    }
+    if (r.phase === 'go' && rv.done && t - r.t0 - rv.done > 12) finishRace();
+  }
+  // arrow to the next gate
+  const gt = r.gates[r.cp]; raceArrow.visible = !!gt && r.phase !== 'done';
+  if (gt) { raceArrow.position.set(G.x, 5.2 + Math.sin(t * 5) * 0.2, G.z); raceArrow.rotation.y = Math.atan2(gt.x - G.x, gt.z - G.z); }
+  for (const g of GATES) if (g.visible) g.userData.ring.rotation.z += dt * 1.5;
+  // HUD
+  if (r.phase !== 'done') {
+    const el2 = r.phase === 'go' ? t - r.t0 : 0; const me = raceProgress(); const first = r.cp >= r.gates.length || me >= rv.s || (!rv.done && me + 2 >= rv.s && me > 0);
+    const gapS = rv.v > 1 ? Math.abs(rv.s - me) / Math.max(10, rv.v) : 0;
+    $('racehud').innerHTML = '<b class="' + (first ? 'p1' : 'p2') + '">' + (first ? '1st' : '2nd') + '</b><span>' + fmtT(el2 * 1000) + '</span><span>Gate ' + Math.min(r.cp + 1, r.gates.length) + '/' + r.gates.length + '</span><small>' + (r.phase === 'go' ? r.R.rival + (first ? ' -' : ' +') + gapS.toFixed(1) + 's' : r.R.name) + '</small>';
+  }
+}
+async function finishRace() {
+  const r = G.race; if (!r || r.phase === 'done') return; r.phase = 'done'; const ms = Math.round((now() - r.t0) * 1000); const done = r.cp >= r.gates.length;
+  const won = done && (!r.rv.done || r.rv.done * 1000 > ms); r.won = won; GATES.forEach(g => { g.visible = false; }); raceArrow.visible = false; $('racehint').hidden = true;
+  bigText(won ? 'JEET GAYA!' : done ? 'HAAR GAYA' : 'TIME UP', won ? 'Gurugram dekh rya se!' : r.R.rival + ' aage nikal gaya', 2.2); A.sfx(won ? 'level' : 'err');
+  say(r.spot.car, pick(won ? r.R.win : r.R.lose), 4);
+  if (won) for (let k = 0; k < 3; k++) setTimeout(() => firework(G.x + rnd(-20, 20), G.z + rnd(-20, 20)), 300 + k * 450);
+  let res = { ok: false }; if (done) res = await net.req('race', { id: r.R.id, ms, won }).catch(() => ({ ok: false }));
+  if (!P.tutDone) { P.tutDone = true; net.send('tutdone', {}); }
+  if (G.race !== r) return; setTimeout(() => { if (G.race === r) showRaceResult(r, ms, done, res); }, 1500);
+}
+function showRaceResult(r, ms, done, res) {
+  const box = $('raceres'); box.hidden = false; box.textContent = ''; const R = r.R; const next = D.RACES[r.i + 1];
+  box.append(el('div', { class: 'k', text: 'Race ' + (r.i + 1) + ' · ' + R.name }), el('h2', { class: r.won ? 'win' : 'lose', text: r.won ? 'Jeet gaya!' : 'Haar gaya' }));
+  const rows = el('div', { class: 'rows' });
+  const row = (a, b2) => rows.append(el('div', null, el('span', { text: a }), el('b', { text: b2 })));
+  if (done) row('Tera time', fmtT(ms)); if (r.rv.done) row(R.rival, fmtT(r.rv.done * 1000));
+  if (res.ok) { row('Tera best', fmtT(res.pb) + (res.newPb ? '  NEW!' : '')); if (res.top && res.top[0]) row('Gurugram record', fmtT(res.top[0].ms) + ' · ' + res.top[0].name); if (res.rank) row('Tera rank', '#' + res.rank); }
+  box.append(rows);
+  if (r.won && res.firstWin && next) box.append(el('p', { class: 'unlock', text: 'Unlocked: ' + next.name + ' vs ' + next.rival + '!' }));
+  else if (r.won && !next) box.append(el('p', { class: 'unlock', text: 'Tu Gurugram ka Street King se! Ab record tod ke dikha.' }));
+  else if (!r.won) box.append(el('p', { class: 'unlock', text: done ? 'Bas ' + ((ms - r.rv.done * 1000) / 1000).toFixed(1) + 's peeche! Corners pe NOS mat jala, seedhe pe jala.' : 'Gates ke beech se nikal, yellow arrow follow kar.' }));
+  if (G.loaner) box.append(el('p', { class: 'fine', text: 'Chacha ki ' + D.VEH[G.veh].name + ' tere paas se jab tak utrega nahi (V). Ghoom le!' }));
+  const btns = el('div', { class: 'btns' });
+  btns.append(el('button', { class: 'buy big', text: 'Rematch (Enter)', onclick: () => startRace(R.id) }));
+  if (next && raceUnlocked(r.i + 1)) btns.append(el('button', { class: 'buy big alt2', text: 'Agli race: ' + next.rival, onclick: () => startRace(next.id) }));
+  btns.append(el('button', { class: 'buy alt', text: 'Gurugram ghoomo', onclick: () => { cleanupRace(); if (!L.seenFree) { L.seenFree = 1; saveLocal(); setTimeout(() => toast('Phone (P) mein Races, Jhatpat, Map sab hai. Club Sector 29 mein!'), 600); } } }));
+  box.append(btns);
+}
+function cleanupRace() {
+  const r = G.race; if (!r) return; G.race = null; GATES.forEach(g => { g.visible = false; }); raceArrow.visible = false; $('raceres').hidden = true; $('racehud').hidden = true; $('racehint').hidden = true; $('bigtxt').hidden = true;
+  document.body.classList.remove('racing'); const s = r.spot; s.car.position.set(s.home.x, 0.05, s.home.z); s.car.rotation.y = s.home.h; s.lab.visible = true;
+}
+function quitRace() { if (!G.race) return; cleanupRace(); toast('Race chhod di'); }
+function updateRaceSpots(dt) { if (G.race || G.inside) return; for (const s of RACE_SPOTS) { s.tauntT -= dt; if (s.tauntT < 0 && Math.hypot(s.x - G.x, s.z - G.z) < 30) { s.tauntT = 14; say(s.car, raceUnlocked(s.i) ? pick(s.R.taunt) : 'Pehle ' + D.RACES[s.i - 1].rival + ' ko hara, fir aaiyo', 3); } } }
+function appRaces() {
+  net.req('races', {}).then(res => openModal('Street Races', 'Har rival ko hara, agla unlock. Rematch ek tap pe.', b => {
+    D.RACES.forEach((R, i) => {
+      const un = raceUnlocked(i); const pb = P.raceBest && P.raceBest[R.id]; const rec = res.ok && res.rec[R.id] && res.rec[R.id][0];
+      const sub = (un ? 'vs ' + R.rival : 'Locked: pehle ' + D.RACES[i - 1].rival + ' ko hara') + ' · Prize ' + fmt(R.prize) + (raceWon(R.id) ? ' · Jeeti hui' : '') + (pb ? ' · Best ' + fmtT(pb) : '') + (rec ? ' · Record ' + fmtT(rec.ms) + ' (' + rec.name + ')' : '');
+      b.append(itemRow((i + 1) + '. ' + R.name, sub, un ? 'Race!' : 'Locked', () => startRace(R.id), !un));
+    });
+  }));
+}
+// on-screen big text and combo popups
+function bigText(t, sub, secs) { const b = $('bigtxt'); b.hidden = false; b.textContent = ''; b.append(el('b', { text: t })); if (sub) b.append(el('small', { text: sub })); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; clearTimeout(G.bigT); G.bigT = setTimeout(() => { b.hidden = true; }, (secs || 1) * 1000); }
+function popText(t, cls) { const d = el('div', { class: 'pop ' + (cls || ''), text: t }); $('combo').append(d); while ($('combo').children.length > 2) $('combo').firstChild.remove(); setTimeout(() => d.remove(), 1400); }
+// driving feel: NOS, drift smoke, near misses, speed camera
+G.nos = 0; let nosHeld = false, driftAcc = 0, driftT = 0, smokeT = 0;
+const nosKey = () => keys.ShiftLeft || keys.ShiftRight || nosHeld;
+function driveThrills(dt, ix, iy) {
+  if (!G.veh || !playerVeh) { $('speedo').hidden = true; return; }
+  const V = D.VEH[G.veh]; const sp = Math.abs(G.vs); const t = now();
+  $('speedo').hidden = false; $('spd').textContent = Math.round(sp * 5); $('nosb').style.width = Math.round((G.nos || 0) * 100) + '%'; $('speedo').classList.toggle('on', !!G.nosOn);
+  // drift: hard steer at speed slides the body and fills NOS
+  const drifting = Math.abs(ix) > 0.55 && sp > 15 && iy > 0; const want = drifting ? -ix * 0.32 : 0; G.slip = (G.slip || 0) + (want - (G.slip || 0)) * Math.min(1, dt * 6);
+  playerVeh.rotation.y = G.r + G.slip;
+  if (drifting) { driftAcc += dt * sp; driftT = t; G.nos = Math.min(1, (G.nos || 0) + dt * 0.2); smokeT -= dt; if (smokeT < 0) { smokeT = 0.05; const bx2 = G.x - Math.sin(G.r) * 2, bz = G.z - Math.cos(G.r) * 2; burst(bx2, 0.4, bz, 0xcfcfcf, 2, { speed: 1.2, up: 0.4, grav: -1, life: 0.7 }); } }
+  else if (driftAcc > 0 && t - driftT > 0.4) { if (driftAcc > 60) { popText('DRIFT ' + Math.round(driftAcc) + '!', 'gold'); A.sfx('ok'); } driftAcc = 0; }
+  // near miss with traffic
+  if (sp > 14) for (const c of CARS) { if (!c.mesh.visible || (c.nm || 0) > t) continue; const d = Math.hypot(c.mesh.position.x - G.x, c.mesh.position.z - G.z); if (d < 4.6 && d > 1.8) { c.nm = t + 3; G.nos = Math.min(1, (G.nos || 0) + 0.2); popText('NEAR MISS! +NOS', 'red'); A.sfx('whoosh'); } }
+  // NOS flames
+  if (G.nosOn) { smokeT -= dt; if (smokeT < 0) { smokeT = 0.04; burst(G.x - Math.sin(G.r) * 2.6, 0.7, G.z - Math.cos(G.r) * 2.6, pick([0x33bbff, 0xffffff, 0xff8a00]), 2, { speed: 1, up: 0.2, grav: 0, life: 0.3 }); } }
+  if (V.kind === 2) $('speedo').classList.add('bike'); else $('speedo').classList.remove('bike');
+}
+function speedCamera(dt) {
+  const sp = G.veh ? Math.abs(G.vs) : 0; const want = 62 + clamp(sp - 12, 0, 30) * 0.32 + (G.nosOn ? 12 : 0);
+  if (Math.abs(camera.fov - want) > 0.05) { camera.fov += (want - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+  if (G.nosOn) { camera.position.x += rnd(-0.08, 0.08); camera.position.y += rnd(-0.06, 0.06); }
+  $('speedfx').style.opacity = G.nosOn ? 0.85 : clamp((sp - 26) / 14, 0, 0.35);
+}
+
 // ================================================================ LOGIN & BOOT
 let selColor = lsGet('gl_color') ?? 0;
 function renderSwatches() { const w = $('swatches'); w.textContent = ''; D.SHIRTS.forEach((c, i) => w.append(el('button', { type: 'button', 'aria-label': D.SHIRT_NAMES[i] + ' shirt', style: 'background:' + hex(c), class: i === selColor ? 'sel' : '', onclick: () => { selColor = i; renderSwatches(); } }))); }
@@ -1290,10 +1472,10 @@ $('playBtn').onclick = () => {
 function startGame(daily) {
   $('login').hidden = true; $('hud').hidden = false; G.started = true;
   player = makeChar(D.SHIRTS[P.color]); scene.add(player); applyMyLook(); G.x = rnd(-9, 9); G.z = 46 + rnd(-2, 4); G.r = Math.PI; G.yaw = Math.PI;
-  updateHUD(); renderMissions(); setNetChip();
-  if (daily) setTimeout(() => { A.sfx('cash'); openModal('Roz ka inaam · Daily reward', 'Day ' + daily.streak + ' streak', b => { b.append(el('p', { text: 'Ram Ram ' + P.name + '! Aaj ka inaam ' + fmt(daily.base) + (daily.prop ? ' + property income ' + fmt(daily.prop) : '') + (daily.rent ? '. Yadav ji ne PG rent kaata: -' + fmt(daily.rent) : '') + '. Total ' + fmt(daily.amt) + ' wallet mein. Kal fir aa, streak badhega (up to 10 days).' }), itemRow('Daily bonus', 'Day ' + daily.streak + ' of your streak', 'Shukriya!', () => closeModal())); }); }, 700);
-  if (!P.tutDone) startTutorial();
-  toast('Ram Ram, ' + P.name + '! Welcome to Rajiv Chowk.');
+  updateHUD(); renderMissions(); setNetChip(); G.startedAt = now();
+  const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length);
+  if (fresh) setTimeout(() => startRace('sheetla', { intro: true }), 900);
+  else { toast('Ram Ram, ' + P.name + '! Wapas aa gaya.'); if (daily && daily.streak > 1) setTimeout(() => toast('Day ' + daily.streak + ' streak: +' + fmt(daily.amt) + ' wallet mein', 'money'), 9000); }
 }
 
 let last = performance.now(), hungerT = 0, regenT = 0, hudT = 0;
@@ -1301,10 +1483,10 @@ function loop(t) {
   requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); last = t;
   updateDay(dt);
   if (G.started) {
-    updatePlayer(dt); updateCamera(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
+    updatePlayer(dt); updateCamera(dt); speedCamera(dt); updateRace(dt); updateRaceSpots(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
     hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 15) toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); saveLocal(); }
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
-    hudT += dt; if (hudT > 0.25) { hudT = 0; updateHUD(); renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const lt = ln + '|' + clockText(); if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() })); } if (G.minigame) G.minigame.tick(); }
+    hudT += dt; if (hudT > 0.25) { hudT = 0; updateHUD(); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Run'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const lt = ln + '|' + clockText(); if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() })); } if (G.minigame) G.minigame.tick(); }
     sendState(); drawMini();
   } else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
   updateAmbient(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt);
@@ -1316,7 +1498,7 @@ function loop(t) {
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
 ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); }, r: 16, label: () => G.ev?.type === 'baraat' ? 'Baraat: note udao (₹1,000)' : null, act: async () => { if (G.ev?.type !== 'baraat') return; const r = await buy('misc', 'notes'); if (r.ok) { G.dance = true; toast('Note udaye! Sab dekh rahe hain'); } } });
-function boot() { buildGround(); districtBuilders(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
+function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
 window.addEventListener('pagehide', saveLocal);

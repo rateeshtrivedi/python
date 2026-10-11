@@ -146,7 +146,7 @@ body.touch #chatlog{left:170px;width:calc(100% - 420px)}
 
 /* ---- multiplayer additions ---- */
 #feed{position:absolute;right:12px;top:calc(214px + env(safe-area-inset-top,0px));width:280px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
-#feed div{background:rgba(27,20,16,.8);border-left:4px solid var(--sarson);border-radius:8px;padding:4px 9px;font-size:13px;animation:fadeout 16s forwards;overflow-wrap:anywhere}
+#feed div{background:rgba(27,20,16,.8);border-left:4px solid var(--sarson);border-radius:8px;padding:4px 9px;font-size:13px;animation:fadeout 10s forwards;overflow-wrap:anywhere}
 #feed .showoff{border-color:#e8c27a}#feed .fight{border-color:var(--lal)}#feed .party{border-color:#ff6fa5}#feed .crew{border-color:#00e5ff}#feed .event{border-color:var(--hara)}#feed .auction{border-color:var(--neela)}
 #banner{position:absolute;left:50%;top:calc(52px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--hara);color:#fff;font:800 14px var(--display);padding:4px 14px;border-radius:99px;white-space:nowrap;max-width:calc(100% - 560px);overflow:hidden;text-overflow:ellipsis;border:2px solid var(--sarson)}
 #invite{position:absolute;left:50%;bottom:calc(220px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--cream);color:var(--ink);border:3px solid var(--lal);border-radius:14px;padding:10px 14px;display:grid;gap:8px;width:min(380px,calc(100% - 32px));box-shadow:0 10px 30px rgba(0,0,0,.4)}
@@ -178,3 +178,29 @@ body.touch #chatlog{left:170px;width:calc(100% - 420px)}
   #ipl{top:calc(240px + env(safe-area-inset-top,0px))}
   body.touch #controls{grid-template-columns:repeat(3,52px)}body.touch .cbtn{width:52px;height:52px;font-size:11px}
 }
+/* street races + driving feel */
+#speedfx{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:repeating-conic-gradient(from 0deg at 50% 55%,transparent 0 2.6deg,rgba(255,255,255,.22) 2.6deg 3deg);-webkit-mask:radial-gradient(ellipse at 50% 55%,transparent 32%,#000 75%);mask:radial-gradient(ellipse at 50% 55%,transparent 32%,#000 75%)}
+#racehud{position:absolute;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:rgba(27,20,16,.88);border:2px solid var(--sarson);border-radius:16px;padding:6px 18px;font:800 20px var(--display);white-space:nowrap;font-variant-numeric:tabular-nums;pointer-events:none}
+#racehud b{font-size:30px;line-height:1}#racehud .p1{color:var(--sarson)}#racehud .p2{color:#ff8a7a}#racehud small{font:600 13px var(--body);color:var(--muted)}
+#bigtxt{position:absolute;left:0;right:0;top:17%;text-align:center;pointer-events:none;animation:slam .35s cubic-bezier(.2,1.6,.4,1)}
+#bigtxt b{display:block;font:800 clamp(56px,13vw,120px)/1 var(--display);color:var(--sarson);text-shadow:0 6px 0 #7a1608,0 0 30px rgba(0,0,0,.6);letter-spacing:1px}
+#bigtxt small{display:inline-block;margin-top:10px;font:800 20px var(--display);background:rgba(27,20,16,.85);padding:4px 16px;border-radius:12px}
+@keyframes slam{from{transform:scale(2.4);opacity:0}to{transform:scale(1);opacity:1}}
+#combo{position:absolute;left:50%;top:58%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none}
+#combo .pop{font:800 26px var(--display);color:#fff;text-shadow:0 3px 0 #1b1410,0 0 14px rgba(0,0,0,.5);animation:popup 1.4s ease-out forwards}
+#combo .gold{color:var(--sarson)}#combo .red{color:#ff6b57}
+@keyframes popup{0%{transform:scale(.6);opacity:0}15%{transform:scale(1.15);opacity:1}30%{transform:scale(1)}80%{opacity:1}100%{transform:translateY(-30px);opacity:0}}
+#racehint{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(27,20,16,.85);border-radius:12px;padding:6px 14px;font:700 15px var(--display);white-space:nowrap;pointer-events:none}
+#speedo{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:grid;grid-template-columns:auto auto;align-items:baseline;column-gap:6px;background:rgba(27,20,16,.82);border-radius:14px;padding:4px 14px 8px;pointer-events:none;min-width:150px}
+#speedo b{font:800 34px/1 var(--display);font-variant-numeric:tabular-nums;text-align:right}#speedo small{font:700 12px var(--body);color:var(--muted)}
+#speedo .nos{grid-column:1/-1;height:8px;border-radius:5px;background:#3a2d24;overflow:hidden;margin-top:4px}#speedo .nos i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2a8cff,#7ee0ff);border-radius:5px}
+#speedo em{grid-column:1/-1;font:800 10px var(--display);letter-spacing:.2em;color:#7ee0ff;font-style:normal;text-align:center}
+#speedo.on{box-shadow:0 0 0 3px #2a8cff,0 0 24px #2a8cff}
+#raceres{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,calc(100% - 32px));background:var(--cream);color:var(--ink);border-radius:18px;padding:16px 18px;border:4px solid var(--lal);box-shadow:0 14px 40px rgba(0,0,0,.5);animation:pop .3s ease-out;z-index:5}
+#raceres .k{font:700 12px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--lal)}
+#raceres h2{font:800 44px/1 var(--display);margin:2px 0 8px}#raceres h2.win{color:#1a8a4a}#raceres h2.lose{color:var(--lal)}
+#raceres .rows div{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed #d8c9a6;font-size:15px}#raceres .rows b{font-variant-numeric:tabular-nums}
+#raceres .unlock{font:800 16px var(--display);color:var(--neela);margin:10px 0 0}#raceres .fine{font-size:13px;color:#6b5a48;margin:6px 0 0}
+#raceres .btns{display:grid;gap:8px;margin-top:12px}#raceres .big{font-size:18px;padding:12px}#raceres .alt2{background:var(--neela);color:#fff}
+body.racing #banner,body.racing #missions,body.racing #feed,body.racing #loc,body.racing #job,body.racing #chatlog,body.racing #tut{display:none!important}
+@media (max-width:700px){body.racing #stat,body.racing #topbtns{display:none!important}#racehud{font-size:16px;gap:9px;padding:5px 12px;max-width:calc(100% - 150px);left:12px;transform:none}#racehud b{font-size:24px}#racehud small{display:none}#racehint{bottom:auto;top:calc(64px + env(safe-area-inset-top,0px));left:12px;transform:none;font-size:12px;white-space:normal;max-width:calc(100% - 150px)}#speedo{left:auto;right:auto;left:50%;bottom:calc(196px + env(safe-area-inset-bottom,0px));min-width:120px}#speedo b{font-size:26px}}
