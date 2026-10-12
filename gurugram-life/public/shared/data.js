@@ -13,6 +13,10 @@ export const VEH = {
   desert:  { name: 'Desert King 4x4',           price: 150000, speed: 31, kind: 4, color: 0x8b1e1e },
   cruiser: { name: 'Chaudhary Cruiser',         price: 400000, speed: 37, kind: 4, color: 0x151515 },
   naav:    { name: 'Jugaadu Naav (boat)',       price: 35000,  speed: 24, kind: 5, color: 0xf28c1b }, // fast on water, crawls on dry road
+  // not for sale: only taken off the road (stop a vehicle, beat the driver)
+  auto:    { name: 'Auto Rickshaw',             price: 0,      speed: 19, kind: 4, color: 0x2e9e4a, street: true },
+  bus:     { name: 'Haryana Roadways Bus',      price: 0,      speed: 21, kind: 4, color: 0x2563b8, street: true },
+  truck:   { name: 'Trala (truck)',             price: 0,      speed: 20, kind: 4, color: 0xd7331f, street: true },
 };
 export const BUY_VEHICLES = ['scooty', 'dhakad', 'chhotu', 'naav', 'desert', 'cruiser'];
 

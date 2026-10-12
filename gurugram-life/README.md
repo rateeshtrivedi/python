@@ -65,6 +65,10 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **City**: shop rows with local signboards along every block, a skyline ring, ~170 instanced pedestrians plus crowds near doors, more traffic, potholes, waterlogging and garbage piles, a police thana. Cars knock people down and crash into traffic. The 3D map (M) flies over the city with pins for work, food, police, shopping, party, races, cars, hospital and metro; tap a pin to set GPS.
 
+**GPS**: tap a pin on the 3D map, or pick a category (Gaadi, Khana, Police...) and close the map to route to the nearest one. A small white-and-teal double arrow on the road beside you points the way (also for races and the flood run), and a chip under the minimap shows the place, distance and an ✕ to cancel.
+
+**Gaadi chheeno**: walk up to any vehicle in traffic (it stops when you stand in its way) and press E / Action. The driver gets out and fights; knock him out and the auto, bus, truck or car is yours until you get off, and sometimes the police come after the stolen ride. Other players and AI players driving past can be pulled out the same way: they fight for it, and the vehicle is yours if you KO them.
+
 **Computer players**: with fewer than 4 people online, up to 3 "(AI)" players walk and drive the roads nearby, chat, greet newcomers, reply sometimes and fight back. They are not counted as online players.
 
 **Levels**: each day a player gets 3 tasks for their next level; XP stops at full until they are done.

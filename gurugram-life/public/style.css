@@ -263,3 +263,12 @@ body.mapmode #hud{display:none!important}
 @media (max-width:700px){#loc{left:16px!important;right:auto!important;transform:none!important;bottom:calc(166px + env(safe-area-inset-bottom,0px))!important;max-width:150px!important}}
 #missions .m.done{color:#8fe3a6;text-decoration:line-through;opacity:.8}
 @media (max-width:700px){#chatlog{left:16px!important;width:calc(100% - 32px)!important;bottom:calc(200px + env(safe-area-inset-bottom,0px))!important}}
+
+/* small GPS chip under the minimap: direction arrow, place, distance */
+#navchip{position:absolute;right:12px;top:calc(176px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:7px;max-width:250px;background:var(--panel);border:1px solid rgba(20,184,166,.55);border-radius:99px;padding:3px 4px 3px 3px;font:700 13px var(--display);color:#fff4d8;box-shadow:0 3px 12px rgba(0,0,0,.35)}
+#navdir{flex:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#2dd4bf,#0f766e);display:grid;place-items:center;transition:transform .12s linear}
+#navtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#navdist{flex:none;color:#5eead4;font-variant-numeric:tabular-nums}
+#navx{flex:none;width:22px;height:22px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff4d8;font:700 11px var(--body);cursor:pointer;padding:0}
+body.racing #navchip{display:none!important}
+@media (max-width:760px){#navchip{right:12px;top:calc(238px + env(safe-area-inset-top,0px));max-width:min(230px,calc(100% - 24px));font-size:12px}}
