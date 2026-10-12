@@ -97,12 +97,17 @@ function charge(c, amount) { if (c.p.money < amount) return false; c.p.money -= 
 
 // ------------------------------------------------------------------ world event schedule
 let worldEvent = null; // {type,start,end,data}
-// weather: a new spell every 3-7 minutes; rain about half the time, sometimes a real Gurugram downpour
-let weather = { lvl: 0, since: now(), until: now() + 120 };
+// weather: random and unpredictable. Random start, spells of ~1-15 minutes, rain usually builds up or eases off
+// a step at a time, but now and then a sudden cloudburst or an abrupt stop, like Gurugram in the monsoon.
+const W_PICK = () => { const r = Math.random(); return r < 0.4 ? 0 : r < 0.58 ? 1 : r < 0.74 ? 2 : r < 0.9 ? 3 : 4; };
+const W_SPELL = lvl => Math.min(1200, (lvl >= 3 ? 50 + Math.random() * 400 : 70 + Math.random() * 830) * (0.6 + Math.random() * 0.8));
+let weather = (() => { const lvl = W_PICK(), t = now(); return { lvl, since: t, until: t + W_SPELL(lvl) * Math.random() }; })();
 function weatherTick() {
-  const t = now(); if (t < weather.until) return; const r = Math.random();
-  const lvl = r < 0.42 ? 0 : r < 0.6 ? 1 : r < 0.75 ? 2 : r < 0.9 ? 3 : 4;
-  weather = { lvl, since: t, until: t + 180 + Math.random() * 240 }; broadcast({ t: 'weather', w: weather });
+  const t = now(); if (t < weather.until) return; const cur = weather.lvl; let lvl; const r = Math.random();
+  if (r < 0.12) lvl = W_PICK(); // sudden jump: cloudburst out of nowhere, or rain stops dead
+  else if (r < 0.3 && t - weather.since < 1200) lvl = cur; // the same weather carries on a while longer (never past ~20 min)
+  else { const step = Math.random() < 0.75 ? 1 : 2; lvl = Math.max(0, Math.min(4, cur + (Math.random() < (cur === 0 ? 0.55 : cur === 4 ? 0.15 : 0.45) ? step : -step))); if (lvl === cur) lvl = cur === 0 ? 1 : cur - 1; }
+  weather = { lvl, since: lvl === cur ? weather.since : t, until: t + W_SPELL(lvl) }; if (lvl !== cur) broadcast({ t: 'weather', w: weather });
 }
 let eventIdx = 0;
 let nextEventAt = now() + 90;
