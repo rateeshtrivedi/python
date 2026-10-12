@@ -263,7 +263,7 @@ const EV = { // client-reported events: counters, small xp/respect, cooldown sec
   visit_mall: { cd: 30 }, visit_club: { cd: 30 }, dance: { cd: 20, xp: 5, party: 1 }, punches: { cd: 0.3 }, eat_market: { cd: 5 }, eat_dhaba: { cd: 5 },
   gyaan: { cd: 60, xp: 15 }, tut: { cd: 1, xp: 15 }, npc_ko: { cd: 4, xp: 25, respect: 6 }, card: { cd: 60, xp: 30 },
   baraat: { cd: 10, xp: 10, respect: 2, party: 2 }, ipl_watch: { cd: 30, xp: 10 }, escape: { cd: 60, respect: 10, xp: 30 }, chaupal: { cd: 60 },
-  quest_start: { cd: 5 }, office_chai: { cd: 40 },
+  quest_start: { cd: 5 }, office_chai: { cd: 40 }, jacks: { cd: 20, xp: 10, respect: 3 },
 };
 function rateOk(c, key, cd) { const t = now(); c.cool = c.cool || {}; if ((c.cool[key] || 0) > t) return false; c.cool[key] = t + cd; return true; }
 
@@ -362,7 +362,7 @@ function handle(c, m) {
       const st = c.st || (c.st = {});
       st.x = clamp(num(m.x, st.x || 0), -3200, 3200); st.z = clamp(num(m.z, st.z || 0), -3200, 3200); st.r = num(m.r, 0);
       st.a = clamp(Math.floor(num(m.a, 0)), 0, 4); st.in = INTERIORS.includes(m.in) ? m.in : '';
-      const v = m.v; st.v = v && (p.vehicles.includes(v) || ['rent', 'chhotu', 'desert', 'dhakad'].includes(v)) ? v : null; // owned, rented or Chacha's loaner (a boat must be owned)
+      const v = m.v; st.v = v && (p.vehicles.includes(v) || ['rent', 'chhotu', 'desert', 'dhakad', 'scooty', 'cruiser', 'auto', 'bus', 'truck'].includes(v)) ? v : null; // owned, rented, Chacha's loaner or one taken off the road (a boat must be owned)
       if (st.v && st.v !== 'rent' && p.cur !== st.v) { p.cur = st.v; broadcast(pinfo(c)); }
       st.hp = clamp(Math.round(num(m.hp, 100)), 0, 100); st.fx = m.fx === 1 ? 1 : 0; st.ts = now();
       break;
@@ -380,7 +380,7 @@ function handle(c, m) {
       if (ai) { if (!c.st || c.st.in || c.st.v || ai.hp <= 0 || !rateOk(c, 'hit', 0.35)) return; const p0 = aiPos(ai); if (dist(c.st, p0) > 3.6) return;
         const dmg = 9 + Math.floor(Math.random() * 6); ai.hp = Math.max(0, ai.hp - dmg); ai.foe = p.id; ai.foeUntil = now() + 8; ai.wait = 0; track(c, 'punches');
         broadcast({ t: 'fx', fx: 'punch', by: p.id, target: ai.id }, x => x.st && dist(x.st, c.st) < 60);
-        if (ai.hp <= 0) { ai.downUntil = now() + 8; ai.foe = null; p.respect += 3; track(c, 'kos'); addXP(c, 15); send(c, { t: 'toast', text: 'Tune ' + ai.name + ' ko dhobi pachhad maar diya! +3 respect', kind: 'money', sfx: 'ko' }); }
+        if (ai.hp <= 0) { if (ai.jackBy === p.id && ai.jackV) send(c, { t: 'jackwin', v: ai.jackV, name: ai.name }); ai.jackBy = null; ai.jackV = null; ai.downUntil = now() + 8; ai.foe = null; p.respect += 3; track(c, 'kos'); addXP(c, 15); send(c, { t: 'toast', text: 'Tune ' + ai.name + ' ko dhobi pachhad maar diya! +3 respect', kind: 'money', sfx: 'ko' }); }
         return; }
       const tc = conns.get(m.target); if (!tc || tc === c || !c.st || !tc.st) return;
       if (!rateOk(c, 'hit', 0.35)) return;
@@ -394,9 +394,10 @@ function handle(c, m) {
       break;
     }
     case 'ko': { // I (sender) got knocked out
-      const h = c.lastHitBy; c.st && (c.st.hp = 0);
+      const h = c.lastHitBy, jb = c.jackBy; c.st && (c.st.hp = 0); c.jackBy = null;
       if (h && now() - h.at < 5) {
         const k = conns.get(h.id); if (!k) return;
+        if (jb && jb.id === k.p.id && now() - jb.at < 120) send(k, { t: 'jackwin', v: jb.v, name: p.name }); // won the fight for my vehicle
         track(k, 'kos'); k.p.respect += 15; addXP(k, 60);
         const beef = c.beef && c.beef.with === k.p.id && c.beef.until > now();
         const d = c.st && !c.st.in ? D.districtAt(c.st.x, c.st.z) : null;
@@ -408,6 +409,20 @@ function handle(c, m) {
         sendProfile(k);
       }
       c.lastHitBy = null;
+      break;
+    }
+    case 'jack': { // pulled a driver out of their vehicle: they get out and fight for it
+      if (!c.st || c.st.v || c.st.in || c.st.hp <= 0 || !rateOk(c, 'jack', 2)) return;
+      const ai = ais.get(m.target);
+      if (ai) { if (!ai.v || ai.hp <= 0) return; const p0 = aiPos(ai); if (dist(c.st, p0) > 9) return;
+        ai.jackV = ai.v; ai.v = null; ai.jackBy = p.id; ai.foe = p.id; ai.foeUntil = now() + 25; ai.wait = 0;
+        broadcast({ t: 'chat', id: ai.id, name: ai.name, tag: null, text: pick(JACK_LINES) }, x => x.st && dist(x.st, p0) < 80);
+        send(c, { t: 'toast', text: ai.name + ' gaadi se utar aaya. KO kar, gaadi teri!', kind: 'bad' }); return; }
+      const tc = conns.get(m.target); if (!tc || tc === c || !tc.st || !tc.st.v || tc.st.v === 'naav' || tc.st.in || tc.st.hp <= 0) return;
+      if (dist(c.st, tc.st) > 9) return;
+      tc.jackBy = { id: p.id, at: now(), v: tc.st.v };
+      send(tc, { t: 'jacked', by: p.id, name: p.name });
+      send(c, { t: 'toast', text: tc.p.name + ' ko gaadi se kheench liya! KO kar, gaadi teri.', kind: 'money' });
       break;
     }
     case 'bump': { // vehicle collision with another player's vehicle -> road rage
@@ -728,13 +743,15 @@ function aiTick(dt) {
   for (const a of ais.values()) {
     const outside = humans.filter(c => !c.st.in); if (outside.length && outside.every(c => Math.hypot(c.st.x - a.x, c.st.z - a.z) > 420)) { aiDrop(a); continue; }
     if (a.hp <= 0) { if (t > a.downUntil) a.hp = 100; else continue; }
-    if (a.foe) { const fc = conns.get(a.foe); if (!fc || !fc.st || fc.st.in || t > a.foeUntil || fc.st.hp <= 0) a.foe = null; else { a.v = null; const p0 = aiPos(a); const dx = fc.st.x - p0.x, dz = fc.st.z - p0.z, d = Math.hypot(dx, dz); a.r = Math.atan2(dx, dz); if (d > 1.9) { a.x += dx / d * 5.5 * dt; a.z += dz / d * 5.5 * dt; a.tx = a.x + dx; a.tz = a.z + dz; a.a = 1; } else { a.a = 0; if (t > (a.punchAt || 0)) { a.punchAt = t + 1.3; send(fc, { t: 'dmg', by: a.id, name: a.name, d: 4 + Math.floor(Math.random() * 4) }); broadcast({ t: 'fx', fx: 'punch', by: a.id, target: fc.p.id }, x => x.st && dist(x.st, p0) < 60); } } continue; } }
+    if (a.foe) { const fc = conns.get(a.foe); if (!fc || !fc.st || fc.st.in || t > a.foeUntil || fc.st.hp <= 0) { a.foe = null; if (a.jackV) { a.v = a.jackV; a.jackV = null; a.jackBy = null; } } else { a.v = null; const p0 = aiPos(a); const dx = fc.st.x - p0.x, dz = fc.st.z - p0.z, d = Math.hypot(dx, dz); a.r = Math.atan2(dx, dz); if (d > 1.9) { a.x += dx / d * 5.5 * dt; a.z += dz / d * 5.5 * dt; a.tx = a.x + dx; a.tz = a.z + dz; a.a = 1; } else { a.a = 0; if (t > (a.punchAt || 0)) { a.punchAt = t + 1.3; send(fc, { t: 'dmg', by: a.id, name: a.name, d: 4 + Math.floor(Math.random() * 4) }); broadcast({ t: 'fx', fx: 'punch', by: a.id, target: fc.p.id }, x => x.st && dist(x.st, p0) < 60); } } continue; } }
     if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0) a.a = 1; continue; }
+    if (a.v) { const p0 = aiPos(a); if (outside.some(c => !c.st.v && Math.hypot(c.st.x - p0.x, c.st.z - p0.z) < 7)) { a.a = 0; continue; } } // brakes for someone standing in the road, like traffic does
     const sp = a.v ? (a.v === 'scooty' ? 14 : 20) : 5; const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz);
     if (d < 0.5) { a.x = a.tx; a.z = a.tz; if (!a.v && Math.random() < 0.25) { a.wait = 5 + Math.random() * 8; a.a = Math.random() < 0.5 ? 3 : 0; } aiNext(a); }
     else { const k = Math.min(d, sp * dt); a.x += dx / d * k; a.z += dz / d * k; a.r = Math.atan2(dx, dz); a.a = a.v ? 0 : 1; }
   }
 }
+const JACK_LINES = ['Meri gaadi? Pehle mujhse nipat!', 'Abe utaarega mujhe? Aaja fir!', 'Gaadi chheenega? Tera baap bhi na le sake!', 'Ruk ja, abhi batata hoon!'];
 function aiTalk() {
   const t = now(); if (!ais.size) return; const list = [...ais.values()];
   for (let i = aiGreets.length - 1; i >= 0; i--) if (aiGreets[i].at < t) { const g = aiGreets.splice(i, 1)[0]; const a = list[Math.floor(Math.random() * list.length)]; broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text: g.text }); }

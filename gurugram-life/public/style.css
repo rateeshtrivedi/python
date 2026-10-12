@@ -49,7 +49,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--sarson);outline
 #tut button{font:700 12px var(--display);color:var(--neela);text-decoration:underline}
 #prompt{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sarson);color:var(--ink);font:800 16px var(--display);padding:8px 18px;border-radius:12px;box-shadow:0 6px 0 #9b7410;white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
 #prompt kbd{background:var(--ink);color:var(--sarson);border-radius:6px;padding:0 7px;margin-right:6px;font:800 14px var(--display)}
-#chatlog{position:absolute;left:260px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100% - 560px));display:flex;flex-direction:column;gap:3px;pointer-events:none}
+#chatlog{position:absolute;left:260px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:clamp(220px,calc(100% - 560px),360px);display:flex;flex-direction:column;gap:3px;pointer-events:none}
 #chatlog div{background:rgba(27,20,16,.72);border-radius:8px;padding:3px 9px;font-size:13.5px;animation:fadeout 14s forwards;overflow-wrap:anywhere}
 #chatlog b{color:var(--sarson)}
 @keyframes fadeout{0%,80%{opacity:1}100%{opacity:0}}
@@ -262,3 +262,13 @@ body.mapmode #hud{display:none!important}
 #map3d .mhint{align-self:center;margin-bottom:calc(16px + env(safe-area-inset-bottom,0px));background:rgba(27,20,16,.82);border-radius:12px;padding:6px 14px;font:700 13px var(--display);pointer-events:none}
 @media (max-width:700px){#loc{left:16px!important;right:auto!important;transform:none!important;bottom:calc(166px + env(safe-area-inset-bottom,0px))!important;max-width:150px!important}}
 #missions .m.done{color:#8fe3a6;text-decoration:line-through;opacity:.8}
+@media (max-width:700px){#chatlog{left:16px!important;width:calc(100% - 32px)!important;bottom:calc(200px + env(safe-area-inset-bottom,0px))!important}}
+
+/* small GPS chip under the minimap: direction arrow, place, distance */
+#navchip{position:absolute;right:12px;top:calc(176px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:7px;max-width:250px;background:var(--panel);border:1px solid rgba(20,184,166,.55);border-radius:99px;padding:3px 4px 3px 3px;font:700 13px var(--display);color:#fff4d8;box-shadow:0 3px 12px rgba(0,0,0,.35)}
+#navdir{flex:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#2dd4bf,#0f766e);display:grid;place-items:center;transition:transform .12s linear}
+#navtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#navdist{flex:none;color:#5eead4;font-variant-numeric:tabular-nums}
+#navx{flex:none;width:22px;height:22px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff4d8;font:700 11px var(--body);cursor:pointer;padding:0}
+body.racing #navchip{display:none!important}
+@media (max-width:760px){#navchip{right:12px;top:calc(238px + env(safe-area-inset-top,0px));max-width:min(230px,calc(100% - 24px));font-size:12px}}

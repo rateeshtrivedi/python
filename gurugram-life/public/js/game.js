@@ -768,7 +768,7 @@ function tutEvent(e) { if (!G.tut) return; const s = TUT[L.tut]; if (s && s.ev =
 $('tutSkip').onclick = () => { G.tut = false; $('tut').hidden = true; net.send('tutdone', {}); };
 
 // ================================================================ JOBS
-function makeBeacon(color) { const g = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 80, 16, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide })); c.position.y = 40; g.add(c); const r = new THREE.Mesh(new THREE.TorusGeometry(4, 0.25, 6, 24), new THREE.MeshBasicMaterial({ color })); r.rotation.x = Math.PI / 2; r.position.y = 0.4; g.add(r); g.userData.ring = r; scene.add(g); return g; }
+function makeBeacon(color) { const g = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.1, 60, 12, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide })); c.position.y = 30; g.add(c); const r = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.12, 6, 28), new THREE.MeshBasicMaterial({ color })); r.rotation.x = Math.PI / 2; r.position.y = 0.4; g.add(r); g.userData.ring = r; scene.add(g); return g; }
 const jobBeacon = makeBeacon(0x2fc46b), wpBeacon = makeBeacon(0xf6c026); jobBeacon.visible = wpBeacon.visible = false;
 function setWaypoint(x, z, name) { G.wp = { x, z, name }; wpBeacon.position.set(x, 0, z); wpBeacon.visible = true; toast('GPS set: ' + name); }
 function jobTarget() { const j = G.job; return j.stage === 'pickup' ? j.from : j.to; }
@@ -825,7 +825,7 @@ function mount(type) {
   if (!G.quietMount) { A.sfx('engine'); toast('Chal pade ' + D.VEH[type].name + ' pe!'); }
   if (L.drinks > 0 && G.tipsy > now()) setTimeout(() => toast('Peeke chala rya se? Iffco Chowk naka pe dhyaan rakhiyo!', 'bad'), 1200);
 }
-function dismount() { if (!G.veh) return; if (G.race) cleanupRace(); if (G.loaner) { G.loaner = false; if (!G.story && !L.loanerOK) toast('Chacha ki gaadi wapas. Apni gaadi Chaudhary Motors (NH-48) se le!'); } G.slip = 0; scene.remove(playerVeh); playerVeh = null; if (G.veh === 'rent') { G.rented = false; toast('Rental khatam. Bhaago scooter wapas.'); } G.veh = null; G.vs = 0; player.visible = true; player.position.y = 0; G.x += Math.cos(G.r) * 1.8; G.z -= Math.sin(G.r) * 1.8; resolve(G, 0.6); }
+function dismount() { if (!G.veh) return; if (G.race) cleanupRace(); if (G.jacked) { const c = G.jacked; G.jacked = null; G.loaner = false; if (c !== 'peer') { c.taken = false; c.p = c.p > 0 ? c.p - 445 : c.p + 445; } } if (G.loaner) { G.loaner = false; if (!G.story && !L.loanerOK) toast('Chacha ki gaadi wapas. Apni gaadi Chaudhary Motors (NH-48) se le!'); } G.slip = 0; scene.remove(playerVeh); playerVeh = null; if (G.veh === 'rent') { G.rented = false; toast('Rental khatam. Bhaago scooter wapas.'); } G.veh = null; G.vs = 0; player.visible = true; player.position.y = 0; G.x += Math.cos(G.r) * 1.8; G.z -= Math.sin(G.r) * 1.8; resolve(G, 0.6); }
 function toggleVehicle() { if (G.veh) { if (G.race && G.race.phase !== 'done') return quitRace(); return dismount(); } if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) { if (L.loanerOK) { G.quietMount = true; mount(L.loanVeh || 'chhotu'); G.quietMount = false; G.loaner = true; return toast('Chacha ki ' + D.VEH[G.veh].name + '. Apni gaadi ka sapna upar dikh rya se!'); } return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); } const wet = P.vehicles.includes('naav') && [[0, 0], [6, 0], [-6, 0], [0, 6], [0, -6]].some(([a, b]) => waterDepth(G.x + a, G.z + b) > 0.3); mount(wet ? 'naav' : P.cur && P.vehicles.includes(P.cur) && P.cur !== 'naav' ? P.cur : P.vehicles.find(v => v !== 'naav') || P.vehicles[0]); }
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
@@ -888,6 +888,7 @@ function doAction() {
   if (G.frozen) return; if (nearZone) { nearZone.act(); return; }
   if (G.ev?.type === 'jam' && !G.veh && !G.inside && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 70) return sellChai();
   if (G.ev?.type === 'diwali' && !G.inside) return rocket();
+  const jt = jackTarget(); if (jt) return startJack(jt);
   if (G.veh) return; toast('Yahan kuch nahi. E sirf yellow prompt wali jagah pe kaam karta se.');
 }
 function updateZones() {
@@ -895,6 +896,7 @@ function updateZones() {
   let label = null;
   for (const Z of ZONES) { if (Z.zone !== z) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } }
   nearZone = best; const p = $('prompt');
+  if (!label) { const jt = jackTarget(); if (jt) label = jackLabel(jt); }
   if (!label && G.ev?.type === 'jam' && !G.veh && !G.inside && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 70) label = 'Sell chai to stuck drivers';
   const actHide = !(label && !G.modal); if ($('bAct').hidden !== actHide) $('bAct').hidden = actHide;
   if (label && !G.modal) { p.hidden = false; p.textContent = ''; p.append(el('kbd', { text: document.body.classList.contains('touch') ? 'Action' : 'E' }), label); } else p.hidden = true;
@@ -974,15 +976,47 @@ function spawnFighters() {
 }
 function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined }); scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
+  if (n.jack) { n.state = 'ko'; n.t = 3; A.sfx('ko'); say(n, pick(['Le ja... le ja gaadi!', 'Police ko bataunga!', 'Mummy...!']), 2.5); ev('npc_ko'); return takeJacked(n.jack); }
   if (n.story) { n.state = 'ko'; n.t = 99; A.sfx('ko'); say(n, 'Maaf kar de bhai! Galti ho gayi!', 2.5); ev('npc_ko'); earn('loot', 150, 'Monu ne haar maani'); return storyKO(); }
   n.state = 'ko'; n.t = n.pehl ? 6 : 22; A.sfx('ko'); say(n, n.pehl ? 'Haar gaya... tu asli pehlwan se!' : pick(['Maaf kar de bhai!', 'Galti ho gayi!', 'Ab na karunga!']), 2.5);
   ev('npc_ko');
   if (n.pehl) { AKHARA.fight = false; earn('dangal', 1000, 'Dangal jeeta!'); } else earn('loot', irnd(40, 120), n.name + ' ne haar maani');
 }
+// ================================================================ GAADI CHHEENO: stop any vehicle and take it; whoever is driving fights for it
+const JACK_NAMES = ['Driver Pappu', 'Auto wala Rajesh', 'Truck wala Balwinder', 'Ustaad Kallu', 'Driver Satbir', 'Bus conductor Ramesh'];
+function carAt(c) { const x = c.mesh.position.x, z = c.mesh.position.z, fx = c.along === 'x' ? 0 : c.dir, fz = c.along === 'x' ? c.dir : 0; return { x, z, fx, fz }; }
+function jackTarget() {
+  if (G.veh || G.inside || G.hp <= 0 || G.map || G.frozen || (G.race && G.race.phase !== 'done') || G.story) return null; let best = null, bd = 3.2;
+  for (const c of CARS) { if (c.taken || c.held || !c.mesh.visible) continue; const { x, z, fx, fz } = carAt(c); const lx = G.x - x, lz = G.z - z; const ax = Math.abs(lx * fx + lz * fz) - (c.mesh.userData.len || 4) / 2, al = Math.abs(lx * fz - lz * fx) - 1.3; const d = Math.hypot(Math.max(0, ax), Math.max(0, al)); if (d < bd) { bd = d; best = { kind: 'npc', c }; } }
+  for (const [id, R] of REMOTES) { if (!R.veh || R.veh === 'naav' || !R.visible || R.inn || !R.vm || R.hp <= 0) continue; const d = Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) - 1.6; if (d < bd) { bd = d; best = { kind: 'peer', id, R }; } }
+  return best;
+}
+function jackLabel(t) { return t.kind === 'npc' ? 'Gaadi roko aur chheeno: ' + D.VEH[t.c.type].name : (t.R.info?.name || 'Player') + ' ko gaadi se utaaro'; }
+function startJack(t) {
+  G.lastFight = now(); G.dance = false;
+  if (t.kind === 'peer') { net.send('jack', { target: t.id }); A.sfx('swing'); return; }
+  const c = t.c; c.held = true; const { x, z, fx, fz } = carAt(c); const side = (G.x - x) * fz - (G.z - z) * fx > 0 ? 1 : -1;
+  const big = c.type === 'bus' || c.type === 'truck'; const n = makeFighter(pick(JACK_NAMES), x + fz * 1.8 * side, z - fx * 1.8 * side, big ? 80 : 55, big ? 8 : 6, pick(D.SHIRTS));
+  n.jack = c; n.state = 'aggro'; n.cd = 0.8; FIGHTERS.push(n); A.sfx('horn');
+  say(n, pick(['Meri gaadi? Pehle mujhse nipat!', 'Utar ke dikhata hoon tujhe!', 'Gaadi chheenega? Tera baap bhi na le sake!', 'Ruk ja, abhi batata hoon!']), 2.6);
+  toast('Driver bahar aa gaya! KO kar (punch), gaadi teri.', 'bad');
+}
+function takeJacked(c) {
+  if (G.veh || G.inside) return; const { x, z } = carAt(c); c.taken = true; c.held = false; c.mesh.visible = false;
+  G.x = x; G.z = z; G.r = G.yaw = c.mesh.rotation.y; G.quietMount = true; mount(c.type); G.quietMount = false; G.loaner = true; G.jacked = c; ev('jacks');
+  bigText('GAADI TERI!', D.VEH[c.type].name + ' chheen li', 1.6);
+  if (Math.random() < 0.4) setTimeout(() => { if (G.jacked === c && G.veh && !G.chase && !G.inside) { startChase({ secs: 25 }); bigText('POLICE!', 'Chori ki gaadi! Bach ke nikal', 1.8); } }, 2500);
+}
+function jackWin(m) { // the server says I beat the owner, so the vehicle is mine to ride
+  if (G.veh || G.inside || !D.VEH[m.v] || m.v === 'naav') return; G.quietMount = true; mount(m.v); G.quietMount = false; G.loaner = true; G.jacked = 'peer'; ev('jacks');
+  bigText('GAADI TERI!', m.name + ' ki ' + D.VEH[m.v].name + ' ab tere paas', 1.8);
+}
 async function startDangal() { if (G.veh) return; if (G.belt && G.belt.id !== P.id && REMOTES.has(G.belt.id)) toast('Champion ' + G.belt.name + ' online se. Belt ke liye unhe akhara mein KO kar!'); const r = await buy('misc', 'dangal'); if (!r.ok) return; AKHARA.fight = true; PEHLWAN.hp = PEHLWAN.max; PEHLWAN.state = 'aggro'; say(PEHLWAN, 'Aaja chhore, dekh le Haryana ka dum!', 2.5); toast('Dangal shuru! Punch with F. Akhara se bahar mat jaana.'); }
 function updateFighters(dt) {
+  const gone = [];
   for (const n of FIGHTERS) {
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
+    if (n.jack && (n.state === 'ko' ? n.t - dt <= 0 : (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko') { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false;
     if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
@@ -994,6 +1028,7 @@ function updateFighters(dt) {
     }
     n.cd -= dt; m.position.set(n.x, groundY(n.x, n.z) + (n.hitT > 0 ? 0.15 : 0), n.z); m.rotation.y = n.r; animChar(m, dt, moving ? 1 : 0, 1.3);
   }
+  for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); }
 }
 
 // ================================================================ SHOW-OFF ACTIONS
@@ -1028,7 +1063,7 @@ function startChase(o) { o = o || {}; if (chaseJeep) scene.remove(chaseJeep); ch
   if (wp2) chaseJeep.position.set(wp2[0], 0.05, wp2[1]); else if (o.near) chaseJeep.position.set(G.x - Math.sin(G.r) * 55, 0.2, G.z - Math.cos(G.r) * 55); else chaseJeep.position.set(D.SPOTS.naka.x + 10, 0.2, D.SPOTS.naka.z - 4); scene.add(chaseJeep); G.chase = { until: now() + (o.secs || 30), x: chaseJeep.position.x, z: chaseJeep.position.z, sirenT: 0, sp: o.sp, story: o.story, boat: o.boat, wait: o.story ? now() + 2.5 : 0 }; if (!o.story) toast(o.boat ? 'Jal Police peeche! ' + (o.secs || 30) + ' second bach ke dikha, ya kinare pe utar ke bhaag!' : 'Police peeche se! ' + (o.secs || 30) + ' second bach ke dikha!', 'bad'); $('banner').hidden = false; $('banner').textContent = 'POLICE CHASE: bach ke nikal!'; }
 async function updateChase(dt) {
   const c = G.chase; if (!c) return; const dx = G.x - c.x, dz = G.z - c.z, d = Math.hypot(dx, dz); let sp = now() < (c.wait || 0) ? 0 : c.sp || 29;
-  if (c.boat) { const nx = c.x + dx / (d || 1) * 3, nz = c.z + dz / (d || 1) * 3; if (waterDepth(nx, nz) < 0.25) { sp = 0; if (!c.stuckSaid) { c.stuckSaid = 1; toast('Police ki naav kinare pe atak gayi! Sukhi sadak pe bhaag!', 'money'); } } chaseJeep.position.y = 0.05 + Math.sin(now() * 3) * 0.06; }
+  if (c.boat) { const nx = c.x + dx / (d || 1) * 3, nz = c.z + dz / (d || 1) * 3; if (waterDepth(nx, nz) < 0.25) { sp = 0; if (!c.stuckSaid) { c.stuckSaid = 1; toast('Police ki naav kinare pe atak gayi! Sukhi sadak pe bhaag!', 'money'); } } chaseJeep.position.y = 0.05 + Math.min(waterDepth(c.x, c.z), 1) * 0.35 + Math.sin(now() * 3) * 0.06; } // floats on the water like yours
   if (d > 0.1) { c.x += dx / d * Math.min(sp * dt, d); c.z += dz / d * Math.min(sp * dt, d); } chaseJeep.position.x = c.x; chaseJeep.position.z = c.z; if (!c.boat) chaseJeep.position.y = 0.2; chaseJeep.rotation.y = Math.atan2(dx, dz);
   c.sirenT -= dt; if (c.sirenT < 0) { c.sirenT = 2; A.sfx('siren'); }
   if (c.story && (d < 3.5 || d > 130 || now() > c.until || !G.veh || G.inside)) { const esc = d >= 3.5; G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); if (!esc) G.vs = 0; storyChaseEnd(esc); return; }
@@ -1064,19 +1099,20 @@ function updateAmbient(dt) {
     if (ram && Math.hypot(p.mesh.position.x - G.x, p.mesh.position.z - G.z) < 2.1) { knockPerson({}); p.knock = 6; p.kx = Math.sin(G.r) * Math.abs(G.vs) * 0.5; p.kz = Math.cos(G.r) * Math.abs(G.vs) * 0.5; continue; }
     p.t += dt * p.sp / 272 * p.dir; const t = ((p.t % 1) + 1) % 1; const Lr = 68.5; let x, z; const s = t * 4; if (s < 1) { x = -Lr + 2 * Lr * s; z = -Lr; } else if (s < 2) { x = Lr; z = -Lr + 2 * Lr * (s - 1); } else if (s < 3) { x = Lr - 2 * Lr * (s - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (s - 3); } const px = p.cx + x, pz = p.cz + z; p.mesh.rotation.y = Math.atan2(px - p.mesh.position.x, pz - p.mesh.position.z); p.mesh.position.set(px, 0.2, pz); if (p.mesh.visible) animChar(p.mesh, dt, 1); p.talkT -= dt; if (p.talkT < 0) { p.talkT = rnd(15, 40); if (Math.hypot(px - G.x, pz - G.z) < 25) say(p, pick(NPC_LINES), 2.5); } }
   for (const c of CARS) {
+    if (c.taken) { c.mesh.visible = false; continue; }
     c.mesh.visible = out && Math.abs(c.mesh.position.x - ccx) + Math.abs(c.mesh.position.z - ccz) < 300; if (!out) continue; let x = c.along === 'x' ? c.line : c.p, z = c.along === 'x' ? c.p : c.line;
     const fx = c.along === 'x' ? 0 : c.dir, fz = c.along === 'x' ? c.dir : 0; const dx = G.x - x, dz = G.z - z; const ahead = dx * fx + dz * fz, lat = Math.abs(dx * fz - dz * fx);
     let blocked = ahead > 0 && ahead < (c.mesh.userData.len / 2 + 5) && lat < 2.4; for (const cw of COWS) { const ax = (cw.x - x) * fx + (cw.z - z) * fz, al = Math.abs((cw.x - x) * fz - (cw.z - z) * fx); if (ax > 0 && ax < c.mesh.userData.len / 2 + 4 && al < 2.4) blocked = true; }
     if (jam && Math.hypot(x - D.SPOTS.naka.x, z - D.SPOTS.naka.z) < 80) blocked = true;
     if (blocked) { c.honkT -= dt; if (c.honkT < 0) { c.honkT = rnd(3, 6); if (Math.hypot(dx, dz) < 25) { A.sfx('horn'); say(c, pick(['Pee pee! Side ho ja!', 'Abe hatt, bhai!', 'Horn OK Please!', 'Gaay ko hata bhai!']), 2); } } }
-    else { c.p += c.dir * c.sp * dt; if (c.p > 445) c.p = -445; if (c.p < -445) c.p = 445; }
+    else if (!c.held) { c.p += c.dir * c.sp * dt; if (c.p > 445) c.p = -445; if (c.p < -445) c.p = 445; }
     x = c.along === 'x' ? c.line : c.p; z = c.along === 'x' ? c.p : c.line; c.mesh.position.set(x, 0.05, z); c.mesh.rotation.y = c.along === 'x' ? (c.dir > 0 ? 0 : Math.PI) : (c.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
-    if (!G.veh && Math.hypot(G.x - x, G.z - z) < 1.6 && !blocked) { takeHit(8, 'Auto wale'); G.x += fz * 2; G.z -= fx * 2; }
+    if (!G.veh && Math.hypot(G.x - x, G.z - z) < 1.6 && !blocked && !c.held) { takeHit(8, 'Auto wale'); G.x += fz * 2; G.z -= fx * 2; }
     if (G.veh && playerVeh) { // solid traffic: an oriented-box check along the car's length
       const lx = G.x - x, lz = G.z - z; const ax = lx * fx + lz * fz, al = Math.abs(lx * fz - lz * fx); const half = c.mesh.userData.len / 2 + 1.6;
       if (Math.abs(ax) < half && al < 2.6) { const pushL = 2.6 - al, side = Math.sign(lx * fz - lz * fx) || 1; G.x += fz * pushL * side; G.z -= fx * pushL * side;
         if (Math.abs(G.vs) > 5 && (c.crashCD || 0) < now()) { c.crashCD = now() + 2; A.sfx('crash'); flashHit(); G.vs *= G.race ? 0.45 : -0.25; G.jolt = 0.4; c.stopT = now() + 2.5; if (Math.abs(G.vs) > 3) G.hp = Math.max(5, G.hp - 4); say(c, pick(['Abe andhe! Gaadi thok di!', 'Insurance tera baap bharega?', 'Ruk ja, utar neeche!', 'Kahan se licence liya?']), 2.2); } else G.vs *= 0.6; } }
-    if (c.stopT && c.stopT > now()) { c.p -= c.dir * c.sp * dt; }
+    if (c.stopT && c.stopT > now() && !c.held) { c.p -= c.dir * c.sp * dt; }
   }
   for (const c of COWS) { c.mesh.visible = out; if (!out) continue; c.t += dt; c.mesh.children[1].position.y = 1.7 + Math.sin(c.t * 1.5) * 0.08; if (c.mooT > 0) c.mooT -= dt; }
   for (const n of MALLNPC) { const vis = G.inside === n.s.zone; n.mesh.visible = vis; if (!vis) continue; const dx = n.tx - n.x, dz = n.tz - n.z, d = Math.hypot(dx, dz); if (d < 0.6 || n.t <= 0) { n.tx = rnd(n.s.x0, n.s.x1); n.tz = rnd(n.s.z0, n.s.z1); n.t = 8; } else { n.x += dx / d * 1.8 * dt; n.z += dz / d * 1.8 * dt; n.mesh.rotation.y = Math.atan2(dx, dz); } n.t -= dt; n.mesh.position.set(n.x, 0, n.z); animChar(n.mesh, dt, d >= 0.6 ? 1 : 0); }
@@ -1338,6 +1374,8 @@ net.on('toast', m => { if (m.kind === 'join') return feed(m.text, 'event'); toas
 net.on('ann', m => { feed(m.text, m.kind); });
 net.on('weather', m => setWeather(m.w));
 net.on('chat', m => { const muted = lsGet('gl_muted') || []; if (muted.includes(m.id)) return; const mine = m.id === P?.id; chatLine(m.name + (mine ? ' (you)' : ''), m.text, m.tag); if (mine) say(player, m.text, 5); else { const R = REMOTES.get(m.id); if (R && R.visible) say(R, m.text, 5); A.sfx('chat'); } });
+net.on('jacked', m => { if (G.veh && !(G.race && G.race.phase !== 'done')) { G.vs = 0; dismount(); } G.lastFight = now(); A.sfx('punch'); bigText('GAADI CHHEENI!', m.name + ' ne gaadi se kheench liya. Lad ke wapas le!', 2); });
+net.on('jackwin', jackWin);
 net.on('dmg', m => { takeHit(m.d, m.name); if (Math.random() < 0.5) toast(m.name + ' ne kaan ke neeche baja diya!', 'bad'); });
 net.on('fx', m => {
   if (m.fx === 'punch') { const R = REMOTES.get(m.by); if (R) R.mesh.userData.punchT = 0.22; if (m.target !== P.id) A.sfx('punch', 0.5); }
@@ -1437,7 +1475,7 @@ function startFloodRun() {
 function updateFloodRun() {
   const f = G.frun; if (!f) return; const t = now(); const left = f.limit - (t - f.t0); const p = f.pts[f.cp];
   GATES.forEach((g, k) => { const q = f.pts[f.cp + k]; g.visible = !!q && k < 2; if (q) { g.position.set(q.x, 0, q.z); g.rotation.y = q.h; g.userData.ring.material.color.setHex(k === 0 ? 0x2fa8ff : 0xfff4d8); g.userData.ring.material.opacity = k === 0 ? 0.95 : 0.4; } });
-  raceArrow.visible = true; raceArrow.position.set(G.x, 5.2, G.z); raceArrow.rotation.y = Math.atan2(p.x - G.x, p.z - G.z);
+  navPoint(raceArrow, p.x, p.z);
   $('racehud').hidden = false; $('racehud').innerHTML = '<b class="p1">PAANI</b><span>' + Math.max(0, left).toFixed(0) + 's</span><span>' + (f.cp + 1) + '/' + f.pts.length + '</span><small>' + p.n + '</small>';
   if (Math.hypot(p.x - G.x, p.z - G.z) < 10) { f.cp++; A.sfx('cp'); if (f.cp >= f.pts.length) return endFloodRun(true); setWaypoint(f.pts[f.cp].x, f.pts[f.cp].z, f.pts[f.cp].n); }
   if (left <= 0) endFloodRun(false);
@@ -1563,7 +1601,9 @@ function openMap3D() {
   scene.fog.far = 4000; camera.far = 4000; camera.updateProjectionMatrix(); DAY.fixed = true; DAY.t = 0.45;
   document.body.classList.add('mapmode'); $('map3d').hidden = false; buildMapPins(); renderMapChips();
 }
-function closeMap3D() { const m = G.map; if (!m) return; G.map = null; scene.fog.far = m.fogFar; camera.far = m.camFar; camera.updateProjectionMatrix(); DAY.fixed = m.dayFixed; if (mapGroup) { scene.remove(mapGroup); mapGroup.traverse(o => { if (o.isSprite) { o.material.map.dispose(); o.material.dispose(); } }); mapGroup = null; } document.body.classList.remove('mapmode'); $('map3d').hidden = true; }
+function closeMap3D(picked) { const m = G.map; if (!m) return; G.map = null; scene.fog.far = m.fogFar; camera.far = m.camFar; camera.updateProjectionMatrix(); DAY.fixed = m.dayFixed; if (mapGroup) { scene.remove(mapGroup); mapGroup.traverse(o => { if (o.isSprite) { o.material.map.dispose(); o.material.dispose(); } }); mapGroup = null; } document.body.classList.remove('mapmode'); $('map3d').hidden = true;
+  if (!picked && m.filter !== 'all') { let best = null, bd = 1e9; for (const p of mapPOIs()) if (p.cat === m.filter) { const d = Math.hypot(p.x - G.x, p.z - G.z); if (d < bd) { bd = d; best = p; } } if (best) setWaypoint(best.x, best.z, MAPCAT[m.filter][0] + ': ' + best.name); }
+}
 function buildMapPins() {
   if (mapGroup) { scene.remove(mapGroup); mapGroup = null; } mapGroup = new THREE.Group(); scene.add(mapGroup); const f = G.map.filter;
   for (const p of mapPOIs()) { if (f !== 'all' && p.cat !== f) continue; const c = MAPCAT[p.cat]; const sp = labelSprite(c[0].toUpperCase() + ' · ' + p.name, { fs: 40, scale: 1, bg: c[1], fg: '#ffffff' }); sp.userData = { poi: p, base: sp.scale.clone() }; sp.position.set(p.x, 0, p.z); mapGroup.add(sp); const stick = new THREE.Mesh(BOX, glow(parseInt(c[1].slice(1), 16))); stick.userData.stick = true; stick.position.set(p.x, 0, p.z); mapGroup.add(stick); }
@@ -1594,10 +1634,10 @@ canvas.addEventListener('pointerup', e => {
   if (!G.map) return; const was = mapTouch.size; mapTouch.delete(e.pointerId); if (mapMoved > 8 || was > 1) return;
   const r = canvas.getBoundingClientRect(); mapPtr.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); mapRay.setFromCamera(mapPtr, camera);
   const hit = mapRay.intersectObjects(mapGroup.children.filter(o => o.isSprite && o.userData.poi), false)[0];
-  if (hit) { const p = hit.object.userData.poi; closeMap3D(); setWaypoint(p.x, p.z, p.name); }
+  if (hit) { const p = hit.object.userData.poi; closeMap3D(true); setWaypoint(p.x, p.z, p.name); }
 }, true);
 canvas.addEventListener('wheel', e => { if (!G.map) return; G.map.h = clamp(G.map.h * (e.deltaY > 0 ? 1.12 : 0.89), 120, 1100); e.preventDefault(); e.stopImmediatePropagation(); }, { passive: false, capture: true });
-$('mapClose').onclick = closeMap3D; $('mapwrap').addEventListener('click', openMap3D);
+$('mapClose').onclick = () => closeMap3D(); $('navx').onclick = () => { if (G.wp && !G.frun) { G.wp = null; wpBeacon.visible = false; toast('GPS band'); } }; $('mapwrap').addEventListener('click', openMap3D);
 
 // ================================================================ STREET RACES + DRIVING THRILLS (NOS, drift, near miss)
 // Races: checkpoint gates on real roads vs a named rival. Win to unlock the next rival; rematch is one tap.
@@ -1628,7 +1668,33 @@ function gateMesh() {
   g.userData.ring = ring; g.visible = false; scene.add(g); return g;
 }
 const GATES = [gateMesh(), gateMesh(), gateMesh()];
-const raceArrow = (() => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: 0xf6c026 }); const cone = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.2, 4), m); cone.rotation.x = Math.PI / 2; cone.position.z = 0.6; g.add(cone); const tail = new THREE.Mesh(BOX, m); tail.scale.set(0.5, 0.25, 1.4); tail.position.z = -0.9; g.add(tail); g.visible = false; scene.add(g); return g; })();
+// small GPS arrow: two white chevrons with a teal edge, lying on the road beside you and pointing the way
+function makeNavArrow() {
+  const sh = new THREE.Shape(); sh.moveTo(0, 0.42); sh.lineTo(0.42, -0.12); sh.lineTo(0.24, -0.12); sh.lineTo(0, 0.18); sh.lineTo(-0.24, -0.12); sh.lineTo(-0.42, -0.12); sh.closePath();
+  const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const g = new THREE.Group();
+  for (let k = 0; k < 2; k++) {
+    const edge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x0f766e, transparent: true, opacity: 0.6, depthTest: false, side: THREE.DoubleSide })); edge.scale.set(1.28, 1, 1.28); edge.position.set(0, -0.01, k * -0.5 - 0.04);
+    const face = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide })); face.position.z = k * -0.5;
+    edge.renderOrder = 20; face.renderOrder = 21; g.add(edge, face);
+  }
+  g.rotation.order = 'YXZ'; g.visible = false; scene.add(g); return g;
+}
+const raceArrow = makeNavArrow(), wpArrow = makeNavArrow();
+function navPoint(o, tx, tz) { // place the arrow on a little circle around the player, facing the target
+  const a = Math.atan2(tx - G.x, tz - G.z), t = now(); const R = G.veh ? (playerVeh ? playerVeh.userData.len || 4 : 4) / 2 + 1.8 : 1.6; const dep = Math.min(waterDepth(G.x, G.z), 1);
+  o.position.set(G.x + Math.sin(a) * R, (G.veh && D.VEH[G.veh].kind === 2 ? 0.45 : 0.32) + dep * 0.4, G.z + Math.cos(a) * R); o.rotation.y = a; o.rotation.x = -0.5; // tip tilted up so it reads from the chase camera
+  const s = (G.veh ? 1.6 : 1.15) * (1 + Math.sin(t * 5) * 0.05); o.scale.set(s, s, s); o.visible = true;
+  o.children.forEach((m, i) => { const k = i >> 1; const f = 0.5 + 0.5 * Math.sin(t * 6 - k * 1.7); m.material.opacity = (i % 2 ? 0.55 + 0.45 * f : 0.25 + 0.4 * f); });
+}
+function navTarget() { if (G.wp) return G.wp; if (G.job) { const t = jobTarget(); return { x: t.x, z: t.z, name: G.job.stage === 'pickup' ? 'Pickup' : 'Drop' }; } return null; }
+function updateNav() {
+  const tg = !G.inside && !G.map && !raceArrow.visible ? navTarget() : null; const d = tg ? Math.hypot(tg.x - G.x, tg.z - G.z) : 0;
+  if (tg && d > 9) navPoint(wpArrow, tg.x, tg.z); else wpArrow.visible = false;
+  const chip = $('navchip'), show = !!tg && !(G.race && G.race.phase !== 'done');
+  if (chip.hidden === show) chip.hidden = !show; if (!show) return;
+  const a = Math.atan2(tg.x - G.x, tg.z - G.z) - G.yaw; $('navdir').style.transform = 'rotate(' + (-a * 180 / Math.PI).toFixed(1) + 'deg)';
+  const nm = tg.name || 'GPS', ds = d < 1000 ? Math.round(d / 5) * 5 + ' m' : (d / 1000).toFixed(1) + ' km'; if (chip.dataset.n !== nm) { chip.dataset.n = nm; $('navtxt').textContent = nm; } if (chip.dataset.d !== ds) { chip.dataset.d = ds; $('navdist').textContent = ds; }
+}
 function buildRaceSpots() {
   D.RACES.forEach((R, i) => {
     const [x0, z0] = R.pts[0], [x1, z1] = R.pts[1]; const h = Math.atan2(x1 - x0, z1 - z0);
@@ -1701,7 +1767,7 @@ function updateRace(dt) {
   }
   // arrow to the next gate
   const gt = r.gates[r.cp]; raceArrow.visible = !!gt && r.phase !== 'done';
-  if (gt) { raceArrow.position.set(G.x, 5.2 + Math.sin(t * 5) * 0.2, G.z); raceArrow.rotation.y = Math.atan2(gt.x - G.x, gt.z - G.z); }
+  if (gt && r.phase !== 'done') navPoint(raceArrow, gt.x, gt.z);
   for (const g of GATES) if (g.visible) g.userData.ring.rotation.z += dt * 1.5;
   // HUD
   if (r.phase !== 'done') {
@@ -1912,7 +1978,7 @@ function renderCreator() {
   row('Chacha ki gaadi (jab tak apni na lo)', seg([['chhotu', 'Chhotu Hatchback'], ['desert', 'Desert King 4x4'], ['dhakad', 'Dhakad 350 Bullet']], AVD.ride, v => { AVD.ride = v; }));
 }
 $('cRandom').onclick = () => { AVD.g = Math.random() < 0.5 ? 'm' : 'f'; AVD.skin = irnd(0, 4); AVD.hair = irnd(0, 4); AVD.hc = irnd(0, 4); AVD.top = irnd(0, 2); AVD.pants = irnd(0, 3); AVD.acc = irnd(0, 2); AVD.color = irnd(0, D.SHIRTS.length - 1); renderCreator(); };
-$('cBack').onclick = () => { $('creator').hidden = true; G.creating = false; DAY.fixed = false; if (PREVIEW) PREVIEW.visible = false; $('login').hidden = false; };
+$('cBack').onclick = () => { $('creator').hidden = true; G.creating = false; DAY.fixed = false; if (G.viewOff) { camera.clearViewOffset(); G.viewOff = false; } if (PREVIEW) PREVIEW.visible = false; $('login').hidden = false; };
 $('cNext').onclick = () => { lsSet('gl_avatar', AVD); G.avatarDirty = true; showStartPick(); };
 $('sBack').onclick = () => showCreator();
 let dragPrev = null; $('creator').addEventListener('pointerdown', e => { if (e.target.closest('.cpanel')) return; dragPrev = e.clientX; });
@@ -1927,7 +1993,7 @@ if (savedName && lsGet('gl_lookset')) { $('playBtn').textContent = 'Chalo, Khelo
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn').click(); });
 function saveName() { let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); }
 $('playBtn').onclick = () => { saveName(); A.initAudio(); if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
-function joinGame(startId) {
+function joinGame(startId) { if (G.viewOff) { camera.clearViewOffset(); G.viewOff = false; }
   lsSet('gl_start', startId); G.startId = startId; lsSet('gl_color', AVD.color); L.loanVeh = AVD.ride; saveLocal();
   $('startpick').hidden = true; $('creator').hidden = true; if (PREVIEW) PREVIEW.visible = false; G.creating = false; DAY.fixed = false;
   $('login').hidden = false; $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); A.restoreRadio(); radioLabel();
@@ -1971,9 +2037,12 @@ function loop(t) {
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
     hudT += dt; if (hudT > 0.25) { hudT = 0; updateHUD(); renderSapna(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
     sendState(); if ((G.miniF = (G.miniF || 0) + 1) % 3 === 0) drawMini();
-  } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0); camera.position.set(p.x - (mob ? 0 : 2.6), mob ? 2.0 : 2.4, p.z + (mob ? 7.5 : 6.5)); camera.lookAt(p.x - (mob ? 0 : 2.6), mob ? -0.9 : 1.7, p.z); }
+  } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0);
+    if (mob) { // the panel covers the bottom 58%: frame the whole avatar in the strip above it, whatever the phone's shape
+      const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
+    } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt);
+  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) updateNav();
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
