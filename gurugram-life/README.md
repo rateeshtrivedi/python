@@ -59,6 +59,22 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **Radio**: real Haryanvi and Punjabi songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
 
+**Joining**: name → character creator (ladka/ladki, skin, 5 hairstyles each, hair colour, T-shirt/kurta/jacket or kurti/jacket/saree, colours, pants, moonchh/daadhi or bindi/jhumke, cap/pagdi/dupatta, kaala chashma, and Chacha's car) with a live 3D preview → choose where to start (Ambience Mall runs the Pehla Din story).
+
+**Controls**: click once for mouse-look; W A S D, Space jump (handbrake in a car), Shift run (NOS in a car), left-click or Q punch, E action, F car, Tab menu, M 3D map. Phones: joystick, Jump/NOS, Punch, Gaadi, a contextual Action button and one Menu button.
+
+**City**: shop rows with local signboards along every block, a skyline ring, ~170 instanced pedestrians plus crowds near doors, more traffic, potholes, waterlogging and garbage piles, a police thana. Cars knock people down and crash into traffic. The 3D map (M) flies over the city with pins for work, food, police, shopping, party, races, cars, hospital and metro; tap a pin to set GPS.
+
+**Computer players**: with fewer than 4 people online, up to 3 "(AI)" players walk and drive the roads nearby, chat, greet newcomers, reply sometimes and fight back. They are not counted as online players.
+
+**Levels**: each day a player gets 3 tasks for their next level; XP stops at full until they are done.
+
+**Weather and water**: the server changes the weather every 3-7 minutes for everyone: clear, boonda-baandi (drizzle), halki, tez and moosladhaar baarish. Rain falls (GPU shader, no per-frame cost), the sky greys, visibility drops, thunder and lightning come with heavy rain, and rain sound follows. Water rises at Gurugram's famous waterlogging spots (Hero Honda Chowk, Golf Course Road underpass, Sohna Road, Narsinghpur, Sheetla Mata Road, Iffco Chowk) and drains slowly after. Deep water slows walkers and cars, can stall engines, and bikes struggle. "Paani paar karo" (Menu, or the marker at a flooded chowk) is a timed run straight through the water; it is also a daily task.
+
+**Boat**: the Jugaadu Naav (₹35,000 at Chaudhary Motors or the Naav Ghat) is fast on water and only scrapes along dry roads. Ride it on the Biodiversity Park lake any time, or through flooded chowks in the rain. Jal Police boats patrol and give chase; they can't leave the water, so getting onto dry road is one way out.
+
+**Music**: a fight theme during fights and a dhol bhangra at baraats or when dancing outdoors; the radio ducks under them.
+
 **Street races**: five races on real roads (Sheetla Mata Road, Golf Course Road, Cyber City, NH-48, Badshahpur), each against a named rival; winning unlocks the next one. New players start straight into the first race. Driving has NOS (filled by drifting, near misses with traffic and checkpoints), drift smoke and a speed camera. Personal bests and the top 20 times per race are kept on the server.
 
 ## How it's built

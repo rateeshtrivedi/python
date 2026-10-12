@@ -50,7 +50,7 @@ function crewOf(p) { return p.crew && db.crews[p.crew] ? db.crews[p.crew] : null
 function pinfo(c) {
   const p = c.p; const cr = crewOf(p);
   return {
-    t: 'pi', id: p.id, name: p.name, color: p.color, outfit: p.outfit, bling: p.bling, plate: p.plate, level: p.level,
+    t: 'pi', id: p.id, name: p.name, color: p.color, look: p.look || null, outfit: p.outfit, bling: p.bling, plate: p.plate, level: p.level,
     title: D.respectTitle(p.respect), crew: cr ? { tag: cr.tag, color: cr.color } : null,
     mods: (p.cur && p.mods[p.cur]) || {}, belt: !!(db.belt && db.belt.id === p.id), tint: c.tint && c.tint.until > now() ? c.tint.color : null,
   };
@@ -59,34 +59,35 @@ function sendProfile(c) { send(c, { t: 'profile', p: publicProfile(c.p) }); }
 
 // ------------------------------------------------------------------ economy
 function addXP(c, n) {
-  const p = c.p; p.xp += n; let up = false;
-  while (p.xp >= D.xpNeed(p.level)) { p.xp -= D.xpNeed(p.level); p.level++; up = true; }
+  const p = c.p; p.xp += n; let up = false; ensureMissions(p);
+  while (p.xp >= D.xpNeed(p.level)) {
+    if (!tasksDone(p)) { p.xp = D.xpNeed(p.level); if (n > 0 && rateOk(c, 'xpcap', 60)) send(c, { t: 'toast', text: 'XP full! Level ' + (p.level + 1) + ' ke liye aaj ke 3 kaam poore kar (neeche list)' }); break; }
+    p.xp -= D.xpNeed(p.level); p.level++; up = true; ensureMissions(p);
+  }
   if (up) { const bonus = 200 * p.level; p.money += bonus; send(c, { t: 'toast', text: 'Level up! Ab tu Level ' + p.level + ' se. Bonus ' + fmt(bonus), kind: 'money', sfx: 'level' }); broadcast(pinfo(c)); }
   dirty = true;
 }
 function track(c, k, n = 1) {
   const p = c.p; p.c[k] = (p.c[k] || 0) + n; dirty = true;
   let done = false;
-  for (const a of p.missions.active.slice()) {
-    const m = D.MISSIONS[a.id]; if (!m) continue;
+  ensureMissions(p);
+  for (const a of p.missions.active) {
+    const m = D.MISSIONS[a.id]; if (!m || a.done) continue;
     if ((p.c[m.k] || 0) - a.base >= missionN(a)) {
-      p.missions.active.splice(p.missions.active.indexOf(a), 1);
-      const r = Math.round(m.r * (1 + a.round * 0.6));
-      p.money += r; addXP(c, 40);
-      send(c, { t: 'toast', text: 'Mission poora: ' + m.t + ' · +' + fmt(r), kind: 'money', sfx: 'cash' });
-      done = true;
+      a.done = true; const r = Math.round(m.r * (1 + a.round * 0.6)); p.money += r;
+      send(c, { t: 'toast', text: 'Kaam poora: ' + m.t + ' · +' + fmt(r), kind: 'money', sfx: 'cash' }); done = true;
     }
   }
-  if (done) ensureMissions(p);
+  if (done) { if (tasksDone(p)) send(c, { t: 'toast', text: 'Aaj ke teeno kaam poore! XP poora hote hi level up.', kind: 'money', sfx: 'level' }); addXP(c, 40); sendProfile(c); }
 }
 function missionN(a) { const m = D.MISSIONS[a.id]; return m.k === 'earned' ? m.n * (1 + a.round) : Math.ceil(m.n * (1 + a.round * 0.5)); }
+// Daily level tasks: three per day for the next level, the same all day for a player, new ones after each level up
+function tasksDone(p) { return p.missions.active.length > 0 && p.missions.active.every(a => a.done); }
 function ensureMissions(p) {
-  while (p.missions.active.length < 3) {
-    const id = p.missions.next % D.MISSIONS.length;
-    if (p.missions.next > 0 && id === 0) p.missions.round++;
-    p.missions.next++;
-    p.missions.active.push({ id, base: p.c[D.MISSIONS[id].k] || 0, round: p.missions.round });
-  }
+  const ms = p.missions; const day = today(); if (ms.day === day && ms.lvl === p.level && ms.active.length) return;
+  let seed = 7; for (const ch of p.id + day + p.level) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pool = D.MISSIONS.map((m, i) => i).filter(i => !(D.MISSIONS[i].hard && p.level < 4)); for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const round = Math.floor((p.level - 1) / 4); ms.active = pool.slice(0, 3).map(id => ({ id, base: p.c[D.MISSIONS[id].k] || 0, round, done: false })); ms.day = day; ms.lvl = p.level;
 }
 function credit(c, amount, why) {
   amount = Math.round(amount); c.p.money += amount; track(c, 'earned', amount);
@@ -96,6 +97,18 @@ function charge(c, amount) { if (c.p.money < amount) return false; c.p.money -= 
 
 // ------------------------------------------------------------------ world event schedule
 let worldEvent = null; // {type,start,end,data}
+// weather: random and unpredictable. Random start, spells of ~1-15 minutes, rain usually builds up or eases off
+// a step at a time, but now and then a sudden cloudburst or an abrupt stop, like Gurugram in the monsoon.
+const W_PICK = () => { const r = Math.random(); return r < 0.4 ? 0 : r < 0.58 ? 1 : r < 0.74 ? 2 : r < 0.9 ? 3 : 4; };
+const W_SPELL = lvl => Math.min(1200, (lvl >= 3 ? 50 + Math.random() * 400 : 70 + Math.random() * 830) * (0.6 + Math.random() * 0.8));
+let weather = (() => { const lvl = W_PICK(), t = now(); return { lvl, since: t, until: t + W_SPELL(lvl) * Math.random() }; })();
+function weatherTick() {
+  const t = now(); if (t < weather.until) return; const cur = weather.lvl; let lvl; const r = Math.random();
+  if (r < 0.12) lvl = W_PICK(); // sudden jump: cloudburst out of nowhere, or rain stops dead
+  else if (r < 0.3 && t - weather.since < 1200) lvl = cur; // the same weather carries on a while longer (never past ~20 min)
+  else { const step = Math.random() < 0.75 ? 1 : 2; lvl = Math.max(0, Math.min(4, cur + (Math.random() < (cur === 0 ? 0.55 : cur === 4 ? 0.15 : 0.45) ? step : -step))); if (lvl === cur) lvl = cur === 0 ? 1 : cur - 1; }
+  const since = lvl === cur ? weather.since : t; weather = { lvl, since, until: Math.min(t + W_SPELL(lvl), since + 1200) }; if (lvl !== cur) broadcast({ t: 'weather', w: weather });
+}
 let eventIdx = 0;
 let nextEventAt = now() + 90;
 function startEvent() {
@@ -334,6 +347,7 @@ function handleEarn(c, m) {
   if (reason === 'delivery') { track(c, 'deliveries'); addXP(c, 30); }
   if (reason === 'shift') { track(c, 'shifts'); addXP(c, 35); }
   if (reason === 'quest') { addXP(c, 80); p.respect += 5; }
+  if (reason === 'flood') { if (weather.lvl < 2) return { ok: false, error: 'Paani hi nahi se, baarish mein aaiyo' }; track(c, 'flood_runs'); addXP(c, 60); p.respect += 3; }
   if (reason === 'loot') { /* xp via npc_ko */ }
   if (amt > 0) credit(c, amt, m.why ? D.cleanText(m.why, 60) : null);
   sendProfile(c);
@@ -348,7 +362,7 @@ function handle(c, m) {
       const st = c.st || (c.st = {});
       st.x = clamp(num(m.x, st.x || 0), -3200, 3200); st.z = clamp(num(m.z, st.z || 0), -3200, 3200); st.r = num(m.r, 0);
       st.a = clamp(Math.floor(num(m.a, 0)), 0, 4); st.in = INTERIORS.includes(m.in) ? m.in : '';
-      const v = m.v; st.v = v && (p.vehicles.includes(v) || v === 'rent') ? v : null;
+      const v = m.v; st.v = v && (p.vehicles.includes(v) || ['rent', 'chhotu', 'desert', 'dhakad'].includes(v)) ? v : null; // owned, rented or Chacha's loaner (a boat must be owned)
       if (st.v && st.v !== 'rent' && p.cur !== st.v) { p.cur = st.v; broadcast(pinfo(c)); }
       st.hp = clamp(Math.round(num(m.hp, 100)), 0, 100); st.fx = m.fx === 1 ? 1 : 0; st.ts = now();
       break;
@@ -358,9 +372,16 @@ function handle(c, m) {
       const text = D.cleanText(m.text, 120); if (!text) return;
       track(c, 'chats'); const cr = crewOf(p);
       broadcast({ t: 'chat', id: p.id, name: p.name, tag: cr ? cr.tag : null, text, near: placeName(c.st || {}) });
+      if (ais.size && Math.random() < 0.45) aiGreets.push({ at: now() + 2 + Math.random() * 3, text: pick(AI_REPLIES) });
       break;
     }
     case 'hit': {
+      const ai = ais.get(m.target);
+      if (ai) { if (!c.st || c.st.in || c.st.v || ai.hp <= 0 || !rateOk(c, 'hit', 0.35)) return; const p0 = aiPos(ai); if (dist(c.st, p0) > 3.6) return;
+        const dmg = 9 + Math.floor(Math.random() * 6); ai.hp = Math.max(0, ai.hp - dmg); ai.foe = p.id; ai.foeUntil = now() + 8; ai.wait = 0; track(c, 'punches');
+        broadcast({ t: 'fx', fx: 'punch', by: p.id, target: ai.id }, x => x.st && dist(x.st, c.st) < 60);
+        if (ai.hp <= 0) { ai.downUntil = now() + 8; ai.foe = null; p.respect += 3; track(c, 'kos'); addXP(c, 15); send(c, { t: 'toast', text: 'Tune ' + ai.name + ' ko dhobi pachhad maar diya! +3 respect', kind: 'money', sfx: 'ko' }); }
+        return; }
       const tc = conns.get(m.target); if (!tc || tc === c || !c.st || !tc.st) return;
       if (!rateOk(c, 'hit', 0.35)) return;
       if (c.st.in !== tc.st.in || c.st.v || tc.st.v || tc.st.hp <= 0 || c.st.hp <= 0) return;
@@ -420,6 +441,13 @@ function handle(c, m) {
     case 'step': { // first-session funnel for the owner page: the first time each player reaches a milestone
       const k = String(m.k || ''); if (!FUNNEL.some(f => f[0] === k)) return; p.steps = p.steps || {}; if (!p.steps[k]) { p.steps[k] = Date.now(); dirty = true; } break;
     }
+    case 'look': { // avatar from the character creator; hat and kaala chashma are free only the first time
+      const a = m.look || {}; const g = a.g === 'f' ? 'f' : 'm'; const ix = (v, n) => clamp(Math.floor(num(v, 0)), 0, n - 1);
+      p.look = { g, skin: ix(a.skin, 5), hair: ix(a.hair, 5), hc: ix(a.hc, 5), top: ix(a.top, 3), pants: ix(a.pants, 4), acc: ix(a.acc, 3) };
+      if (m.color !== undefined) { p.color = ix(m.color, D.SHIRTS.length); p.outfit.shirt = null; }
+      if (!p.lookSet) { p.lookSet = true; const hats = g === 'f' ? ['none', 'dupatta'] : ['none', 'cap', 'pagdi']; if (hats.includes(m.hat)) p.outfit.hat = m.hat; if (m.shades) p.outfit.shades = true; }
+      dirty = true; sendProfile(c); broadcast(pinfo(c)); reply({ ok: true }); break;
+    }
     case 'races': { reply({ ok: true, rec: raceTops(), best: p.raceBest || {}, wins: p.raceWins || {} }); break; }
     case 'race': { // a finished street race: personal best, route record, prize
       const R = D.RACES.find(r => r.id === m.id); if (!R) return reply({ ok: false, error: 'Unknown race' });
@@ -434,6 +462,7 @@ function handle(c, m) {
       top.sort((a, b) => a.ms - b.ms); if (top.length > 20) top.length = 20;
       const rank = top.findIndex(e => e.id === p.id) + 1;
       if (ms < oldRec && oldRec !== Infinity) announce(p.name + ' ne ' + R.name + ' ka record tod diya: ' + (ms / 1000).toFixed(1) + 's!', 'showoff');
+      if (won) track(c, 'race_wins');
       const amt = won ? R.prize * (firstWin ? 2 : 1) : Math.round(R.prize * 0.15);
       credit(c, amt, (won ? 'Race jeeti: ' : 'Race: ') + R.name); addXP(c, won ? 60 : 20); if (won) p.respect += firstWin ? 10 : 2;
       dirty = true; sendProfile(c);
@@ -600,10 +629,11 @@ function connect(out, closeFn, meta, outRaw) {
       dirty = true;
       send(c, {
         t: 'welcome', id: p.id, token: p.token, profile: publicProfile(p), daily,
-        players: [...conns.values()].filter(x => x !== c).map(pinfo), event: worldEvent, auction, party: partyView(), roast: roastState(),
-        turf: turfView(), crews: crewList(), ann: announcements.slice(-8), belt: db.belt, lb: lbCache || leaderboards(), serverTime: now(),
+        players: [...conns.values()].filter(x => x !== c).map(pinfo).concat([...ais.values()].map(aiInfo)), event: worldEvent, auction, party: partyView(), roast: roastState(),
+        weather, turf: turfView(), crews: crewList(), ann: announcements.slice(-8), belt: db.belt, lb: lbCache || leaderboards(), serverTime: now(),
       });
       broadcast(pinfo(c));
+      aiGreets.push({ at: now() + 7, text: pick(['Ram Ram ' + p.name + '! Naya aaya ke?', p.name + ', aaja race lagate hain!', 'Oye ' + p.name + ', Gurugram mein swagat se!']) });
       if (conns.size > 1) broadcast({ t: 'toast', text: p.name + ' Gurugram mein aa gaya! (' + conns.size + ' online)', kind: 'join' }, x => x !== c);
       return;
       }
@@ -620,7 +650,7 @@ function connect(out, closeFn, meta, outRaw) {
 const VIEW_RADIUS = 160, VIEW_MAX = 40; // each player receives at most the 40 nearest players in sight
 function tick100() {
   let raw = false; for (const c of conns.values()) { raw = !!c.outRaw; break; } // Node server: send pre-encoded text, encoding each player once per tick
-  const list = []; for (const o of conns.values()) if (o.st) { const s = o.st; o.entry = [o.p.id, Math.round(s.x * 10) / 10, Math.round(s.z * 10) / 10, Math.round(s.r * 100) / 100, s.a, s.v, s.in, s.hp, s.fx]; if (raw) o.entryJson = JSON.stringify(o.entry); list.push(o); }
+  aiTick(0.1); const list = aiEntries(raw); for (const o of conns.values()) if (o.st) { const s = o.st; o.entry = [o.p.id, Math.round(s.x * 10) / 10, Math.round(s.z * 10) / 10, Math.round(s.r * 100) / 100, s.a, s.v, s.in, s.hp, s.fx]; if (raw) o.entryJson = JSON.stringify(o.entry); list.push(o); }
   for (const c of conns.values()) {
     const me = c.st; let near = [];
     for (const o of list) {
@@ -643,6 +673,7 @@ function tick100() {
 let slow = 0;
 function tick1s() {
   slow++; const t = now();
+  weatherTick();
   if (!worldEvent && t >= nextEventAt) startEvent();
   if (worldEvent && t >= worldEvent.end) endEvent();
   if (worldEvent?.type === 'ipl' && slow % 5 === 0) iplTick();
@@ -655,12 +686,61 @@ function tick1s() {
   if (slow % 60 === 0) turfIncome();
   if (slow % 15 === 0) broadcast({ t: 'lb', lb: leaderboards() });
   if (slow % 60 === 0) beltCheckDay();
-  botTick();
+  botTick(); aiTalk();
 }
 
 function raceTops() { const o = {}; for (const R of D.RACES) o[R.id] = ((db.races || {})[R.id] || []).slice(0, 5).map(e => ({ name: e.name, ms: e.ms })); return o; }
 
-const FUNNEL = [['play', 'Pressed Khelo'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
+const FUNNEL = [['play', 'Pressed Khelo'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['start_other', 'Started somewhere else (no story)'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
+
+
+// ------------------------------------------------------------------ computer players: nobody should walk an empty city
+// With fewer than 4 people online, up to 3 "(AI)" players roam the roads near them, chat, dance and fight back.
+const AI_NAMES = [['Sonu', 'm'], ['Pinky', 'f'], ['Jassi', 'm'], ['Neha', 'f'], ['Bittu', 'm'], ['Rinku', 'm'], ['Simran', 'f'], ['Golu', 'm']];
+const AI_LINES = ['Ram Ram sabne!', 'Koi race lagayega? Ambience Mall ke bahar mil', 'Aaj Sector 29 mein party se, aa jaiyo', 'Gaddhe dekh ke chala, warna gaadi gayi', 'Mere paas Thar hai, tere paas ke se?', 'Chai peeni se kisi ne?', 'Iffco Chowk pe phir jam lag rya se', 'Level up karna se to aaj ke kaam poore kar', 'Pehlwan Bhola ko hara diya maine aaj!', 'Kaun hai jo mujhse lad sake?', 'Sohna Road pe paani bhar gaya, bach ke', 'Cyber Hub mein aaj bahut bheed se'];
+const AI_REPLIES = ['Haan bhai, sahi baat', 'Ke kah rya se tu?', 'Oye hoye!', 'Chal race lagate hain', 'Hahaha, mast', 'Pakka?', 'Chal Sector 29 mil'];
+const ais = new Map(); const aiGreets = [];
+const RG = D.ROADS, RMIN = RG[0], RMAX = RG[RG.length - 1];
+function aiInfo(a) { return { t: 'pi', id: a.id, name: a.name, color: a.color, look: a.look, outfit: a.outfit, bling: [], plate: null, level: a.level, title: 'Computer player', crew: null, mods: {}, belt: false, tint: null, ai: true }; }
+function aiPos(a) { const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz) || 1; const off = a.v ? 3 : 5.6; return { x: a.x + dz / d * off, z: a.z - dx / d * off }; }
+const snapRoad = v => RG.reduce((b, r) => Math.abs(r - v) < Math.abs(b - v) ? r : b, RG[0]);
+function aiNext(a) {
+  const opts = [[a.tx + 150, a.tz], [a.tx - 150, a.tz], [a.tx, a.tz + 150], [a.tx, a.tz - 150]].filter(([x, z]) => x >= RMIN && x <= RMAX && z >= RMIN && z <= RMAX && !(x === a.px && z === a.pz));
+  let pickp = opts[Math.floor(Math.random() * opts.length)]; const hs = [...conns.values()].filter(c => c.st && !c.st.in);
+  if (hs.length && Math.random() < 0.6) { const h = hs[0].st; pickp = opts.reduce((b, o) => Math.hypot(o[0] - h.x, o[1] - h.z) < Math.hypot(b[0] - h.x, b[1] - h.z) ? o : b, pickp); }
+  a.px = a.tx; a.pz = a.tz; a.tx = pickp[0]; a.tz = pickp[1];
+}
+function aiSpawn() {
+  const hs = [...conns.values()].filter(c => c.st && !c.st.in); if (!hs.length) return; const used = new Set([...ais.values()].map(a => a.base));
+  const pool = AI_NAMES.filter(n => !used.has(n[0])); if (!pool.length) return; const [nm, g] = pool[Math.floor(Math.random() * pool.length)]; const h = hs[Math.floor(Math.random() * hs.length)].st;
+  const sx = clamp(snapRoad(h.x) + pick([-150, 0, 150]), RMIN, RMAX), sz = clamp(snapRoad(h.z) + pick([-150, 150]), RMIN, RMAX);
+  const r = () => Math.floor(Math.random() * 5);
+  const a = { id: 'ai' + rid(6), base: nm, name: nm + ' (AI)', color: Math.floor(Math.random() * D.SHIRTS.length), look: { g, skin: r(), hair: r(), hc: Math.floor(Math.random() * 3), top: Math.floor(Math.random() * 3), pants: Math.floor(Math.random() * 4), acc: Math.floor(Math.random() * 3) },
+    outfit: { shirt: null, hat: g === 'f' ? pick(['none', 'dupatta']) : pick(['none', 'cap', 'pagdi']), shades: Math.random() < 0.5 }, level: 2 + Math.floor(Math.random() * 12),
+    x: sx, z: sz, tx: sx, tz: sz, px: null, pz: null, r: 0, v: Math.random() < 0.45 ? pick(['scooty', 'chhotu', 'desert', 'dhakad', 'cruiser']) : null, a: 1, hp: 100, wait: 0, chatT: now() + 15 + Math.random() * 40, foe: null };
+  aiNext(a); ais.set(a.id, a); broadcast(aiInfo(a));
+}
+function aiDrop(a) { ais.delete(a.id); broadcast({ t: 'left', id: a.id }); }
+function aiTick(dt) {
+  const humans = [...conns.values()].filter(c => c.st); const want = humans.length === 0 ? 0 : Math.max(0, 4 - humans.length);
+  if (ais.size > want) aiDrop([...ais.values()][0]); else if (ais.size < want && Math.random() < dt / 3) aiSpawn();
+  const t = now();
+  for (const a of ais.values()) {
+    const outside = humans.filter(c => !c.st.in); if (outside.length && outside.every(c => Math.hypot(c.st.x - a.x, c.st.z - a.z) > 420)) { aiDrop(a); continue; }
+    if (a.hp <= 0) { if (t > a.downUntil) a.hp = 100; else continue; }
+    if (a.foe) { const fc = conns.get(a.foe); if (!fc || !fc.st || fc.st.in || t > a.foeUntil || fc.st.hp <= 0) a.foe = null; else { a.v = null; const p0 = aiPos(a); const dx = fc.st.x - p0.x, dz = fc.st.z - p0.z, d = Math.hypot(dx, dz); a.r = Math.atan2(dx, dz); if (d > 1.9) { a.x += dx / d * 5.5 * dt; a.z += dz / d * 5.5 * dt; a.tx = a.x + dx; a.tz = a.z + dz; a.a = 1; } else { a.a = 0; if (t > (a.punchAt || 0)) { a.punchAt = t + 1.3; send(fc, { t: 'dmg', by: a.id, name: a.name, d: 4 + Math.floor(Math.random() * 4) }); broadcast({ t: 'fx', fx: 'punch', by: a.id, target: fc.p.id }, x => x.st && dist(x.st, p0) < 60); } } continue; } }
+    if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0) a.a = 1; continue; }
+    const sp = a.v ? (a.v === 'scooty' ? 14 : 20) : 5; const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz);
+    if (d < 0.5) { a.x = a.tx; a.z = a.tz; if (!a.v && Math.random() < 0.25) { a.wait = 5 + Math.random() * 8; a.a = Math.random() < 0.5 ? 3 : 0; } aiNext(a); }
+    else { const k = Math.min(d, sp * dt); a.x += dx / d * k; a.z += dz / d * k; a.r = Math.atan2(dx, dz); a.a = a.v ? 0 : 1; }
+  }
+}
+function aiTalk() {
+  const t = now(); if (!ais.size) return; const list = [...ais.values()];
+  for (let i = aiGreets.length - 1; i >= 0; i--) if (aiGreets[i].at < t) { const g = aiGreets.splice(i, 1)[0]; const a = list[Math.floor(Math.random() * list.length)]; broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text: g.text }); }
+  for (const a of list) if (t > a.chatT && a.hp > 0) { a.chatT = t + 60 + Math.random() * 70; broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text: pick(AI_LINES) }); }
+}
+function aiEntries(raw) { const out = []; for (const a of ais.values()) { const p0 = aiPos(a); const st = { x: p0.x, z: p0.z, in: '' }; const entry = [a.id, Math.round(p0.x * 10) / 10, Math.round(p0.z * 10) / 10, Math.round(a.r * 100) / 100, a.a, a.v, '', a.hp, 0]; out.push({ p: { id: a.id }, st, entry, entryJson: raw ? JSON.stringify(entry) : null }); } return out; }
 
 // owner stats (server /admin page): every real player, newest activity first
 function stats() {

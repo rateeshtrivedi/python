@@ -35,7 +35,7 @@
 <body>
 <div id="game">
   <canvas id="c" aria-label="Gurugram Life 3D world"></canvas>
-  <div id="hit"></div>
+  <div id="hit"></div><div id="lockhint"></div>
   <div id="hangover" hidden></div>
   <div id="hud" hidden>
     <div id="stat"><div class="stripe"></div><div class="in">
@@ -75,16 +75,13 @@
     <div id="selfie" hidden><button class="buy" id="snapBtn">Click photo</button><button class="buy alt" id="selfieClose">Back</button></div>
     <div id="joy"><div id="knob"></div></div>
     <div id="controls">
-      <button class="cbtn" id="bPhone">Phone<kbd>P</kbd></button>
-      <button class="cbtn" id="bChat">Chat<kbd>T</kbd></button>
-      <button class="cbtn green" id="bVeh">Gaadi<kbd>V</kbd></button>
-      <button class="cbtn" id="bDance">Dance<kbd>B</kbd></button>
-      <button class="cbtn" id="bHorn">Horn<kbd>H</kbd></button>
-      <button class="cbtn" id="bRun">Run<kbd>Shift</kbd></button>
-      <button class="cbtn" id="bSelfie">Selfie<kbd>C</kbd></button>
-      <button class="cbtn red" id="bPunch">Punch<kbd>F</kbd></button>
-      <button class="cbtn green" id="bAct">Action<kbd>E</kbd></button>
+      <button class="cbtn gold" id="bAct" hidden>Action<kbd>E</kbd></button>
+      <button class="cbtn touchonly red" id="bPunch">Punch<kbd>Click</kbd></button>
+      <button class="cbtn touchonly big" id="bRun">Jump<kbd>Space</kbd></button>
+      <button class="cbtn touchonly green" id="bVeh">Gaadi<kbd>F</kbd></button>
+      <button class="cbtn menu" id="bMenu">☰ Menu<kbd>Tab</kbd></button>
     </div>
+    <div id="keyhint" hidden></div>
   </div>
 
   <div id="login">
@@ -96,12 +93,34 @@
       </div>
       <div class="body">
         <div><label for="nameIn">Tera naam (your name)</label><input id="nameIn" maxlength="16" placeholder="e.g. Bunty Chaudhary" autocomplete="off"></div>
-        <div><label>Kurta ka rang (shirt colour)</label><div class="sw" id="swatches"></div></div>
         <button class="go" id="playBtn">Chalo, Khelo!</button>
         <p class="fine" id="loginNote">Free multiplayer. Your progress is saved to this browser's login key.</p>
         <div class="hok"><span>HORN</span><span>OK</span><span>PLEASE</span></div>
       </div>
       <div class="stripe"></div>
+    </div>
+  </div>
+
+  <div id="map3d" hidden>
+    <div class="mtop"><b>Gurugram Map</b><button type="button" class="buy" id="mapClose">Band karo (M)</button></div>
+    <div class="mchips" id="mapchips"></div>
+    <div class="mhint">Drag: ghumao · Scroll / pinch: zoom · Pin dabao: GPS lag jayega</div>
+  </div>
+  <div id="creator" hidden>
+    <div class="cpanel">
+      <div class="stripe"></div>
+      <div class="chead"><h2>Apna avatar banao</h2><button type="button" class="buy alt" id="cRandom">Random</button></div>
+      <div class="crows" id="crows"></div>
+      <div class="cfoot"><button type="button" class="buy alt" id="cBack">Peeche</button><button type="button" class="go" id="cNext">Aage: kahan se shuru? →</button></div>
+    </div>
+    <div class="chint">Ghumane ke liye avatar ko drag karo</div>
+  </div>
+  <div id="startpick" hidden>
+    <div class="spanel">
+      <div class="stripe"></div>
+      <h2>Kahan se shuru karoge?</h2>
+      <div class="splaces" id="splaces"></div>
+      <div class="cfoot"><button type="button" class="buy alt" id="sBack">Avatar badlo</button></div>
     </div>
   </div>
 

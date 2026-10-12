@@ -12,8 +12,9 @@ export const VEH = {
   chhotu:  { name: 'Chhotu Hatchback',          price: 60000,  speed: 27, kind: 4, color: 0xdedede },
   desert:  { name: 'Desert King 4x4',           price: 150000, speed: 31, kind: 4, color: 0x8b1e1e },
   cruiser: { name: 'Chaudhary Cruiser',         price: 400000, speed: 37, kind: 4, color: 0x151515 },
+  naav:    { name: 'Jugaadu Naav (boat)',       price: 35000,  speed: 24, kind: 5, color: 0xf28c1b }, // fast on water, crawls on dry road
 };
-export const BUY_VEHICLES = ['scooty', 'dhakad', 'chhotu', 'desert', 'cruiser'];
+export const BUY_VEHICLES = ['scooty', 'dhakad', 'chhotu', 'naav', 'desert', 'cruiser'];
 
 export const HOUSES = {
   pg:    { name: 'Sharma PG, DLF Phase 3',      price: 0,       daily: 0,    at: [-2, -1] },
@@ -88,7 +89,7 @@ export const MISC = {
 // Earning caps the server enforces: reason -> {max per event, cooldown seconds}
 export const EARN = {
   ride: { max: 1100, cd: 14 }, delivery: { max: 700, cd: 10 }, loot: { max: 150, cd: 6 }, dangal: { max: 1000, cd: 45 },
-  quest: { max: 1600, cd: 90 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
+  quest: { max: 1600, cd: 90 }, flood: { max: 1200, cd: 30 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
 };
 
 export const MISSIONS = [
@@ -103,11 +104,14 @@ export const MISSIONS = [
   { t: 'Dance at Neon Nights club', k: 'dance', n: 1, r: 250 },
   { t: 'Send chat messages', k: 'chats', n: 3, r: 150 },
   { t: 'Watch a movie at Reel Star', k: 'movies', n: 1, r: 300 },
-  { t: 'Win a dangal at the akhara', k: 'wrestle', n: 1, r: 1000 },
-  { t: 'Buy a vehicle or upgrade', k: 'vehbuy', n: 1, r: 600 },
+  { t: 'Win a dangal at the akhara', k: 'wrestle', n: 1, r: 1000, hard: 1 },
+  { t: 'Buy a vehicle or upgrade', k: 'vehbuy', n: 1, r: 600, hard: 1 },
   { t: 'Earn money', k: 'earned', n: 3000, r: 800 },
-  { t: 'Join a baraat and dance', k: 'baraat', n: 1, r: 400 },
-  { t: 'Show off: buy bling or a car mod', k: 'showoff', n: 1, r: 500 },
+  { t: 'Join a baraat and dance', k: 'baraat', n: 1, r: 400, hard: 1 },
+  { t: 'Win a street race', k: 'race_wins', n: 1, r: 500 },
+  { t: 'Baarish mein paani bhare ilaake paar karo', k: 'flood_runs', n: 1, r: 600 },
+  { t: 'Knock out an (AI) player or a street chhora', k: 'kos', n: 1, r: 350 },
+  { t: 'Show off: buy bling or a car mod', k: 'showoff', n: 1, r: 500, hard: 1 },
   { t: 'Share your Mera Gurugram card', k: 'card', n: 1, r: 300 },
   { t: 'Eat street food in a market', k: 'eat_market', n: 1, r: 200 },
 ];
@@ -189,26 +193,44 @@ export function cleanText(s, max) {
 // Street races: checkpoints follow real roads (corners sit on junctions). Each win unlocks the next rival.
 // minMs: no car can finish faster (route length / 52 units per second, top speed with NOS), so the server rejects anything quicker.
 export const RACES = [
-  { id: 'ambience', name: 'Ambience Mall Sprint', rival: 'Monu Dahiya', veh: 'chhotu', color: 0xdedede, skill: 0.9, prize: 600,
+  { id: 'ambience', name: 'Ambience Mall Sprint', rival: 'Monu Dahiya', veh: 'chhotu', color: 0xdedede, skill: 0.98, prize: 600,
     pts: [[-150, -225], [-75, -225], [-75, 75], [40, 75]], // out of the Ambience Mall gate, down MG Road, onto Sheetla Mata Road
     taunt: ['Oye naye! Race lagegi? Haar gaya to chai tere taraf se!', 'Chal dekh lete hain kitna dum se tere mein'],
     win: ["Arre! Beginner's luck se yeh. Rematch kar!", 'Theek se, agli baar dekh lunga'], lose: ['Ghar ja ke cycle chala, chhore!', 'Chai tere taraf se. Rematch?'] },
-  { id: 'golf', name: 'Golf Course Road Run', rival: 'Jassi Sandhu', veh: 'desert', color: 0x2e6bd1, skill: 0.98, prize: 1000,
+  { id: 'golf', name: 'Golf Course Road Run', rival: 'Jassi Sandhu', veh: 'desert', color: 0x2e6bd1, skill: 1.06, prize: 1000,
     pts: [[-225, 330], [-225, -225], [-75, -225], [-75, -375], [60, -375]],
     taunt: ['Golf Course Road meri se, paaji. Aaja!', 'Thar di power dekhega?'],
     win: ['Oye hoye! Changa chalaya', 'Lucky si tu, rematch kar'], lose: ['Balle balle! Mera road, meri race', 'Hor practice kar, paaji'] },
-  { id: 'cyber', name: 'Cyber City Loop', rival: 'Pinky Yadav', veh: 'desert', color: 0xff5fa2, skill: 1.02, prize: 1400,
+  { id: 'cyber', name: 'Cyber City Loop', rival: 'Pinky Yadav', veh: 'desert', color: 0xff5fa2, skill: 1.1, prize: 1400,
     pts: [[-75, -280], [-75, -375], [75, -375], [75, -225], [-75, -225], [-75, -300]],
     taunt: ['Office se pehle ek loop? Haarne ke liye ready?', 'Corners pe brake lagana seekh le pehle'],
     win: ['Hmm, not bad. Kal phir', 'Ok ok, maan gayi'], lose: ['Corners pe dheela pad gaya!', 'Bye bye, slowpoke'] },
-  { id: 'nh48', name: 'NH-48 Drag', rival: 'Rocky Gujjar', veh: 'cruiser', color: 0x151515, skill: 1.06, prize: 2000,
+  { id: 'nh48', name: 'NH-48 Drag', rival: 'Rocky Gujjar', veh: 'cruiser', color: 0x151515, skill: 1.15, prize: 2000,
     pts: [[-420, -375], [260, -375]],
     taunt: ['Seedhi sadak, full race. NOS hai tere paas?', 'Highway ka raja main hoon'],
     win: ['Kaise?! NOS mein kya daala tha?', 'Rematch, abhi ke abhi!'], lose: ['Highway pe bachche nahi chalte', 'Drift karke NOS bhar, fir aaiyo'] },
-  { id: 'badshahpur', name: 'Badshahpur Night Run', rival: 'Chaudhary Saab', veh: 'cruiser', color: 0xf6c026, skill: 1.1, prize: 3500,
+  { id: 'badshahpur', name: 'Badshahpur Night Run', rival: 'Chaudhary Saab', veh: 'cruiser', color: 0xf6c026, skill: 1.22, prize: 3500,
     pts: [[375, -300], [375, 75], [225, 75], [225, 375], [-75, 375], [-75, 300]],
     taunt: ['Gurugram ka street king banna se? Pehle mujhe hara', 'Badshahpur mera ilaaka se, chhore'],
     win: ['Aaj se tu Gurugram ka Street King. Ram Ram!', 'Jeet gaya... par kal fir aaunga'], lose: ['Abhi bachcha se tu', 'Street King ka taj itna sasta nahi'] },
 ];
 export function raceLen(r) { let s = 0; for (let i = 1; i < r.pts.length; i++) s += Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]); return s; }
 for (const r of RACES) r.minMs = Math.round(raceLen(r) / 52 * 1000);
+
+// Weather: everyone sees the same sky. lvl 0 clear … 4 "most heavy" rain; water at the flood spots rises with it.
+export const WEATHER = [
+  { name: 'Saaf mausam', short: 'Saaf', rain: 0, water: 0 },
+  { name: 'Boonda-baandi (drizzle)', short: 'Boonda-baandi', rain: 0.18, water: 0.15 },
+  { name: 'Halki baarish', short: 'Halki baarish', rain: 0.45, water: 0.4 },
+  { name: 'Tez baarish', short: 'Tez baarish', rain: 0.75, water: 0.75 },
+  { name: 'Moosladhaar baarish!', short: 'Moosladhaar!', rain: 1, water: 1 },
+];
+// Places that famously go under water in Gurugram, placed on the matching junctions and roads of the game map
+export const FLOOD_SPOTS = [
+  { name: 'Hero Honda Chowk', x: 75, z: 225, r: 46 },
+  { name: 'Golf Course Road underpass', x: -225, z: -75, r: 40 },
+  { name: 'Sohna Road', x: 75, z: 75, r: 38 },
+  { name: 'Narsinghpur, NH-48', x: 225, z: -375, r: 44 },
+  { name: 'Sheetla Mata Road', x: -75, z: 75, r: 34 },
+  { name: 'Iffco Chowk', x: 75, z: -75, r: 36 },
+];
