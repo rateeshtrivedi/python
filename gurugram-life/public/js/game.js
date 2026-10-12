@@ -49,7 +49,7 @@ const scene = new THREE.Scene();
 const SKY_DAY = new THREE.Color(0x9fc8e8), SKY_DUSK = new THREE.Color(0xf09a52), SKY_NIGHT = new THREE.Color(0x0e1530), SKY_IN = new THREE.Color(0x2a2119), SKY_CLUB = new THREE.Color(0x0b0614);
 scene.background = SKY_DAY.clone();
 scene.fog = new THREE.Fog(0x9fc8e8, 160, 560);
-const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1500);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 640); // beyond the fog nothing is visible, so nothing is drawn
 const hemi = new THREE.HemisphereLight(0xfff1d6, 0x55603f, 0.95); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(120, 200, 80); scene.add(sun);
 function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
@@ -59,6 +59,7 @@ const MATS = {};
 function mat(c) { if (!MATS[c]) MATS[c] = new THREE.MeshLambertMaterial({ color: c }); return MATS[c]; }
 function glow(c) { const k = 'g' + c; if (!MATS[k]) MATS[k] = new THREE.MeshBasicMaterial({ color: c }); return MATS[k]; }
 const BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 14), SPH = new THREE.SphereGeometry(1, 14, 10), CONE = new THREE.ConeGeometry(1, 1, 10);
+const LOWSPH = new THREE.IcosahedronGeometry(1, 1), LUMP = new THREE.IcosahedronGeometry(1, 0); // 80 and 20 triangles, for crowds and garbage
 const TORUS = new THREE.TorusGeometry(1, 0.18, 6, 16);
 const COL = { out: [] };
 function addCol(zone, x0, x1, z0, z1) { (COL[zone] || (COL[zone] = [])).push({ x0, x1, z0, z1 }); }
@@ -825,7 +826,7 @@ function toggleVehicle() { if (G.veh) { if (G.race && G.race.phase !== 'done') r
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
 function exitInterior() { const key = G.inside; const d = DOORS[key]; fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
-function setIndoor(on) { scene.fog.near = on ? 60 : 160; scene.fog.far = on ? 220 : 560; camera.far = on ? 260 : 1500; camera.updateProjectionMatrix(); if (!on) A.setOverride(null); }
+function setIndoor(on) { scene.fog.near = on ? 60 : 160; scene.fog.far = on ? 220 : 560; camera.far = on ? 260 : 640; camera.updateProjectionMatrix(); if (!on) A.setOverride(null); }
 function fadeTo(text, ms, cb) { const f = $('fade'); f.textContent = text; f.classList.add('show'); G.frozen = true; setTimeout(() => { cb && cb(); setTimeout(() => { f.classList.remove('show'); G.frozen = false; }, Math.max(250, ms - 400)); }, 400); }
 function resolve(o, r) {
   const list = COL[G.inside || 'out']; let hit = false;
@@ -891,7 +892,7 @@ function updateZones() {
   for (const Z of ZONES) { if (Z.zone !== z) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } }
   nearZone = best; const p = $('prompt');
   if (!label && G.ev?.type === 'jam' && !G.veh && !G.inside && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 70) label = 'Sell chai to stuck drivers';
-  $('bAct').hidden = !(label && !G.modal);
+  const actHide = !(label && !G.modal); if ($('bAct').hidden !== actHide) $('bAct').hidden = actHide;
   if (label && !G.modal) { p.hidden = false; p.textContent = ''; p.append(el('kbd', { text: document.body.classList.contains('touch') ? 'Action' : 'E' }), label); } else p.hidden = true;
 }
 function inFlood(x, z) { if (G.wet) return true; if (G.ev?.type !== 'flood') return false; const d = blockOf(x, z); return d && G.ev.data.districts.includes(d[2]); }
@@ -1031,7 +1032,7 @@ const PEDS = [], CARS = [], COWS = [], MALLNPC = [];
 function makeCow() { const g = new THREE.Group(); const w = mat(0xf2efe6); bx(g, 1.1, 1.0, 2.2, w, 0, 1.3, 0); bx(g, 0.6, 0.6, 0.8, w, 0, 1.7, 1.4); bx(g, 0.5, 0.15, 0.1, 0x7a6a4a, 0, 2.05, 1.3); for (const a of [[-0.4, -0.8], [0.4, -0.8], [-0.4, 0.8], [0.4, 0.8]]) bx(g, 0.2, 0.9, 0.2, w, a[0], 0.45, a[1]); bx(g, 0.4, 0.3, 0.05, 0x8b5a2b, 0.5, 1.4, 0.3); return g; }
 function spawnAmbient() {
   for (let k = 0; k < 26; k++) { const d = pick(DIST); const c = makeChar(pick(D.SHIRTS)); if (Math.random() < 0.25) setLook(c, { shirt: c.userData.torso.material.color.getHex(), hat: pick(['pagdi', 'cap', 'none']) }); scene.add(c); PEDS.push({ mesh: c, cx: d[0] * 150, cz: d[1] * 150, t: rnd(0, 4), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.6, 2.4), talkT: rnd(5, 30) }); }
-  for (let k = 0; k < 34; k++) { const along = Math.random() < 0.5 ? 'x' : 'z'; const r = pick(ROADS); const dir = Math.random() < 0.5 ? 1 : -1; const type = k < 13 ? 'auto' : k < 16 ? 'bus' : k < 19 ? 'truck' : pick(['chhotu', 'desert', 'cruiser', 'chhotu']); const v = makeVehicle(type, ['chhotu', 'desert', 'cruiser'].includes(type) ? pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0x151515, 0xf3b61f, 0xffffff]) : null); scene.add(v); CARS.push({ mesh: v, along, line: r + dir * 3.2, dir, p: rnd(-440, 440), sp: type === 'bus' || type === 'truck' ? 11 : rnd(12, 18), honkT: 0, type }); }
+  for (let k = 0; k < 28; k++) { const along = Math.random() < 0.5 ? 'x' : 'z'; const r = pick(ROADS); const dir = Math.random() < 0.5 ? 1 : -1; const type = k < 11 ? 'auto' : k < 13 ? 'bus' : k < 15 ? 'truck' : pick(['chhotu', 'desert', 'cruiser', 'chhotu']); const v = makeVehicle(type, ['chhotu', 'desert', 'cruiser'].includes(type) ? pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0x151515, 0xf3b61f, 0xffffff]) : null); scene.add(v); CARS.push({ mesh: v, along, line: r + dir * 3.2, dir, p: rnd(-440, 440), sp: type === 'bus' || type === 'truck' ? 11 : rnd(12, 18), honkT: 0, type }); }
   // jam traffic (shown only during the Iffco Chowk mahajam)
   for (let k = 0; k < 14; k++) { const v = makeVehicle(pick(['auto', 'chhotu', 'desert', 'auto', 'bus']), pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0xf3b61f])); const onX = k % 2; const pos = -60 + Math.floor(k / 2) * 18; v.position.set(onX ? D.SPOTS.naka.x + pos : 72, 0.05, onX ? D.SPOTS.naka.z + 3 : D.SPOTS.naka.z + pos); v.rotation.y = onX ? Math.PI / 2 : 0; v.visible = false; scene.add(v); JAM.push(v); }
   for (const s of COW_SPOTS) { const c = makeCow(); c.position.set(s[0], 0.2, s[1]); c.rotation.y = rnd(0, 6); scene.add(c); COWS.push({ mesh: c, x: s[0], z: s[1], t: rnd(0, 5), mooT: 0 }); }
@@ -1043,12 +1044,13 @@ function updateAmbient(dt) {
   const out = !G.inside; const jam = G.ev?.type === 'jam';
   for (const v of JAM) v.visible = out && jam;
   const ram = G.veh && Math.abs(G.vs) > 6;
-  for (const p of PEDS) { p.mesh.visible = out; if (!out) continue;
+  const ccx = camera.position.x, ccz = camera.position.z;
+  for (const p of PEDS) { p.mesh.visible = out && Math.abs(p.mesh.position.x - ccx) + Math.abs(p.mesh.position.z - ccz) < 160; if (!out) continue;
     if (p.knock > 0) { p.knock -= dt; const a = 6 - p.knock; if (a < 0.8) { p.mesh.position.x += p.kx * dt; p.mesh.position.z += p.kz * dt; p.mesh.position.y = 0.2 + Math.sin(a / 0.8 * Math.PI) * 2; } else p.mesh.position.y = 0.45; p.mesh.rotation.x = -Math.min(1, a / 0.5) * Math.PI / 2; if (p.knock <= 0) p.mesh.rotation.x = 0; continue; }
     if (ram && Math.hypot(p.mesh.position.x - G.x, p.mesh.position.z - G.z) < 2.1) { knockPerson({}); p.knock = 6; p.kx = Math.sin(G.r) * Math.abs(G.vs) * 0.5; p.kz = Math.cos(G.r) * Math.abs(G.vs) * 0.5; continue; }
-    p.t += dt * p.sp / 272 * p.dir; const t = ((p.t % 1) + 1) % 1; const Lr = 68.5; let x, z; const s = t * 4; if (s < 1) { x = -Lr + 2 * Lr * s; z = -Lr; } else if (s < 2) { x = Lr; z = -Lr + 2 * Lr * (s - 1); } else if (s < 3) { x = Lr - 2 * Lr * (s - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (s - 3); } const px = p.cx + x, pz = p.cz + z; p.mesh.rotation.y = Math.atan2(px - p.mesh.position.x, pz - p.mesh.position.z); p.mesh.position.set(px, 0.2, pz); animChar(p.mesh, dt, 1); p.talkT -= dt; if (p.talkT < 0) { p.talkT = rnd(15, 40); if (Math.hypot(px - G.x, pz - G.z) < 25) say(p, pick(NPC_LINES), 2.5); } }
+    p.t += dt * p.sp / 272 * p.dir; const t = ((p.t % 1) + 1) % 1; const Lr = 68.5; let x, z; const s = t * 4; if (s < 1) { x = -Lr + 2 * Lr * s; z = -Lr; } else if (s < 2) { x = Lr; z = -Lr + 2 * Lr * (s - 1); } else if (s < 3) { x = Lr - 2 * Lr * (s - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (s - 3); } const px = p.cx + x, pz = p.cz + z; p.mesh.rotation.y = Math.atan2(px - p.mesh.position.x, pz - p.mesh.position.z); p.mesh.position.set(px, 0.2, pz); if (p.mesh.visible) animChar(p.mesh, dt, 1); p.talkT -= dt; if (p.talkT < 0) { p.talkT = rnd(15, 40); if (Math.hypot(px - G.x, pz - G.z) < 25) say(p, pick(NPC_LINES), 2.5); } }
   for (const c of CARS) {
-    c.mesh.visible = out; if (!out) continue; let x = c.along === 'x' ? c.line : c.p, z = c.along === 'x' ? c.p : c.line;
+    c.mesh.visible = out && Math.abs(c.mesh.position.x - ccx) + Math.abs(c.mesh.position.z - ccz) < 300; if (!out) continue; let x = c.along === 'x' ? c.line : c.p, z = c.along === 'x' ? c.p : c.line;
     const fx = c.along === 'x' ? 0 : c.dir, fz = c.along === 'x' ? c.dir : 0; const dx = G.x - x, dz = G.z - z; const ahead = dx * fx + dz * fz, lat = Math.abs(dx * fz - dz * fx);
     let blocked = ahead > 0 && ahead < (c.mesh.userData.len / 2 + 5) && lat < 2.4; for (const cw of COWS) { const ax = (cw.x - x) * fx + (cw.z - z) * fz, al = Math.abs((cw.x - x) * fz - (cw.z - z) * fx); if (ax > 0 && ax < c.mesh.userData.len / 2 + 4 && al < 2.4) blocked = true; }
     if (jam && Math.hypot(x - D.SPOTS.naka.x, z - D.SPOTS.naka.z) < 80) blocked = true;
@@ -1391,7 +1393,7 @@ function buildCityFill() {
   for (const im of [body, awn]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
   signGeo.forEach((g, k) => { if (!g.p.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(g.p, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(g.uv, 2)); geo.setIndex(g.ix); const [bg, fg] = SIGN_COLS[k % SIGN_COLS.length]; const t = new THREE.CanvasTexture(signCanvas(SHOP_NAMES[k], null, bg, fg, 512, 80)); world.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t }))); });
   // skyline ring outside the playable city
-  const ring = []; for (let side = 0; side < 4; side++) for (let t = -640; t <= 640; t += rnd(20, 30)) { const off = rnd(480, 600); const x = side < 2 ? t : (side === 2 ? off : -off), z = side < 2 ? (side === 0 ? off : -off) : t; ring.push([x, z, rnd(18, 30), rnd(18, 30), rnd(20, 90)]); }
+  const ring = []; for (let side = 0; side < 4; side++) for (let t = -600; t <= 600; t += rnd(20, 30)) { const off = rnd(462, 540); const x = side < 2 ? t : (side === 2 ? off : -off), z = side < 2 ? (side === 0 ? off : -off) : t; ring.push([x, z, rnd(18, 30), rnd(18, 30), rnd(20, 90)]); }
   const sky = inst(BOX, new THREE.MeshLambertMaterial({ color: 0xffffff }), ring.length); ring.forEach((r, i) => { place(sky, i, r[0], r[4] / 2, r[1], 0, r[2], r[4], r[3]); sky.setColorAt(i, col.setHex(pick([0x8fa3b5, 0xb8b0a0, 0x9fb7c9, 0xc9b9a0, 0x7f8f9f, 0xd2c6b2]))); }); sky.instanceColor.needsUpdate = true;
   // potholes, waterlogging, garbage
   for (const r of ROADS) for (let t = -430; t <= 430; t += rnd(70, 140)) { if (ROADS.some(q2 => Math.abs(t - q2) < 9)) continue; const lat = rnd(-4.5, 4.5); if (Math.random() < 0.5) POTHOLES.push({ x: r + lat, z: t, s: rnd(0.9, 1.5) }); else POTHOLES.push({ x: t, z: r + lat, s: rnd(0.9, 1.5) }); }
@@ -1399,9 +1401,9 @@ function buildCityFill() {
   for (let k = 0; k < 14; k++) { const r = pick(ROADS), t = rnd(-420, 420); const horiz = Math.random() < 0.5; PUDDLES.push({ x: horiz ? t : r + rnd(-2, 2), z: horiz ? r + rnd(-2, 2) : t, rx: horiz ? rnd(9, 16) : rnd(5, 7), rz: horiz ? rnd(5, 7) : rnd(9, 16) }); }
   const pud = inst(new THREE.CircleGeometry(1, 20), new THREE.MeshPhongMaterial({ color: 0x4f6d7d, specular: 0x99aabb, shininess: 60, transparent: true, opacity: 0.8 }), PUDDLES.length); PUDDLES.forEach((p, i) => { q.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2); ps.set(p.x, 0.07, p.z); sc.set(p.rx, p.rz, 1); m4.compose(ps, q, sc); pud.setMatrixAt(i, m4); });
   for (const d of DIST) { const cx = d[0] * 150, cz = d[1] * 150; for (let k = 0; k < 2; k++) { const side = irnd(0, 3), t = rnd(-60, 60); const x = side < 2 ? cx + t : cx + (side === 2 ? 66.3 : -66.3), z = side < 2 ? cz + (side === 0 ? 66.3 : -66.3) : cz + t; if (zoneNear(x, z, 3)) continue; GARBAGE.push({ x, z }); } }
-  const bags = inst(SPH, new THREE.MeshLambertMaterial({ color: 0xffffff }), GARBAGE.length * 4); GARBAGE.forEach((g, i) => { for (let k = 0; k < 4; k++) { ps.set(g.x + rnd(-0.6, 0.6), 0.35 + k * 0.08, g.z + rnd(-0.6, 0.6)); const s0 = rnd(0.35, 0.6); sc.set(s0, s0 * 0.8, s0); q.identity(); m4.compose(ps, q, sc); bags.setMatrixAt(i * 4 + k, m4); bags.setColorAt(i * 4 + k, col.setHex(pick([0x1b1b1b, 0x2f5d2f, 0x6b4a2b, 0x3a3a5a]))); } }); if (bags.instanceColor) bags.instanceColor.needsUpdate = true;
+  const bags = inst(LUMP, new THREE.MeshLambertMaterial({ color: 0xffffff }), GARBAGE.length * 4); GARBAGE.forEach((g, i) => { for (let k = 0; k < 4; k++) { ps.set(g.x + rnd(-0.6, 0.6), 0.35 + k * 0.08, g.z + rnd(-0.6, 0.6)); const s0 = rnd(0.35, 0.6); sc.set(s0, s0 * 0.8, s0); q.identity(); m4.compose(ps, q, sc); bags.setMatrixAt(i * 4 + k, m4); bags.setColorAt(i * 4 + k, col.setHex(pick([0x1b1b1b, 0x2f5d2f, 0x6b4a2b, 0x3a3a5a]))); } }); if (bags.instanceColor) bags.instanceColor.needsUpdate = true;
   // crowds: cheap three-part people on every pavement, plus small groups near doors and shops
-  const N = 170; const legs = inst(BOX, mat(0x2b3550), N), torso = inst(BOX, new THREE.MeshLambertMaterial({ color: 0xffffff }), N), head = inst(SPH, new THREE.MeshLambertMaterial({ color: 0xffffff }), N);
+  const N = 170; const legs = inst(BOX, mat(0x2b3550), N), torso = inst(BOX, new THREE.MeshLambertMaterial({ color: 0xffffff }), N), head = inst(LOWSPH, new THREE.MeshLambertMaterial({ color: 0xffffff }), N);
   for (let k = 0; k < N; k++) {
     const d = pick(DIST); const p = { cx: d[0] * 150, cz: d[1] * 150, t: Math.random(), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.3, 2.3), L: rnd(65.4, 67.4), still: k > 120, x: 0, z: 0, r: 0, knock: 0, kv: 0 };
     if (p.still) { const Z = pick(ZONES.filter(z2 => z2.zone === 'out')); const a = rnd(0, Math.PI * 2), rr = rnd(4.5, 8); p.x = Z.x + Math.cos(a) * rr; p.z = Z.z + Math.sin(a) * rr; p.r = Math.atan2(Z.x - p.x, Z.z - p.z) + rnd(-1, 1); }
@@ -1411,14 +1413,16 @@ function buildCityFill() {
 }
 function updateCrowd(dt) {
   if (!CROWD.meshes) return; const [legs, torso, head] = CROWD.meshes; const out = !G.inside; for (const im of CROWD.meshes) im.visible = out; if (!out) return;
-  const q = updateCrowd.q || (updateCrowd.q = new THREE.Quaternion()), e = updateCrowd.e || (updateCrowd.e = new THREE.Euler()), m4 = updateCrowd.m || (updateCrowd.m = new THREE.Matrix4()), ps = new THREE.Vector3(), sc = new THREE.Vector3(); const t = now();
+  const U = updateCrowd.u || (updateCrowd.u = { q: new THREE.Quaternion(), e: new THREE.Euler(), m: new THREE.Matrix4(), ps: new THREE.Vector3(), sc: new THREE.Vector3(), off: new THREE.Vector3(), f: 0 }); const { q, e, ps, sc, off } = U, m4 = U.m; const t = now(); const fr = ++U.f; const cx = camera.position.x, cz = camera.position.z;
   const carHit = G.veh && Math.abs(G.vs) > 6 ? 1.9 : 0;
   CROWD.forEach((p, k) => {
     if (!p.still && !p.knock) { p.t += dt * p.sp / (p.L * 8) * p.dir; const u = ((p.t % 1) + 1) % 1 * 4, Lr = p.L; let x, z; if (u < 1) { x = -Lr + 2 * Lr * u; z = -Lr; } else if (u < 2) { x = Lr; z = -Lr + 2 * Lr * (u - 1); } else if (u < 3) { x = Lr - 2 * Lr * (u - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (u - 3); } const nx = p.cx + x, nz = p.cz + z; p.r = Math.atan2(nx - p.x, nz - p.z); p.x = nx; p.z = nz; }
     if (carHit && !p.knock && Math.abs(p.x - G.x) < 2.2 && Math.abs(p.z - G.z) < 2.2 && Math.hypot(p.x - G.x, p.z - G.z) < carHit) knockPerson(p);
-    let fall = 0, lift = 0; if (p.knock) { p.knock -= dt; const age = 7 - p.knock; if (age < 0.9) { p.x += p.kx * dt; p.z += p.kz * dt; lift = Math.sin(age / 0.9 * Math.PI) * 2.2; fall = Math.min(1, age / 0.6); } else fall = 1; if (p.knock <= 0) { p.knock = 0; if (p.still) p.r += 1; } }
+    if (!p.knock && p.still && p.placed) return; p.placed = true; // a standing group never moves unless someone runs into it
+    if (!p.knock && (fr + k) % 6 && Math.abs(p.x - cx) + Math.abs(p.z - cz) > 170) return; // far away: refresh every 6th frame only
+    let fall = 0, lift = 0; if (p.knock) { p.knock -= dt; const age = 7 - p.knock; if (age < 0.9) { p.x += p.kx * dt; p.z += p.kz * dt; lift = Math.sin(age / 0.9 * Math.PI) * 2.2; fall = Math.min(1, age / 0.6); } else fall = 1; if (p.knock <= 0) { p.knock = 0; p.placed = false; if (p.still) p.r += 1; } }
     const bob = p.still || p.knock ? 0 : Math.abs(Math.sin(t * 8 * p.sp + k)) * 0.08; e.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); q.setFromEuler(e);
-    const put = (im, oy, sx, sy, sz) => { const off = new THREE.Vector3(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx, sy, sz); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
+    const put = (im, oy, sx, sy, sz) => { off.set(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx, sy, sz); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
     put(legs, 0.5, 0.62, 1.0, 0.34); put(torso, 1.45, 0.86, 0.95, 0.46); put(head, 2.2, 0.32, 0.36, 0.32);
   });
   for (const im of CROWD.meshes) im.instanceMatrix.needsUpdate = true;
@@ -1657,9 +1661,9 @@ function popText(t, cls) { const d = el('div', { class: 'pop ' + (cls || ''), te
 G.nos = 0; let nosHeld = false, driftAcc = 0, driftT = 0, smokeT = 0;
 const nosKey = () => keys.ShiftLeft || keys.ShiftRight || nosHeld;
 function driveThrills(dt, ix, iy) {
-  if (!G.veh || !playerVeh) { $('speedo').hidden = true; return; }
+  if (!G.veh || !playerVeh) { if (G.speedoKey) { G.speedoKey = ''; $('speedo').hidden = true; } return; }
   const V = D.VEH[G.veh]; const sp = Math.abs(G.vs); const t = now();
-  $('speedo').hidden = false; $('spd').textContent = Math.round(sp * 5); $('nosb').style.width = Math.round((G.nos || 0) * 100) + '%'; $('speedo').classList.toggle('on', !!G.nosOn);
+  const so = Math.round(sp * 5) + '|' + Math.round((G.nos || 0) * 100) + '|' + !!G.nosOn; if (G.speedoKey !== so) { G.speedoKey = so; $('speedo').hidden = false; $('spd').textContent = Math.round(sp * 5); $('nosb').style.width = Math.round((G.nos || 0) * 100) + '%'; $('speedo').classList.toggle('on', !!G.nosOn); }
   // drift: hard steer at speed slides the body and fills NOS
   const drifting = Math.abs(ix) > 0.4 && sp > 12 && (iy > 0 || G.hb); const want = drifting ? -ix * 0.32 : 0; G.slip = (G.slip || 0) + (want - (G.slip || 0)) * Math.min(1, dt * 6);
   playerVeh.rotation.y = G.r + G.slip;
@@ -1675,7 +1679,7 @@ function speedCamera(dt) {
   const sp = G.veh ? Math.abs(G.vs) : 0; const want = 62 + clamp(sp - 12, 0, 30) * 0.32 + (G.nosOn ? 12 : 0);
   if (Math.abs(camera.fov - want) > 0.05) { camera.fov += (want - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
   if (G.nosOn) { camera.position.x += rnd(-0.08, 0.08); camera.position.y += rnd(-0.06, 0.06); }
-  $('speedfx').style.opacity = G.nosOn ? 0.85 : clamp((sp - 26) / 14, 0, 0.35);
+  const sfx2 = (G.nosOn ? 0.85 : clamp((sp - 26) / 14, 0, 0.35)).toFixed(2); if (G.sfxOp !== sfx2) { G.sfxOp = sfx2; $('speedfx').style.opacity = sfx2; }
 }
 
 // ================================================================ PEHLA DIN: the scripted first two minutes
@@ -1851,15 +1855,21 @@ function startGame(daily) {
 }
 
 let last = performance.now(), hungerT = 0, regenT = 0, hudT = 0;
+const PERF = { acc: 0, n: 0, pr: Math.min(window.devicePixelRatio || 1, 1.5) };
+function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel ratio a step (1.5 → 1.25 → 1 → 0.85), fast again → step back up
+  PERF.acc += frameMs; PERF.n++; if (PERF.n < 120) return; const avg = PERF.acc / PERF.n; PERF.acc = PERF.n = 0; const max = Math.min(window.devicePixelRatio || 1, 1.5);
+  let pr = PERF.pr; if (avg > 26 && pr > 0.85) pr = Math.max(0.85, +(pr - 0.25).toFixed(2)); else if (avg < 15 && pr < max) pr = Math.min(max, +(pr + 0.25).toFixed(2));
+  if (pr !== PERF.pr) { PERF.pr = pr; renderer.setPixelRatio(pr); resize(); }
+}
 function loop(t) {
-  requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); last = t;
+  requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
   updateDay(dt);
   if (G.started) {
     updatePlayer(dt); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
     hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 15) toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); saveLocal(); }
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
     hudT += dt; if (hudT > 0.25) { hudT = 0; updateHUD(); renderSapna(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const lt = ln + '|' + clockText(); if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() })); } if (G.minigame) G.minigame.tick(); }
-    sendState(); drawMini();
+    sendState(); if ((G.miniF = (G.miniF || 0) + 1) % 3 === 0) drawMini();
   } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0); camera.position.set(p.x - (mob ? 0 : 2.6), mob ? 2.0 : 2.4, p.z + (mob ? 7.5 : 6.5)); camera.lookAt(p.x - (mob ? 0 : 2.6), mob ? -0.9 : 1.7, p.z); }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
   if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt);
