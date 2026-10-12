@@ -1912,7 +1912,7 @@ function renderCreator() {
   row('Chacha ki gaadi (jab tak apni na lo)', seg([['chhotu', 'Chhotu Hatchback'], ['desert', 'Desert King 4x4'], ['dhakad', 'Dhakad 350 Bullet']], AVD.ride, v => { AVD.ride = v; }));
 }
 $('cRandom').onclick = () => { AVD.g = Math.random() < 0.5 ? 'm' : 'f'; AVD.skin = irnd(0, 4); AVD.hair = irnd(0, 4); AVD.hc = irnd(0, 4); AVD.top = irnd(0, 2); AVD.pants = irnd(0, 3); AVD.acc = irnd(0, 2); AVD.color = irnd(0, D.SHIRTS.length - 1); renderCreator(); };
-$('cBack').onclick = () => { $('creator').hidden = true; G.creating = false; DAY.fixed = false; if (PREVIEW) PREVIEW.visible = false; $('login').hidden = false; };
+$('cBack').onclick = () => { $('creator').hidden = true; G.creating = false; DAY.fixed = false; if (G.viewOff) { camera.clearViewOffset(); G.viewOff = false; } if (PREVIEW) PREVIEW.visible = false; $('login').hidden = false; };
 $('cNext').onclick = () => { lsSet('gl_avatar', AVD); G.avatarDirty = true; showStartPick(); };
 $('sBack').onclick = () => showCreator();
 let dragPrev = null; $('creator').addEventListener('pointerdown', e => { if (e.target.closest('.cpanel')) return; dragPrev = e.clientX; });
@@ -1927,7 +1927,7 @@ if (savedName && lsGet('gl_lookset')) { $('playBtn').textContent = 'Chalo, Khelo
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn').click(); });
 function saveName() { let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); }
 $('playBtn').onclick = () => { saveName(); A.initAudio(); if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
-function joinGame(startId) {
+function joinGame(startId) { if (G.viewOff) { camera.clearViewOffset(); G.viewOff = false; }
   lsSet('gl_start', startId); G.startId = startId; lsSet('gl_color', AVD.color); L.loanVeh = AVD.ride; saveLocal();
   $('startpick').hidden = true; $('creator').hidden = true; if (PREVIEW) PREVIEW.visible = false; G.creating = false; DAY.fixed = false;
   $('login').hidden = false; $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); A.restoreRadio(); radioLabel();
@@ -1971,7 +1971,10 @@ function loop(t) {
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
     hudT += dt; if (hudT > 0.25) { hudT = 0; updateHUD(); renderSapna(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
     sendState(); if ((G.miniF = (G.miniF || 0) + 1) % 3 === 0) drawMini();
-  } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0); camera.position.set(p.x - (mob ? 0 : 2.6), mob ? 2.0 : 2.4, p.z + (mob ? 7.5 : 6.5)); camera.lookAt(p.x - (mob ? 0 : 2.6), mob ? -0.9 : 1.7, p.z); }
+  } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0);
+    if (mob) { // the panel covers the bottom 58%: frame the whole avatar in the strip above it, whatever the phone's shape
+      const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
+    } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
   if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt);
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
