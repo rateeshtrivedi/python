@@ -97,6 +97,13 @@ function charge(c, amount) { if (c.p.money < amount) return false; c.p.money -= 
 
 // ------------------------------------------------------------------ world event schedule
 let worldEvent = null; // {type,start,end,data}
+// weather: a new spell every 3-7 minutes; rain about half the time, sometimes a real Gurugram downpour
+let weather = { lvl: 0, since: now(), until: now() + 120 };
+function weatherTick() {
+  const t = now(); if (t < weather.until) return; const r = Math.random();
+  const lvl = r < 0.42 ? 0 : r < 0.6 ? 1 : r < 0.75 ? 2 : r < 0.9 ? 3 : 4;
+  weather = { lvl, since: t, until: t + 180 + Math.random() * 240 }; broadcast({ t: 'weather', w: weather });
+}
 let eventIdx = 0;
 let nextEventAt = now() + 90;
 function startEvent() {
@@ -335,6 +342,7 @@ function handleEarn(c, m) {
   if (reason === 'delivery') { track(c, 'deliveries'); addXP(c, 30); }
   if (reason === 'shift') { track(c, 'shifts'); addXP(c, 35); }
   if (reason === 'quest') { addXP(c, 80); p.respect += 5; }
+  if (reason === 'flood') { if (weather.lvl < 2) return { ok: false, error: 'Paani hi nahi se, baarish mein aaiyo' }; track(c, 'flood_runs'); addXP(c, 60); p.respect += 3; }
   if (reason === 'loot') { /* xp via npc_ko */ }
   if (amt > 0) credit(c, amt, m.why ? D.cleanText(m.why, 60) : null);
   sendProfile(c);
@@ -349,7 +357,7 @@ function handle(c, m) {
       const st = c.st || (c.st = {});
       st.x = clamp(num(m.x, st.x || 0), -3200, 3200); st.z = clamp(num(m.z, st.z || 0), -3200, 3200); st.r = num(m.r, 0);
       st.a = clamp(Math.floor(num(m.a, 0)), 0, 4); st.in = INTERIORS.includes(m.in) ? m.in : '';
-      const v = m.v; st.v = v && (p.vehicles.includes(v) || ['rent', 'chhotu', 'desert', 'dhakad'].includes(v)) ? v : null; // owned, rented or Chacha's loaner
+      const v = m.v; st.v = v && (p.vehicles.includes(v) || ['rent', 'chhotu', 'desert', 'dhakad'].includes(v)) ? v : null; // owned, rented or Chacha's loaner (a boat must be owned)
       if (st.v && st.v !== 'rent' && p.cur !== st.v) { p.cur = st.v; broadcast(pinfo(c)); }
       st.hp = clamp(Math.round(num(m.hp, 100)), 0, 100); st.fx = m.fx === 1 ? 1 : 0; st.ts = now();
       break;
@@ -617,7 +625,7 @@ function connect(out, closeFn, meta, outRaw) {
       send(c, {
         t: 'welcome', id: p.id, token: p.token, profile: publicProfile(p), daily,
         players: [...conns.values()].filter(x => x !== c).map(pinfo).concat([...ais.values()].map(aiInfo)), event: worldEvent, auction, party: partyView(), roast: roastState(),
-        turf: turfView(), crews: crewList(), ann: announcements.slice(-8), belt: db.belt, lb: lbCache || leaderboards(), serverTime: now(),
+        weather, turf: turfView(), crews: crewList(), ann: announcements.slice(-8), belt: db.belt, lb: lbCache || leaderboards(), serverTime: now(),
       });
       broadcast(pinfo(c));
       aiGreets.push({ at: now() + 7, text: pick(['Ram Ram ' + p.name + '! Naya aaya ke?', p.name + ', aaja race lagate hain!', 'Oye ' + p.name + ', Gurugram mein swagat se!']) });
@@ -660,6 +668,7 @@ function tick100() {
 let slow = 0;
 function tick1s() {
   slow++; const t = now();
+  weatherTick();
   if (!worldEvent && t >= nextEventAt) startEvent();
   if (worldEvent && t >= worldEvent.end) endEvent();
   if (worldEvent?.type === 'ipl' && slow % 5 === 0) iplTick();

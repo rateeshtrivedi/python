@@ -12,8 +12,9 @@ export const VEH = {
   chhotu:  { name: 'Chhotu Hatchback',          price: 60000,  speed: 27, kind: 4, color: 0xdedede },
   desert:  { name: 'Desert King 4x4',           price: 150000, speed: 31, kind: 4, color: 0x8b1e1e },
   cruiser: { name: 'Chaudhary Cruiser',         price: 400000, speed: 37, kind: 4, color: 0x151515 },
+  naav:    { name: 'Jugaadu Naav (boat)',       price: 35000,  speed: 24, kind: 5, color: 0xf28c1b }, // fast on water, crawls on dry road
 };
-export const BUY_VEHICLES = ['scooty', 'dhakad', 'chhotu', 'desert', 'cruiser'];
+export const BUY_VEHICLES = ['scooty', 'dhakad', 'chhotu', 'naav', 'desert', 'cruiser'];
 
 export const HOUSES = {
   pg:    { name: 'Sharma PG, DLF Phase 3',      price: 0,       daily: 0,    at: [-2, -1] },
@@ -88,7 +89,7 @@ export const MISC = {
 // Earning caps the server enforces: reason -> {max per event, cooldown seconds}
 export const EARN = {
   ride: { max: 1100, cd: 14 }, delivery: { max: 700, cd: 10 }, loot: { max: 150, cd: 6 }, dangal: { max: 1000, cd: 45 },
-  quest: { max: 1600, cd: 90 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
+  quest: { max: 1600, cd: 90 }, flood: { max: 1200, cd: 30 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
 };
 
 export const MISSIONS = [
@@ -108,6 +109,7 @@ export const MISSIONS = [
   { t: 'Earn money', k: 'earned', n: 3000, r: 800 },
   { t: 'Join a baraat and dance', k: 'baraat', n: 1, r: 400, hard: 1 },
   { t: 'Win a street race', k: 'race_wins', n: 1, r: 500 },
+  { t: 'Baarish mein paani bhare ilaake paar karo', k: 'flood_runs', n: 1, r: 600 },
   { t: 'Knock out an (AI) player or a street chhora', k: 'kos', n: 1, r: 350 },
   { t: 'Show off: buy bling or a car mod', k: 'showoff', n: 1, r: 500, hard: 1 },
   { t: 'Share your Mera Gurugram card', k: 'card', n: 1, r: 300 },
@@ -214,3 +216,21 @@ export const RACES = [
 ];
 export function raceLen(r) { let s = 0; for (let i = 1; i < r.pts.length; i++) s += Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]); return s; }
 for (const r of RACES) r.minMs = Math.round(raceLen(r) / 52 * 1000);
+
+// Weather: everyone sees the same sky. lvl 0 clear … 4 "most heavy" rain; water at the flood spots rises with it.
+export const WEATHER = [
+  { name: 'Saaf mausam', short: 'Saaf', rain: 0, water: 0 },
+  { name: 'Boonda-baandi (drizzle)', short: 'Boonda-baandi', rain: 0.18, water: 0.15 },
+  { name: 'Halki baarish', short: 'Halki baarish', rain: 0.45, water: 0.4 },
+  { name: 'Tez baarish', short: 'Tez baarish', rain: 0.75, water: 0.75 },
+  { name: 'Moosladhaar baarish!', short: 'Moosladhaar!', rain: 1, water: 1 },
+];
+// Places that famously go under water in Gurugram, placed on the matching junctions and roads of the game map
+export const FLOOD_SPOTS = [
+  { name: 'Hero Honda Chowk', x: 75, z: 225, r: 46 },
+  { name: 'Golf Course Road underpass', x: -225, z: -75, r: 40 },
+  { name: 'Sohna Road', x: 75, z: 75, r: 38 },
+  { name: 'Narsinghpur, NH-48', x: 225, z: -375, r: 44 },
+  { name: 'Sheetla Mata Road', x: -75, z: 75, r: 34 },
+  { name: 'Iffco Chowk', x: 75, z: -75, r: 36 },
+];

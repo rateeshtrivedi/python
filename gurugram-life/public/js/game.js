@@ -216,6 +216,10 @@ function makeVehicle(type, colorOverride, mods, plate) {
   if (type === 'truck') { bx(g, 2.4, 2.2, 2.2, 0xf28c1b, 0, 1.7, 3.2); bx(g, 2.42, 0.8, 0.1, 0x9fd3f0, 0, 2.2, 4.3); bx(g, 2.5, 2.8, 6.4, 0xd7331f, 0, 2.2, -1.2); sign(g, 'HORN OK PLEASE', 'Buri nazar wale tera muh kala', '#f6c026', '#d7331f', 2.4, 0.9, 0, 2.2, -4.42, Math.PI); sign(g, 'JAI HARYANA', 'Dalal Transport Co.', '#1a8a4a', '#fff4d8', 5, 1.2, 1.27, 2.3, -1.2, Math.PI / 2); sign(g, 'JAI HARYANA', 'Dalal Transport Co.', '#1a8a4a', '#fff4d8', 5, 1.2, -1.27, 2.3, -1.2, -Math.PI / 2); wheel(-1.15, 0.55, 3.0, 0.55); wheel(1.15, 0.55, 3.0, 0.55); wheel(-1.15, 0.55, -2.8, 0.55); wheel(1.15, 0.55, -2.8, 0.55); g.userData.len = 8; g.userData.rad = 2.2; return g; }
   if (type === 'tractor') { bx(g, 1.4, 1.0, 2.2, 0xd7331f, 0, 1.3, 0.6); bx(g, 1.2, 0.12, 1.2, 0x222222, 0, 2.6, -0.6); bx(g, 0.08, 1.2, 0.08, 0x222222, 0, 2.0, 0.2); wheel(-0.95, 0.9, -0.6, 0.9); wheel(0.95, 0.9, -0.6, 0.9); wheel(-0.7, 0.45, 1.4, 0.45); wheel(0.7, 0.45, 1.4, 0.45); g.userData.len = 3.5; g.userData.rad = 1.6; return g; }
   if (type === 'police') { bx(g, 2.0, 1.3, 4.4, 0xf5f5f5, 0, 1.1, 0); bx(g, 1.9, 0.8, 2.4, 0x1c2a36, 0, 2.15, -0.3); bx(g, 2.02, 0.3, 4.42, 0x2563b8, 0, 1.1, 0); bx(g, 0.5, 0.2, 0.3, 0xd7331f, -0.3, 2.65, 0, { mat: glow(0xff2020) }); bx(g, 0.5, 0.2, 0.3, 0x2563b8, 0.3, 2.65, 0, { mat: glow(0x2060ff) }); for (const a of [[-1, 1.4], [1, 1.4], [-1, -1.4], [1, -1.4]]) wheel(a[0], 0.5, a[1], 0.5); g.userData.len = 4.4; g.userData.rad = 2; return g; }
+  if (type === 'naav' || type === 'policeboat') { const pol = type === 'policeboat'; const hc = pol ? 0xf5f5f5 : col; bx(g, 2.0, 0.7, 4.6, hc, 0, 0.45, 0); bx(g, 1.4, 0.5, 1.2, hc, 0, 0.4, 2.6).rotation.x = 0.35; bx(g, 1.7, 0.12, 4.2, 0x7a5230, 0, 0.82, -0.1); bx(g, 1.8, 0.25, 0.4, pol ? 0x2563b8 : 0x1a8a4a, 0, 0.9, -0.6); bx(g, 0.5, 0.9, 0.5, 0x2b2b2b, 0, 0.9, -2.5); bx(g, 0.15, 0.7, 0.15, 0x555555, 0, 0.2, -2.6);
+    if (pol) { bx(g, 0.5, 0.2, 0.3, 0xd7331f, -0.3, 1.5, 0.8, { mat: glow(0xff2020) }); bx(g, 0.5, 0.2, 0.3, 0x2563b8, 0.3, 1.5, 0.8, { mat: glow(0x2060ff) }); sign(g, 'JAL POLICE', null, '#2563b8', '#ffffff', 3.2, 0.5, 1.01, 0.55, 0, Math.PI / 2); }
+    else { bx(g, 0.05, 1.6, 0.05, 0x333333, 0.7, 1.6, 1.6); bx(g, 0.7, 0.45, 0.03, 0xf6c026, 0.37, 2.2, 1.6); sign(g, 'JUGAADU', null, '#1b1410', '#f6c026', 2.6, 0.45, 1.01, 0.55, 0, Math.PI / 2); }
+    g.userData.len = 4.8; g.userData.rad = 1.9; return g; }
   if (type === 'horse') { const w = mat(0xf5f5f5); bx(g, 0.9, 1.0, 2.2, w, 0, 1.6, 0); bx(g, 0.5, 1.2, 0.6, w, 0, 2.4, 1.1).rotation.x = -0.5; bx(g, 0.4, 0.4, 0.8, w, 0, 2.9, 1.5); for (const a of [[-0.3, -0.8], [0.3, -0.8], [-0.3, 0.8], [0.3, 0.8]]) bx(g, 0.18, 1.2, 0.18, w, a[0], 0.6, a[1]); bx(g, 1.0, 0.1, 1.2, 0xd7331f, 0, 2.15, 0, { mat: glow(0xd7331f) }); g.userData.len = 2.4; g.userData.rad = 1.2; return g; }
   const kind = V ? V.kind : 4;
   if (kind === 2) {
@@ -649,7 +653,7 @@ function openPhone() {
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]];
+    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]];
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
@@ -817,12 +821,12 @@ function refreshMyVehicle() { if (!G.veh || !playerVeh) return; scene.remove(pla
 function mount(type) {
   if (G.inside) return toast('Andar gaadi nahi chalti, bhai'); if (G.veh) return;
   G.veh = type; G.vs = 0; playerVeh = makeVehicle(type, null, (P.mods && P.mods[type]) || {}, type === 'rent' ? null : P.plate); scene.add(playerVeh);
-  player.visible = D.VEH[type].kind === 2; if (player.visible) sitChar(player); G.dance = false;
+  player.visible = D.VEH[type].kind === 2 || D.VEH[type].kind === 5; if (player.visible) sitChar(player); G.dance = false;
   if (!G.quietMount) { A.sfx('engine'); toast('Chal pade ' + D.VEH[type].name + ' pe!'); }
   if (L.drinks > 0 && G.tipsy > now()) setTimeout(() => toast('Peeke chala rya se? Iffco Chowk naka pe dhyaan rakhiyo!', 'bad'), 1200);
 }
 function dismount() { if (!G.veh) return; if (G.race) cleanupRace(); if (G.loaner) { G.loaner = false; if (!G.story && !L.loanerOK) toast('Chacha ki gaadi wapas. Apni gaadi Chaudhary Motors (NH-48) se le!'); } G.slip = 0; scene.remove(playerVeh); playerVeh = null; if (G.veh === 'rent') { G.rented = false; toast('Rental khatam. Bhaago scooter wapas.'); } G.veh = null; G.vs = 0; player.visible = true; player.position.y = 0; G.x += Math.cos(G.r) * 1.8; G.z -= Math.sin(G.r) * 1.8; resolve(G, 0.6); }
-function toggleVehicle() { if (G.veh) { if (G.race && G.race.phase !== 'done') return quitRace(); return dismount(); } if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) { if (L.loanerOK) { G.quietMount = true; mount(L.loanVeh || 'chhotu'); G.quietMount = false; G.loaner = true; return toast('Chacha ki ' + D.VEH[G.veh].name + '. Apni gaadi ka sapna upar dikh rya se!'); } return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); } mount(P.cur && P.vehicles.includes(P.cur) ? P.cur : P.vehicles[0]); }
+function toggleVehicle() { if (G.veh) { if (G.race && G.race.phase !== 'done') return quitRace(); return dismount(); } if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) { if (L.loanerOK) { G.quietMount = true; mount(L.loanVeh || 'chhotu'); G.quietMount = false; G.loaner = true; return toast('Chacha ki ' + D.VEH[G.veh].name + '. Apni gaadi ka sapna upar dikh rya se!'); } return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); } const wet = P.vehicles.includes('naav') && [[0, 0], [6, 0], [-6, 0], [0, 6], [0, -6]].some(([a, b]) => waterDepth(G.x + a, G.z + b) > 0.3); mount(wet ? 'naav' : P.cur && P.vehicles.includes(P.cur) && P.cur !== 'naav' ? P.cur : P.vehicles.find(v => v !== 'naav') || P.vehicles[0]); }
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
 function exitInterior() { const key = G.inside; const d = DOORS[key]; fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
@@ -901,17 +905,25 @@ function updatePlayer(dt) {
   let ix = 0, iy = 0; const blocked = G.frozen || G.modal || G.map || !$('chatbar').hidden;
   if (!blocked) { ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joyX; iy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joyY; }
   ix = clamp(ix, -1, 1); iy = clamp(iy, -1, 1); if (G.tipsy > now()) ix += Math.sin(now() * 2.3) * 0.35;
-  const ox = G.x, oz = G.z; let moving = false; const slow = (inFlood(G.x, G.z) ? 0.55 : 1) * (G.hangover ? 0.8 : 1);
+  const ox = G.x, oz = G.z; let moving = false; const dep = G.inside ? 0 : waterDepth(G.x, G.z); G.depth = dep;
+  const slow = (inFlood(G.x, G.z) && dep < 0.2 ? 0.55 : 1) * (G.hangover ? 0.8 : 1) * (G.veh ? 1 : dep > 0.8 ? 0.4 : dep > 0.25 ? 0.6 : 1);
   if (G.veh) {
-    const V = D.VEH[G.veh]; let max = V.speed * slow; const locked = G.race && G.race.phase === 'count'; if (locked) iy = Math.min(iy, 0) * 0;
+    const V = D.VEH[G.veh]; let max = V.speed * slow;
+    if (V.kind === 5) max = dep > 0.25 ? V.speed : 3.5; // a boat flies on water and scrapes along a dry road
+    else if (dep > 0.25) { max *= dep > 0.85 ? 0.25 : V.kind === 2 && dep > 0.55 ? 0.3 : 0.5;
+      if (dep > 0.85 && Math.abs(G.vs) > 3 && !G.race && (G.stallCD || 0) < now() && Math.random() < dt * 0.35) { G.stallCD = now() + 12; G.stall = now() + 3; A.sfx('err'); toast('Engine mein paani ghus gaya! Gaadi band... 3 second', 'bad'); } }
+    if (G.stall > now()) { iy = 0; max = 0; } const locked = G.race && G.race.phase === 'count'; if (locked) iy = Math.min(iy, 0) * 0;
     G.nosOn = !locked && nosKey() && (G.nos || 0) > 0.02 && iy > 0.2; if (G.nosOn) { max *= 1.38; G.nos = Math.max(0, G.nos - dt * 0.3); if (!G.nosSfx || now() - G.nosSfx > 0.9) { G.nosSfx = now(); A.sfx('nos'); } } if (G.ev?.type === 'jam' && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 90) max = Math.min(max, 6);
     const hb = !locked && keys.Space && Math.abs(G.vs) > 4; G.hb = hb; // Space = handbrake: slide the back out
     const target = hb ? 0 : iy * max * (iy < 0 ? 0.35 : 1); G.vs += (target - G.vs) * Math.min(1, dt * (iy * G.vs < 0 ? 3 : G.nosOn ? 2.6 : 1.2)); if (locked) G.vs = 0; if (Math.abs(iy) < 0.05) G.vs *= Math.pow(0.6, dt); if (blocked) G.vs *= 0.9;
     G.r -= ix * dt * (hb ? 3.1 : 1.9) * clamp(G.vs / 10, -1, 1); if (hb) G.vs *= Math.pow(0.55, dt); G.x += Math.sin(G.r) * G.vs * dt; G.z += Math.cos(G.r) * G.vs * dt;
     if (resolve(G, playerVeh.userData.rad)) { if (Math.abs(G.vs) > 12) { A.sfx('crash'); G.hp -= 3; flashHit(); } G.vs *= 0.4; }
     if (!drag && now() - (G.lookAt || 0) > 1.2) G.yaw = angLerp(G.yaw, G.r, dt * 2.5);
-    moving = Math.abs(G.vs) > 0.5; playerVeh.position.set(G.x, 0.2, G.z); playerVeh.rotation.y = G.r; playerVeh.rotation.z = V.kind === 2 ? ix * -0.15 * clamp(G.vs / 10, 0, 1) : 0;
+    moving = Math.abs(G.vs) > 0.5; const float = V.kind === 5 && dep > 0.25; playerVeh.position.set(G.x, float ? 0.05 + Math.min(dep, 1) * 0.35 + Math.sin(now() * 3) * 0.06 : 0.2, G.z); playerVeh.rotation.y = G.r; playerVeh.rotation.z = V.kind === 2 ? ix * -0.15 * clamp(G.vs / 10, 0, 1) : float ? Math.sin(now() * 2.2) * 0.05 - ix * 0.08 : 0;
+    if (float && Math.abs(G.vs) > 4 && Math.random() < dt * 20) burst(G.x - Math.sin(G.r) * 2.4, 0.4, G.z - Math.cos(G.r) * 2.4, 0xe8f2f8, 2, { speed: 2.5, up: 1.5, life: 0.7 }); // wake
+    if (V.kind === 5 && !float && Math.abs(G.vs) > 1 && (G.scrapeT || 0) < now()) { G.scrapeT = now() + 0.6; A.sfx('crash', 0.15); }
     if (V.kind === 2) { player.position.set(G.x - Math.sin(G.r) * 0.25, 0.55, G.z - Math.cos(G.r) * 0.25); player.rotation.y = G.r; sitChar(player); }
+    if (V.kind === 5) { player.position.set(G.x - Math.sin(G.r) * 1.0, playerVeh.position.y + 0.35, G.z - Math.cos(G.r) * 1.0); player.rotation.y = G.r; sitChar(player); }
     checkBump(); driveThrills(dt, ix, iy);
   } else {
     G.nosOn = false; driveThrills(dt, 0, 0);
@@ -920,7 +932,7 @@ function updatePlayer(dt) {
     if (m > 0.1) { dx /= Math.max(1, m); dz /= Math.max(1, m); const run = keys.ShiftLeft || keys.ShiftRight || runBtn || Math.hypot(joyX, joyY) > 0.95; const sp = (run ? 11 : 6) * (L.hunger <= 0 ? 0.6 : 1) * slow; G.x += dx * sp * dt; G.z += dz * sp * dt; G.r = angLerp(G.r, Math.atan2(dx, dz), Math.min(1, dt * 12)); moving = true; G.running = run; if (G.dance) G.dance = false; }
     if (G.jumpReq && !(G.jy > 0)) { G.jv = 7.8; G.jy = 0.001; A.sfx('swing'); } G.jumpReq = false;
     if (G.jy > 0) { G.jv -= 24 * dt; G.jy = Math.max(0, G.jy + G.jv * dt); }
-    resolve(G, 0.6); player.position.set(G.x, (G.inside ? 0 : groundY(G.x, G.z)) + (G.jy || 0), G.z); if (G.jy > 0) { const u = player.userData; u.hipL.rotation.x = -0.9; u.hipR.rotation.x = -0.3; } player.rotation.y = G.r; animChar(player, dt, G.dance ? 3 : moving ? 1 : 0, G.running ? 1.5 : 1);
+    resolve(G, 0.6); player.position.set(G.x, (G.inside ? 0 : groundY(G.x, G.z)) + (G.jy || 0) - Math.min(dep, 1.1) * 0.75, G.z); if (G.jy > 0) { const u = player.userData; u.hipL.rotation.x = -0.9; u.hipR.rotation.x = -0.3; } player.rotation.y = G.r; animChar(player, dt, G.dance ? 3 : moving ? 1 : 0, G.running ? 1.5 : 1);
     if (moving) { G.movedAcc = (G.movedAcc || 0) + Math.hypot(G.x - ox, G.z - oz); if (G.movedAcc > 12) tutEvent('moved'); }
   }
   G.moving = moving;
@@ -1012,10 +1024,12 @@ function naka(kind) {
     b.append(itemRow('Bhaag!', 'Police jeep peecha karegi. Pakde gaye to ₹5,000 aur gaadi zabt', 'Bhaag', () => { closeModal(); startChase(); }, false, true));
   });
 }
-function startChase(o) { o = o || {}; if (chaseJeep) scene.remove(chaseJeep); chaseJeep = makeVehicle('police'); if (o.near) chaseJeep.position.set(G.x - Math.sin(G.r) * 55, 0.2, G.z - Math.cos(G.r) * 55); else chaseJeep.position.set(D.SPOTS.naka.x + 10, 0.2, D.SPOTS.naka.z - 4); scene.add(chaseJeep); G.chase = { until: now() + (o.secs || 30), x: chaseJeep.position.x, z: chaseJeep.position.z, sirenT: 0, sp: o.sp, story: o.story, wait: o.story ? now() + 2.5 : 0 }; if (!o.story) toast('Police peeche se! 30 second bach ke dikha!', 'bad'); $('banner').hidden = false; $('banner').textContent = 'POLICE CHASE: bach ke nikal!'; }
+function startChase(o) { o = o || {}; if (chaseJeep) scene.remove(chaseJeep); chaseJeep = makeVehicle(o.boat ? 'policeboat' : 'police'); let wp2 = null; if (o.boat) for (let k = 0; k < 40 && !wp2; k++) { const a = rnd(0, Math.PI * 2), rr = rnd(22, 50); const x = G.x + Math.cos(a) * rr, z = G.z + Math.sin(a) * rr; if (waterDepth(x, z) > 0.4) wp2 = [x, z]; } // police boats start in the water
+  if (wp2) chaseJeep.position.set(wp2[0], 0.05, wp2[1]); else if (o.near) chaseJeep.position.set(G.x - Math.sin(G.r) * 55, 0.2, G.z - Math.cos(G.r) * 55); else chaseJeep.position.set(D.SPOTS.naka.x + 10, 0.2, D.SPOTS.naka.z - 4); scene.add(chaseJeep); G.chase = { until: now() + (o.secs || 30), x: chaseJeep.position.x, z: chaseJeep.position.z, sirenT: 0, sp: o.sp, story: o.story, boat: o.boat, wait: o.story ? now() + 2.5 : 0 }; if (!o.story) toast(o.boat ? 'Jal Police peeche! ' + (o.secs || 30) + ' second bach ke dikha, ya kinare pe utar ke bhaag!' : 'Police peeche se! ' + (o.secs || 30) + ' second bach ke dikha!', 'bad'); $('banner').hidden = false; $('banner').textContent = 'POLICE CHASE: bach ke nikal!'; }
 async function updateChase(dt) {
-  const c = G.chase; if (!c) return; const dx = G.x - c.x, dz = G.z - c.z, d = Math.hypot(dx, dz); const sp = now() < (c.wait || 0) ? 0 : c.sp || 29;
-  if (d > 0.1) { c.x += dx / d * Math.min(sp * dt, d); c.z += dz / d * Math.min(sp * dt, d); } chaseJeep.position.set(c.x, 0.2, c.z); chaseJeep.rotation.y = Math.atan2(dx, dz);
+  const c = G.chase; if (!c) return; const dx = G.x - c.x, dz = G.z - c.z, d = Math.hypot(dx, dz); let sp = now() < (c.wait || 0) ? 0 : c.sp || 29;
+  if (c.boat) { const nx = c.x + dx / (d || 1) * 3, nz = c.z + dz / (d || 1) * 3; if (waterDepth(nx, nz) < 0.25) { sp = 0; if (!c.stuckSaid) { c.stuckSaid = 1; toast('Police ki naav kinare pe atak gayi! Sukhi sadak pe bhaag!', 'money'); } } chaseJeep.position.y = 0.05 + Math.sin(now() * 3) * 0.06; }
+  if (d > 0.1) { c.x += dx / d * Math.min(sp * dt, d); c.z += dz / d * Math.min(sp * dt, d); } chaseJeep.position.x = c.x; chaseJeep.position.z = c.z; if (!c.boat) chaseJeep.position.y = 0.2; chaseJeep.rotation.y = Math.atan2(dx, dz);
   c.sirenT -= dt; if (c.sirenT < 0) { c.sirenT = 2; A.sfx('siren'); }
   if (c.story && (d < 3.5 || d > 130 || now() > c.until || !G.veh || G.inside)) { const esc = d >= 3.5; G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); if (!esc) G.vs = 0; storyChaseEnd(esc); return; }
   if (d < 3.5 && G.veh) { G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); G.vs = 0; const veh = G.veh; dismount(); G.impound = now() + 60; toast('Pakde gaye! ' + D.VEH[veh].name + ' 60s ke liye zabt.', 'bad'); await buy('misc', 'challan_chase'); return; }
@@ -1206,7 +1220,8 @@ function updateDay(dt) {
   if (G.inside) { const club = G.inside === 'club'; scene.background.copy(club ? SKY_CLUB : SKY_IN); scene.fog.color.copy(scene.background); hemi.intensity = club ? 0.6 : 1.05; sun.intensity = club ? 0.2 : 0.45; for (const m of NIGHT_MATS) m.emissiveIntensity = 0; return; }
   tmpC.copy(SKY_NIGHT).lerp(SKY_DAY, day); tmpC.lerp(SKY_DUSK, dusk * 0.6); if (G.ev?.type === 'flood') tmpC.lerp(new THREE.Color(0x6b7680), 0.6); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
   hemi.intensity = 0.35 + day * 0.65; sun.intensity = 0.1 + day * 0.7; sun.position.set(Math.cos((t - 0.25) * Math.PI * 2) * 200, Math.max(30, sunH * 200), 80);
-  const ni = clamp(night * 1.2 - 0.1, 0, 1); for (const m of NIGHT_MATS) m.emissiveIntensity = ni * 0.9; if (LAMP_MAT) LAMP_MAT.emissiveIntensity = ni;
+  const ni = clamp(Math.max(night * 1.2 - 0.1, WX.wl * 0.8), 0, 1); for (const m of NIGHT_MATS) m.emissiveIntensity = ni * 0.9; if (LAMP_MAT) LAMP_MAT.emissiveIntensity = ni;
+  weatherSky();
 }
 function clockText() { const h = Math.floor(DAY.t * 24), m = Math.floor((DAY.t * 24 - h) * 60); return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h < 12 ? ' am' : ' pm'); }
 
@@ -1284,7 +1299,7 @@ function updateRemotes(dt) {
   const k = 1 - Math.exp(-dt * 10);
   for (const [, R] of REMOTES) {
     const vis = R.visible && (G.inside || '') === R.inn; const m = R.mesh;
-    if (R.vm) { R.vm.visible = vis; R.vm.position.x += (R.tx - R.vm.position.x) * k; R.vm.position.z += (R.tz - R.vm.position.z) * k; R.vm.position.y = 0.2; R.vm.rotation.y = angLerp(R.vm.rotation.y, R.tr, k); m.position.set(R.vm.position.x, 0.55, R.vm.position.z); m.rotation.y = R.vm.rotation.y; sitChar(m); m.visible = vis && D.VEH[R.veh].kind === 2; if (R.label) R.label.visible = true;
+    if (R.vm) { R.vm.visible = vis; R.vm.position.x += (R.tx - R.vm.position.x) * k; R.vm.position.z += (R.tz - R.vm.position.z) * k; R.vm.position.y = 0.2; R.vm.rotation.y = angLerp(R.vm.rotation.y, R.tr, k); m.position.set(R.vm.position.x, 0.55, R.vm.position.z); m.rotation.y = R.vm.rotation.y; sitChar(m); m.visible = vis && (D.VEH[R.veh].kind === 2 || D.VEH[R.veh].kind === 5); if (D.VEH[R.veh].kind === 5) { const wd = waterDepth(R.vm.position.x, R.vm.position.z); if (wd > 0.25) R.vm.position.y = 0.05 + Math.min(wd, 1) * 0.35; m.position.y = R.vm.position.y + 0.35; } if (R.label) R.label.visible = true;
       if (vis && R.fx && Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) < 40) { R.bassT = (R.bassT || 0) - dt; if (R.bassT < 0) { R.bassT = 0.5; A.sfx('bass', 1 - Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) / 40); } } }
     else { m.visible = vis; m.position.x += (R.tx - m.position.x) * k; m.position.z += (R.tz - m.position.z) * k; m.position.y = R.hp <= 0 ? 0.4 : (R.inn ? 0 : groundY(m.position.x, m.position.z)); m.rotation.y = angLerp(m.rotation.y, R.tr, k); m.rotation.x = R.hp <= 0 ? -Math.PI / 2 : 0; animChar(m, dt, R.a === 3 ? 3 : R.a === 1 ? 1 : 0); }
   }
@@ -1310,7 +1325,7 @@ function setNetChip() { const n = $('net'); if (net.solo) { n.classList.remove('
 net.on('status', setNetChip);
 net.on('welcome', m => {
   P = m.profile; G.myId = m.id; lsSet('gl_token', m.token); G.timeOffset = m.serverTime - Date.now() / 1000;
-  G.ev = m.event; G.auction = m.auction; G.party = m.party; G.roast = m.roast; G.turf = m.turf; G.belt = m.belt; G.lb = m.lb;
+  if (m.weather) setWeather(m.weather, true); G.ev = m.event; G.auction = m.auction; G.party = m.party; G.roast = m.roast; G.turf = m.turf; G.belt = m.belt; G.lb = m.lb;
   for (const pi of m.players) applyInfo(pi);
   buildFlood(); if (G.ev?.type === 'ipl') drawIpl(G.ev.data); renderRoast();
   if (!G.started) startGame(m.daily); else { applyMyLook(); updateHUD(); renderMissions(); }
@@ -1321,6 +1336,7 @@ net.on('s', m => { updateSnapshot(m.p); if (m.n !== G.peerCount) { G.peerCount =
 net.on('left', m => removeRemote(m.id));
 net.on('toast', m => { if (m.kind === 'join') return feed(m.text, 'event'); toast(m.text, m.kind); if (m.sfx) A.sfx(m.sfx); });
 net.on('ann', m => { feed(m.text, m.kind); });
+net.on('weather', m => setWeather(m.w));
 net.on('chat', m => { const muted = lsGet('gl_muted') || []; if (muted.includes(m.id)) return; const mine = m.id === P?.id; chatLine(m.name + (mine ? ' (you)' : ''), m.text, m.tag); if (mine) say(player, m.text, 5); else { const R = REMOTES.get(m.id); if (R && R.visible) say(R, m.text, 5); A.sfx('chat'); } });
 net.on('dmg', m => { takeHit(m.d, m.name); if (Math.random() < 0.5) toast(m.name + ' ne kaan ke neeche baja diya!', 'bad'); });
 net.on('fx', m => {
@@ -1353,6 +1369,89 @@ function musicDirector() {
   if (t - (G.lastFight || -99) < 5 || (AKHARA.fight && !G.inside) || (G.story && G.story.beat === 'fight' && G.story.monu && G.story.monu.state !== 'ko')) th = 'fight';
   else if (!G.inside && ((G.ev?.type === 'baraat' && Math.hypot(G.x + 222, G.z - baraatZ()) < 70) || G.dance)) th = 'bhangra';
   A.setTheme(th);
+}
+
+// ================================================================ WEATHER + WATER: rain, rising waterlogging, the lake, boats, flood runs
+// G.weather comes from the server (everyone shares the sky). wl = rain strength 0..1, ww = how high the water stands 0..1, both eased.
+const WX = { wl: 0, ww: 0, flashT: 0, nextBolt: 0 };
+const LAKE = { x: -150, z: 292, r: 36, name: 'Biodiversity Park ki jheel' };
+const rainMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, uniforms: { uTime: { value: 0 }, uCam: { value: new THREE.Vector3() }, uDensity: { value: 0 }, uColor: { value: new THREE.Color(0xc8d6e5) } },
+  vertexShader: `attribute float aR; attribute float aEnd; uniform float uTime; uniform vec3 uCam; uniform float uDensity; varying float vA;
+    void main() { vec3 p = position; float sp = 22.0 + aR * 10.0; p.y = mod(p.y - uTime * sp, 34.0); p.x = uCam.x + mod(p.x - uCam.x + 45.0, 90.0) - 45.0; p.z = uCam.z + mod(p.z - uCam.z + 45.0, 90.0) - 45.0;
+      p.y += aEnd * (0.9 + uDensity * 0.6); p.x += aEnd * 0.12; vA = step(aR, uDensity); gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+  fragmentShader: `uniform vec3 uColor; varying float vA; void main() { if (vA < 0.5) discard; gl_FragColor = vec4(uColor, 0.72); }`,
+});
+const RAIN = (() => { const N = 7000, pos = new Float32Array(N * 6), aR = new Float32Array(N * 2), aEnd = new Float32Array(N * 2);
+  for (let i = 0; i < N; i++) { const x = rnd(-45, 45), y = rnd(0, 34), z = rnd(-45, 45), r = Math.random(); pos.set([x, y, z, x, y, z], i * 6); aR[i * 2] = aR[i * 2 + 1] = r; aEnd[i * 2] = 0; aEnd[i * 2 + 1] = 1; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aR', new THREE.BufferAttribute(aR, 1)); g.setAttribute('aEnd', new THREE.BufferAttribute(aEnd, 1));
+  const m = new THREE.LineSegments(g, rainMat); m.frustumCulled = false; m.visible = false; scene.add(m); return m; })();
+const FLOOD_MESH = []; let lakeMesh = null;
+function buildWater() {
+  const wm = () => new THREE.MeshPhongMaterial({ color: 0x6f6a4a, specular: 0x8899aa, shininess: 40, transparent: true, opacity: 0.86 });
+  for (const s of D.FLOOD_SPOTS) { const m = new THREE.Mesh(new THREE.CircleGeometry(1, 28), wm()); m.rotation.x = -Math.PI / 2; m.position.set(s.x, 0.1, s.z); m.visible = false; scene.add(m); FLOOD_MESH.push(m); }
+  lakeMesh = new THREE.Mesh(new THREE.CircleGeometry(LAKE.r, 40), new THREE.MeshPhongMaterial({ color: 0x2f6f8f, specular: 0x9fc3d6, shininess: 70 })); lakeMesh.rotation.x = -Math.PI / 2; lakeMesh.position.set(LAKE.x, 0.25, LAKE.z); world.add(lakeMesh);
+  const shore = new THREE.Mesh(new THREE.RingGeometry(LAKE.r, LAKE.r + 2.5, 40), mat(0xb59a6a)); shore.rotation.x = -Math.PI / 2; shore.position.set(LAKE.x, 0.24, LAKE.z); world.add(shore);
+  for (let i = TREES.length - 1; i >= 0; i--) if (Math.hypot(TREES[i][0] - LAKE.x, TREES[i][1] - LAKE.z) < LAKE.r + 4) TREES.splice(i, 1);
+  const gx = LAKE.x, gz = LAKE.z + LAKE.r + 3; bx(world, 6, 0.3, 5, 0x7a5230, gx, 0.4, gz); sign(world, 'NAAV GHAT', 'Boat lo, jheel mein ghoomo', '#2563b8', '#ffffff', 8, 1.6, gx, 3.2, gz + 2.6, 0);
+  zone('out', gx, gz + 2, 5, () => 'Naav Ghat: boat kharido / paani mein utaro', () => { if (P.vehicles.includes('naav')) { if (G.veh) dismount(); G.x = LAKE.x; G.z = LAKE.z + LAKE.r - 6; G.r = G.yaw = Math.PI; mount('naav'); } else openDealer(); });
+  POI_EXTRA.push({ x: gx, z: gz + 2, name: 'Naav Ghat (boat)', cat: 'ghoomo' });
+  for (const sp of D.FLOOD_SPOTS) zone('out', sp.x, sp.z + sp.r + 8, 10, () => (G.weather?.lvl || 0) >= 2 && WX.ww > 0.3 && !G.frun ? 'Paani paar karo: ' + sp.name : null, startFloodRun);
+}
+function spotRadius(s) { return s.r * (0.35 + 0.65 * WX.ww); }
+// how deep the water is here: 0 dry … ~1.5 in the lake
+function waterDepth(x, z) {
+  let d = 0; const lk = Math.hypot(x - LAKE.x, z - LAKE.z); if (lk < LAKE.r) d = 1.5;
+  if (WX.ww > 0.05) for (const s of D.FLOOD_SPOTS) { const r = spotRadius(s), q = Math.hypot(x - s.x, z - s.z); if (q < r) d = Math.max(d, 1.25 * WX.ww * (1 - (q / r) ** 2)); }
+  if (d < 0.2) for (const p of PUDDLES) if (((x - p.x) / p.rx) ** 2 + ((z - p.z) / p.rz) ** 2 < 1) d = Math.max(d, 0.18 + 0.25 * WX.wl);
+  return d;
+}
+function floodNear(x, z) { let best = null, bd = 1e9; for (const s of D.FLOOD_SPOTS) { const d = Math.hypot(x - s.x, z - s.z); if (d < bd) { bd = d; best = s; } } return best; }
+function setWeather(w, quiet) {
+  const prev = G.weather ? G.weather.lvl : 0; G.weather = w; if (quiet || !G.started || w.lvl === prev) return;
+  const W = D.WEATHER[w.lvl]; A.sfx(w.lvl > prev ? 'ok' : 'tick');
+  toast(w.lvl === 0 ? 'Baarish ruk gayi. Paani utarne mein time lagega!' : 'Mausam: ' + W.name + (w.lvl >= 3 ? ' · Hero Honda Chowk, Sohna Road pe paani bharega!' : ''), w.lvl >= 3 ? 'bad' : undefined);
+  if (w.lvl >= 2 && prev < 2) setTimeout(() => toast('Naya kaam: "Paani paar karo" · Menu → Paani paar, ya bhare chowk pe jaa'), 3500);
+}
+function updateWeather(dt) {
+  const W = D.WEATHER[(G.weather && G.weather.lvl) || 0]; WX.wl += (W.rain - WX.wl) * Math.min(1, dt / 6); WX.ww += (W.water - WX.ww) * Math.min(1, dt / (W.water > WX.ww ? 25 : 60)); // water rises fast, drains slowly
+  const out = !G.inside; RAIN.visible = out && WX.wl > 0.02 && !G.map; rainMat.uniforms.uTime.value = now(); rainMat.uniforms.uCam.value.copy(camera.position); rainMat.uniforms.uDensity.value = WX.wl * (PERF.pr < 1 ? 0.6 : 1);
+  FLOOD_MESH.forEach((m, i) => { const s = D.FLOOD_SPOTS[i]; const r = spotRadius(s); m.visible = WX.ww > 0.05; m.scale.set(r, r, 1); m.position.y = 0.08 + WX.ww * 0.35; m.material.opacity = 0.55 + WX.ww * 0.35; });
+  lakeMesh.position.y = 0.25 + Math.sin(now() * 0.8) * 0.03;
+  A.setRain(out ? WX.wl : WX.wl * 0.3);
+  if (out && (G.weather?.lvl || 0) >= 3 && now() > WX.nextBolt) { WX.nextBolt = now() + rnd(7, 18); WX.flashT = 0.18; const h = $('hit'); h.style.transition = 'none'; h.style.background = 'rgba(255,255,255,.75)'; h.style.opacity = 1; requestAnimationFrame(() => { h.style.transition = 'opacity .35s'; h.style.opacity = 0; setTimeout(() => { h.style.background = ''; }, 400); }); setTimeout(() => A.sfx('thunder'), rnd(300, 1600)); }
+  if (WX.flashT > 0) WX.flashT -= dt;
+}
+// rain greys the sky, shortens the view and dims the sun; called from updateDay after the normal sky
+function weatherSky() { if (G.inside || WX.wl < 0.01) { if (!G.inside && !G.map) { scene.fog.near = 160; scene.fog.far = 560; } return; } const w = WX.wl; scene.background.lerp(GREY_SKY, w * 0.75); scene.fog.color.copy(scene.background); if (!G.map) { scene.fog.near = 160 - 120 * w; scene.fog.far = 560 - 300 * w; } hemi.intensity *= 1 - 0.4 * w; sun.intensity *= 1 - 0.6 * w; if (WX.flashT > 0) hemi.intensity += 1.2; }
+const GREY_SKY = new THREE.Color(0x56606b);
+// Paani paar karo: a timed run straight through a flooded chowk
+function startFloodRun() {
+  if ((G.weather?.lvl || 0) < 2 || WX.ww < 0.3) return toast('Abhi paani nahi bhara. Tez baarish mein aaiyo!');
+  if (G.race || G.frun) return; closeModal(); const s = floodNear(G.x, G.z); const r = spotRadius(s);
+  let dx = s.x - G.x, dz = s.z - G.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d; if (Math.abs(dx) > Math.abs(dz)) { dx = Math.sign(dx); dz = 0; } else { dz = Math.sign(dz); dx = 0; } // along the road
+  const pts = [[-0.85, 'Paani mein ghuso'], [0, 'Beech mein'], [0.85, 'Bahar niklo'], [1.0 + 14 / r, 'Sukhi sadak']].map(([k, n]) => ({ x: s.x + dx * k * r, z: s.z + dz * k * r, h: Math.atan2(dx, dz), n }));
+  G.frun = { s, pts, cp: 0, t0: now(), limit: 40 + r * 0.9 }; setWaypoint(pts[0].x, pts[0].z, s.name + ': paani paar karo');
+  bigText('PAANI PAAR KARO!', s.name + ' · ' + Math.round(G.frun.limit) + ' second', 2.2); A.sfx('go');
+}
+function updateFloodRun() {
+  const f = G.frun; if (!f) return; const t = now(); const left = f.limit - (t - f.t0); const p = f.pts[f.cp];
+  GATES.forEach((g, k) => { const q = f.pts[f.cp + k]; g.visible = !!q && k < 2; if (q) { g.position.set(q.x, 0, q.z); g.rotation.y = q.h; g.userData.ring.material.color.setHex(k === 0 ? 0x2fa8ff : 0xfff4d8); g.userData.ring.material.opacity = k === 0 ? 0.95 : 0.4; } });
+  raceArrow.visible = true; raceArrow.position.set(G.x, 5.2, G.z); raceArrow.rotation.y = Math.atan2(p.x - G.x, p.z - G.z);
+  $('racehud').hidden = false; $('racehud').innerHTML = '<b class="p1">PAANI</b><span>' + Math.max(0, left).toFixed(0) + 's</span><span>' + (f.cp + 1) + '/' + f.pts.length + '</span><small>' + p.n + '</small>';
+  if (Math.hypot(p.x - G.x, p.z - G.z) < 10) { f.cp++; A.sfx('cp'); if (f.cp >= f.pts.length) return endFloodRun(true); setWaypoint(f.pts[f.cp].x, f.pts[f.cp].z, f.pts[f.cp].n); }
+  if (left <= 0) endFloodRun(false);
+}
+function endFloodRun(ok) {
+  const f = G.frun; G.frun = null; GATES.forEach(g => { g.visible = false; }); raceArrow.visible = false; $('racehud').hidden = true; G.wp = null; wpBeacon.visible = false;
+  if (ok) { const pay = Math.round(400 + f.s.r * 12 * WX.ww); bigText('PAANI PAAR!', 'Gurugram ka asli driver', 2); earn('flood', pay, 'Paani paar: ' + f.s.name); for (let k = 0; k < 2; k++) setTimeout(() => firework(G.x + rnd(-15, 15), G.z + rnd(-15, 15)), k * 400); }
+  else { bigText('PAANI MEIN PHANS GAYA', 'Time khatam. Fir try kar!', 2); A.sfx('err'); }
+}
+// police boats patrol the water when you go boating
+function boatPolice(dt) {
+  if (G.veh !== 'naav' || G.chase || G.race || G.story || G.inside) return; if (waterDepth(G.x, G.z) < 0.3) return;
+  G.boatT = (G.boatT || 0) + dt; if (G.boatT < 35) return; G.boatT = 0;
+  if (Math.random() < 0.45) { startChase({ near: true, secs: 25, boat: true, sp: 23 }); bigText('JAL POLICE!', '"Ruk ja! Naav ka permit dikha!"', 2); A.sfx('siren'); }
 }
 
 // ================================================================ CITY FILL: shop rows, skyline, crowds, potholes, garbage, waterlogging
@@ -1432,8 +1531,9 @@ function knockPerson(p) { const sp = Math.max(6, Math.abs(G.vs)); p.knock = 7; p
 function roadHazards(dt) {
   if (G.inside) return; const sp = Math.abs(G.vs); const t = now();
   if (G.veh && sp > 6 && (G.potCD || 0) < t) for (const p of POTHOLES) if (Math.abs(p.x - G.x) < 2 && Math.abs(p.z - G.z) < 2 && Math.hypot(p.x - G.x, p.z - G.z) < 1.2 + p.s) { G.potCD = t + 0.8; G.vs *= 0.78; G.jolt = 0.35; A.sfx('crash', 0.35); if (Math.random() < 0.35) say(player, pick(['Gurugram ke gaddhe!', 'Gaadi ka suspension gaya!', 'MCG kahan hai?']), 2); break; }
-  const wet = PUDDLES.find(p => ((G.x - p.x) / p.rx) ** 2 + ((G.z - p.z) / p.rz) ** 2 < 1);
+  const wet = (G.depth || 0) > 0.15 && G.veh !== 'naav';
   if (wet) { G.wet = true; if (sp > 3 && Math.random() < dt * 14) burst(G.x + rnd(-1, 1), 0.3, G.z + rnd(-1, 1), 0x9fb7c9, 2, { speed: 2 + sp * 0.12, up: 2, life: 0.6 }); if (!G.wetSaid || t - G.wetSaid > 25) { G.wetSaid = t; toast(pick(['Paani bhar gaya! Gurugram ka monsoon special', 'Yeh sadak hai ya swimming pool?', 'Thoda dheere, chhapaak!'])); } } else G.wet = false;
+  if (wet && G.depth > 0.5 && Math.abs(G.vs) > 2 && Math.random() < dt * 30) burst(G.x + rnd(-1.5, 1.5), 0.5, G.z + rnd(-1.5, 1.5), 0x8f8a6a, 3, { speed: 3 + Math.abs(G.vs) * 0.15, up: 3, life: 0.8 });
   if (!G.veh && !(G.jy > 0.6)) for (const g of GARBAGE) { const dx = G.x - g.x, dz = G.z - g.z, d = Math.hypot(dx, dz); if (d < 1.4 && d > 0.01) { G.x = g.x + dx / d * 1.4; G.z = g.z + dz / d * 1.4; if (!G.trashSaid || t - G.trashSaid > 20) { G.trashSaid = t; toast('Kooda! Space se jump karke paar kar'); } } }
   if (G.veh && sp > 6) for (const g of GARBAGE) if (Math.hypot(G.x - g.x, G.z - g.z) < 2) { if ((g.cd || 0) < t) { g.cd = t + 2; burst(g.x, 0.6, g.z, pick([0x1b1b1b, 0x6b4a2b, 0x2f5d2f]), 14, { speed: 5, life: 1 }); G.vs *= 0.85; } }
   if (G.jolt > 0) { G.jolt -= dt; camera.position.y += Math.sin(t * 60) * G.jolt * 0.5; }
@@ -1442,6 +1542,7 @@ function roadHazards(dt) {
 // ================================================================ 3D MAP: fly up over the real city, pins for every useful place
 const MAPCAT = { kaam: ['Kaam', '#2563b8'], khana: ['Khana', '#e07b10'], police: ['Police', '#1b3a8a'], mall: ['Shopping', '#8b3fc4'], party: ['Party', '#d61f9a'], race: ['Race', '#d7331f'], gaadi: ['Gaadi', '#0f766e'], hospital: ['Hospital', '#e11d48'], metro: ['Metro', '#3a6fd8'], ghoomo: ['Ghoomo', '#1a8a4a'] };
 const POI_EXTRA = []; // places added by the city builder (police thana etc.)
+MAPCAT.paani = ['Paani bhara', '#1f7ab8'];
 function mapCat(t) {
   if (/race/i.test(t)) return 'race'; if (/police|thana|naka/i.test(t)) return 'police'; if (/treatment|hospital/i.test(t)) return 'hospital'; if (/metro/i.test(t)) return 'metro';
   if (/technova|office|ramphal|kaam/i.test(t)) return 'kaam'; if (/dhaba|menu|sweets|chaat|brew|food|chai|order|khana/i.test(t)) return 'khana';
@@ -1451,7 +1552,7 @@ function mapPOIs() {
   const out = []; const seen = new Set();
   for (const Z of ZONES) { if (Z.zone !== 'out') continue; let t; try { t = Z.label(); } catch { t = null; } if (!t) continue; const name = t.replace(/^Enter /, '').replace(/^Race lagao: /, 'Race: ').split(/:| \(|·/)[0].trim().slice(0, 30); const k = name + Math.round(Z.x / 20) + Math.round(Z.z / 20); if (seen.has(k)) continue; seen.add(k); out.push({ x: Z.x, z: Z.z, name, cat: mapCat(t) }); }
   out.push({ x: D.SPOTS.naka.x, z: D.SPOTS.naka.z, name: 'Police naka, Iffco Chowk', cat: 'police' }, { x: D.SPOTS.akhara.x, z: D.SPOTS.akhara.z, name: 'Akhara (dangal)', cat: 'ghoomo' });
-  for (const p of POI_EXTRA) out.push(p); if (P) { const h = homePos(); out.push({ x: h.x, z: h.z, name: 'Mera ghar', cat: 'ghoomo' }); }
+  for (const p of POI_EXTRA) out.push(p); if (WX.ww > 0.2) for (const s2 of D.FLOOD_SPOTS) out.push({ x: s2.x, z: s2.z, name: s2.name + ' (paani)', cat: 'paani' }); if (P) { const h = homePos(); out.push({ x: h.x, z: h.z, name: 'Mera ghar', cat: 'ghoomo' }); }
   return out;
 }
 let mapGroup = null;
@@ -1863,12 +1964,12 @@ function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel r
 }
 function loop(t) {
   requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
-  updateDay(dt);
+  updateDay(dt); updateWeather(dt);
   if (G.started) {
-    updatePlayer(dt); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
+    updatePlayer(dt); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
     hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 15) toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); saveLocal(); }
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
-    hudT += dt; if (hudT > 0.25) { hudT = 0; updateHUD(); renderSapna(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const lt = ln + '|' + clockText(); if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() })); } if (G.minigame) G.minigame.tick(); }
+    hudT += dt; if (hudT > 0.25) { hudT = 0; updateHUD(); renderSapna(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
     sendState(); if ((G.miniF = (G.miniF || 0) + 1) % 3 === 0) drawMini();
   } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0); camera.position.set(p.x - (mob ? 0 : 2.6), mob ? 2.0 : 2.4, p.z + (mob ? 7.5 : 6.5)); camera.lookAt(p.x - (mob ? 0 : 2.6), mob ? -0.9 : 1.7, p.z); }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
@@ -1881,7 +1982,7 @@ function loop(t) {
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
 ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); }, r: 16, label: () => G.ev?.type === 'baraat' ? 'Baraat: note udao (₹1,000)' : null, act: async () => { if (G.ev?.type !== 'baraat') return; const r = await buy('misc', 'notes'); if (r.ok) { G.dance = true; toast('Note udaye! Sab dekh rahe hain'); } } });
-function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildCityFill(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
+function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
 window.addEventListener('pagehide', saveLocal);

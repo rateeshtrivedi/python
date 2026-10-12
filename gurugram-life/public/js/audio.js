@@ -129,6 +129,7 @@ export function sfx(k, vol = 1) {
   else if (k === 'firework') { const o = osc('sine', 300, t, 0.6, 0.08, d); o.frequency.exponentialRampToValueAtTime(1600, t + 0.55); noise(t + 0.6, 0.5, 0.5 * v, 800, 0.5, 'lowpass', d); }
   else if (k === 'cheer') { for (let i = 0; i < 6; i++) noise(t + i * 0.05, 0.6, 0.08, 1200 + i * 300, 0.8, 'bandpass', d); }
   else if (k === 'bass') dholBass(t, d, 0.5 * v);
+  else if (k === 'thunder') { noise(t, 1.6, 0.5, 120, 0.7, 'lowpass', d); noise(t + 0.15, 1.2, 0.35, 260, 0.8, 'lowpass', d); }
   else if (k === 'beep') osc('square', 660, t, 0.18, 0.12, d);
   else if (k === 'go') { osc('square', 1320, t, 0.45, 0.14, d); osc('square', 990, t, 0.45, 0.08, d); }
   else if (k === 'cp') { osc('triangle', 1175, t, 0.09, 0.18, d); osc('triangle', 1568, t + 0.06, 0.14, 0.18, d); }
@@ -162,3 +163,16 @@ export function setTheme(id) {
     for (const a of [Radio.live, Radio.audio]) if (a) a.volume = Music.vol;
   }
 }
+
+// ---- rain: looping filtered noise whose loudness follows the weather; thunder for heavy rain
+const RainS = { src: null, gain: null };
+export function setRain(level) {
+  if (!Music.ctx) return; const c = Music.ctx;
+  if (!RainS.src) {
+    const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6000;
+    const g = c.createGain(); g.gain.value = 0; src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(c.destination); src.start(); RainS.src = src; RainS.gain = g;
+  }
+  RainS.gain.gain.setTargetAtTime(clamp(level, 0, 1) * 0.16, c.currentTime, 0.5);
+}
+export function thunder() { if (!Music.ctx) return; const t = Music.ctx.currentTime; noise(t, 1.6, 0.5, 120, 0.7, 'lowpass', Music.sfx); noise(t + 0.15, 1.2, 0.35, 260, 0.8, 'lowpass', Music.sfx); }
