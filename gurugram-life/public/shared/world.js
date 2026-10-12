@@ -107,7 +107,7 @@ function weatherTick() {
   if (r < 0.12) lvl = W_PICK(); // sudden jump: cloudburst out of nowhere, or rain stops dead
   else if (r < 0.3 && t - weather.since < 1200) lvl = cur; // the same weather carries on a while longer (never past ~20 min)
   else { const step = Math.random() < 0.75 ? 1 : 2; lvl = Math.max(0, Math.min(4, cur + (Math.random() < (cur === 0 ? 0.55 : cur === 4 ? 0.15 : 0.45) ? step : -step))); if (lvl === cur) lvl = cur === 0 ? 1 : cur - 1; }
-  weather = { lvl, since: lvl === cur ? weather.since : t, until: t + W_SPELL(lvl) }; if (lvl !== cur) broadcast({ t: 'weather', w: weather });
+  const since = lvl === cur ? weather.since : t; weather = { lvl, since, until: Math.min(t + W_SPELL(lvl), since + 1200) }; if (lvl !== cur) broadcast({ t: 'weather', w: weather });
 }
 let eventIdx = 0;
 let nextEventAt = now() + 90;
