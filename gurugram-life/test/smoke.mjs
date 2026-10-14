@@ -30,6 +30,12 @@ try {
   b.send('hello', { name: 'Pinky', color: 3 }); const wb = await b.wait(m => m.t === 'welcome');
   check(wa.profile.money > 2000 && wa.daily, 'new player gets starting money + daily reward');
   check(!!wa.token && !('token' in wa.profile), 'token returned separately, not in public profile');
+  const tasks = wa.profile.missions.active; const bad = tasks.find(t => t.k === 'badla');
+  check(wa.profile.missions.v === 2 && tasks.length === 7 && new Set(tasks.map(t => t.slot)).size === 7, 'seven daily tasks, one per slot');
+  check(!!bad && bad.enemy && Number.isFinite(bad.x) && bad.t.includes(bad.enemy) && !bad.t.includes('{'), 'badla task names the goon, the friend and the place');
+  check(tasks.every(t => t.n > 0 && t.r > 0 && !t.done), 'every task has a target and a reward');
+  a.send('ev', { k: 'badla' }); const kp = await a.wait(m => m.t === 'toast' && /Kaam poora/.test(m.text)); const pr = await a.wait(m => m.t === 'profile' && m.p.missions.active.find(t => t.k === 'badla').done);
+  check(!!kp && !!pr && pr.p.money > wa.profile.money, 'beating the badla goon completes the task and pays');
   await a.wait(m => m.t === 'pi' && m.id === wb.id); check(true, 'A sees B appear');
   a.send('st', { x: 0, z: 0, r: 0, a: 0, v: null, in: '', hp: 100 }); b.send('st', { x: 1.5, z: 0, r: 0, a: 0, v: null, in: '', hp: 100 });
   const snap = await b.wait(m => m.t === 's' && m.p.some(e => e[0] === wa.id && e[1] === 0)); check(!!snap, 'positions broadcast in snapshots');
@@ -43,6 +49,7 @@ try {
   const car = await a.req('buy', { kind: 'vehicle', id: 'cruiser' }); check(!car.ok, 'cannot buy a ₹4 lakh car with starter money');
   const scooty = await a.req('buy', { kind: 'vehicle', id: 'scooty' }); check(!scooty.ok || scooty.price === 8000, 'scooty purchase validated');
   const e1 = await a.req('earn', { reason: 'delivery', amount: 999999 }); check(e1.ok && e1.amount === 700, 'earning is capped by the server');
+  const mp = await a.wait(m => m.t === 'mprog' && m.k === 'earned'); check(mp.v >= 700, 'earning shows live progress on the kamai task');
   const e2 = await a.req('earn', { reason: 'delivery', amount: 300 }); check(!e2.ok, 'earning cooldown enforced');
   const crew = await b.req('buy', { kind: 'crew', id: 'new', name: 'Sector 29 Sher', tag: 's29' }); check(!crew.ok, 'crew needs ₹25,000');
   const lb = await a.req('lb', {}); check(lb.ok && Array.isArray(lb.lb.rich), 'leaderboards available');

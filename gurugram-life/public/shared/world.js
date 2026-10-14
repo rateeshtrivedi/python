@@ -61,7 +61,7 @@ function sendProfile(c) { send(c, { t: 'profile', p: publicProfile(c.p) }); }
 function addXP(c, n) {
   const p = c.p; p.xp += n; let up = false; ensureMissions(p);
   while (p.xp >= D.xpNeed(p.level)) {
-    if (!tasksDone(p)) { p.xp = D.xpNeed(p.level); if (n > 0 && rateOk(c, 'xpcap', 60)) send(c, { t: 'toast', text: 'XP full! Level ' + (p.level + 1) + ' ke liye aaj ke 3 kaam poore kar (neeche list)' }); break; }
+    if (!tasksDone(p)) { p.xp = D.xpNeed(p.level); if (n > 0 && rateOk(c, 'xpcap', 60)) send(c, { t: 'toast', text: 'XP full! Level ' + (p.level + 1) + ' ke liye aaj ke kaam mein se 3 poore kar' }); break; }
     p.xp -= D.xpNeed(p.level); p.level++; up = true; ensureMissions(p);
   }
   if (up) { const bonus = 200 * p.level; p.money += bonus; send(c, { t: 'toast', text: 'Level up! Ab tu Level ' + p.level + ' se. Bonus ' + fmt(bonus), kind: 'money', sfx: 'level' }); broadcast(pinfo(c)); }
@@ -69,25 +69,36 @@ function addXP(c, n) {
 }
 function track(c, k, n = 1) {
   const p = c.p; p.c[k] = (p.c[k] || 0) + n; dirty = true;
-  let done = false;
-  ensureMissions(p);
-  for (const a of p.missions.active) {
-    const m = D.MISSIONS[a.id]; if (!m || a.done) continue;
-    if ((p.c[m.k] || 0) - a.base >= missionN(a)) {
-      a.done = true; const r = Math.round(m.r * (1 + a.round * 0.6)); p.money += r;
-      send(c, { t: 'toast', text: 'Kaam poora: ' + m.t + ' · +' + fmt(r), kind: 'money', sfx: 'cash' }); done = true;
-    }
+  ensureMissions(p); const ms = p.missions; let done = false, hit = false;
+  for (const a of ms.active) {
+    if (a.k !== k || a.done) continue; hit = true;
+    if ((p.c[k] || 0) - a.base >= a.n) { a.done = true; p.money += a.r; done = true; send(c, { t: 'toast', text: 'Kaam poora: ' + a.t + ' · +' + fmt(a.r), kind: 'money', sfx: 'cash' }); }
   }
-  if (done) { if (tasksDone(p)) send(c, { t: 'toast', text: 'Aaj ke teeno kaam poore! XP poora hote hi level up.', kind: 'money', sfx: 'level' }); addXP(c, 40); sendProfile(c); }
+  if (hit && !done) send(c, { t: 'mprog', k, v: p.c[k] });
+  if (!done) return;
+  const nDone = ms.active.filter(a => a.done).length;
+  if (nDone === ms.active.length && !ms.bonusPaid) {
+    ms.bonusPaid = true; const st = p.streak && p.streak.day === prevDay(ms.day) ? p.streak : { n: 0 }; p.streak = { n: st.n + 1, day: ms.day };
+    const bonus = D.dailyBonus(p.level, p.streak.n - 1); p.money += bonus; p.respect += 10;
+    send(c, { t: 'daydone', bonus, streak: p.streak.n }); announce(p.name + ' ne aaj ke saare kaam poore kar diye! Streak: ' + p.streak.n + ' din', 'event');
+  } else if (nDone === 3) send(c, { t: 'toast', text: 'Teen kaam poore! Ab XP poora hote hi level up hoga. Baaki kaam = bada bonus.', kind: 'money', sfx: 'level' });
+  addXP(c, 40); sendProfile(c);
 }
-function missionN(a) { const m = D.MISSIONS[a.id]; return m.k === 'earned' ? m.n * (1 + a.round) : Math.ceil(m.n * (1 + a.round * 0.5)); }
-// Daily level tasks: three per day for the next level, the same all day for a player, new ones after each level up
-function tasksDone(p) { return p.missions.active.length > 0 && p.missions.active.every(a => a.done); }
+// Aaj ke kaam: seven tasks a day from D.DAILY, picked per player per day (Gurugram date). Three done unlock the next level; all seven pay a streak bonus.
+const istDay = (t = Date.now()) => new Date(t + 5.5 * 3600e3).toISOString().slice(0, 10);
+const prevDay = d => new Date(Date.parse(d + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
+function tasksDone(p) { const a = p.missions.active; return a.length > 0 && a.filter(x => x.done).length >= Math.min(3, a.length); }
 function ensureMissions(p) {
-  const ms = p.missions; const day = today(); if (ms.day === day && ms.lvl === p.level && ms.active.length) return;
-  let seed = 7; for (const ch of p.id + day + p.level) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const pool = D.MISSIONS.map((m, i) => i).filter(i => !(D.MISSIONS[i].hard && p.level < 4)); for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  const round = Math.floor((p.level - 1) / 4); ms.active = pool.slice(0, 3).map(id => ({ id, base: p.c[D.MISSIONS[id].k] || 0, round, done: false })); ms.day = day; ms.lvl = p.level;
+  const ms = p.missions; const day = istDay(); if (ms.v === 2 && ms.day === day && ms.active.length) return;
+  let seed = 7; for (const ch of p.id + day) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647; const pk = a => a[Math.floor(r() * a.length)];
+  const lvl = p.level;
+  ms.active = D.DAILY_SLOTS.map(slot => {
+    const o = pk(D.DAILY[slot].filter(x => !(x.min && lvl < x.min))); const n = o.n(lvl);
+    const a = { slot, k: o.k, n, r: Math.round(o.r * (1 + 0.1 * Math.min(lvl, 10)) / 10) * 10, base: p.c[o.k] || 0, done: false, go: o.go || null };
+    if (o.k === 'badla') { const s = pk(D.BADLA_SPOTS); Object.assign(a, { enemy: pk(D.BADLA_ENEMY), friend: pk(D.BADLA_FRIEND), x: s[0], z: s[1], place: s[2] }); }
+    a.t = o.t.replace('{n}', o.money ? fmt(n) : n).replace('{enemy}', a.enemy).replace('{friend}', a.friend).replace('{place}', a.place); return a;
+  });
+  Object.assign(ms, { v: 2, day, lvl, bonusPaid: false });
 }
 function credit(c, amount, why) {
   amount = Math.round(amount); c.p.money += amount; track(c, 'earned', amount);
@@ -263,7 +274,7 @@ const EV = { // client-reported events: counters, small xp/respect, cooldown sec
   visit_mall: { cd: 30 }, visit_club: { cd: 30 }, dance: { cd: 20, xp: 5, party: 1 }, punches: { cd: 0.3 }, eat_market: { cd: 5 }, eat_dhaba: { cd: 5 },
   gyaan: { cd: 60, xp: 15 }, tut: { cd: 1, xp: 15 }, npc_ko: { cd: 4, xp: 25, respect: 6 }, card: { cd: 60, xp: 30 },
   baraat: { cd: 10, xp: 10, respect: 2, party: 2 }, ipl_watch: { cd: 30, xp: 10 }, escape: { cd: 60, respect: 10, xp: 30 }, chaupal: { cd: 60 },
-  quest_start: { cd: 5 }, office_chai: { cd: 40 }, jacks: { cd: 20, xp: 10, respect: 3 },
+  quest_start: { cd: 5 }, office_chai: { cd: 40 }, jacks: { cd: 20, xp: 10, respect: 3 }, badla: { cd: 20, xp: 30, respect: 8 },
 };
 function rateOk(c, key, cd) { const t = now(); c.cool = c.cool || {}; if ((c.cool[key] || 0) > t) return false; c.cool[key] = t + cd; return true; }
 
@@ -377,7 +388,7 @@ function handle(c, m) {
     }
     case 'hit': {
       const ai = ais.get(m.target);
-      if (ai) { if (!c.st || c.st.in || c.st.v || ai.hp <= 0 || !rateOk(c, 'hit', 0.35)) return; const p0 = aiPos(ai); if (dist(c.st, p0) > 3.6) return;
+      if (ai) { if (!c.st || c.st.in || c.st.v || ai.hp <= 0 || !rateOk(c, 'hit', 0.35)) return; const p0 = aiPos(ai); if (dist(c.st, p0) > 4.4) return; // a little slack: the AI walks while the punch is in flight
         const dmg = 9 + Math.floor(Math.random() * 6); ai.hp = Math.max(0, ai.hp - dmg); ai.foe = p.id; ai.foeUntil = now() + 8; ai.wait = 0; track(c, 'punches');
         broadcast({ t: 'fx', fx: 'punch', by: p.id, target: ai.id }, x => x.st && dist(x.st, c.st) < 60);
         if (ai.hp <= 0) { if (ai.jackBy === p.id && ai.jackV) send(c, { t: 'jackwin', v: ai.jackV, name: ai.name }); ai.jackBy = null; ai.jackV = null; ai.downUntil = now() + 8; ai.foe = null; p.respect += 3; track(c, 'kos'); addXP(c, 15); send(c, { t: 'toast', text: 'Tune ' + ai.name + ' ko dhobi pachhad maar diya! +3 respect', kind: 'money', sfx: 'ko' }); }
@@ -745,7 +756,7 @@ function aiTick(dt) {
     if (a.hp <= 0) { if (t > a.downUntil) a.hp = 100; else continue; }
     if (a.foe) { const fc = conns.get(a.foe); if (!fc || !fc.st || fc.st.in || t > a.foeUntil || fc.st.hp <= 0) { a.foe = null; if (a.jackV) { a.v = a.jackV; a.jackV = null; a.jackBy = null; } } else { a.v = null; const p0 = aiPos(a); const dx = fc.st.x - p0.x, dz = fc.st.z - p0.z, d = Math.hypot(dx, dz); a.r = Math.atan2(dx, dz); if (d > 1.9) { a.x += dx / d * 5.5 * dt; a.z += dz / d * 5.5 * dt; a.tx = a.x + dx; a.tz = a.z + dz; a.a = 1; } else { a.a = 0; if (t > (a.punchAt || 0)) { a.punchAt = t + 1.3; send(fc, { t: 'dmg', by: a.id, name: a.name, d: 4 + Math.floor(Math.random() * 4) }); broadcast({ t: 'fx', fx: 'punch', by: a.id, target: fc.p.id }, x => x.st && dist(x.st, p0) < 60); } } continue; } }
     if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0) a.a = 1; continue; }
-    if (a.v) { const p0 = aiPos(a); if (outside.some(c => !c.st.v && Math.hypot(c.st.x - p0.x, c.st.z - p0.z) < 7)) { a.a = 0; continue; } } // brakes for someone standing in the road, like traffic does
+    { const p0 = aiPos(a); if (outside.some(c => !c.st.v && Math.hypot(c.st.x - p0.x, c.st.z - p0.z) < (a.v ? 7 : 3.6))) { a.a = 0; continue; } } // stops for someone standing in the way (drivers brake, walkers face up)
     const sp = a.v ? (a.v === 'scooty' ? 14 : 20) : 5; const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz);
     if (d < 0.5) { a.x = a.tx; a.z = a.tz; if (!a.v && Math.random() < 0.25) { a.wait = 5 + Math.random() * 8; a.a = Math.random() < 0.5 ? 3 : 0; } aiNext(a); }
     else { const k = Math.min(d, sp * dt); a.x += dx / d * k; a.z += dz / d * k; a.r = Math.atan2(dx, dz); a.a = a.v ? 0 : 1; }

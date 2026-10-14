@@ -588,9 +588,44 @@ function updateHUD() {
   const need = D.xpNeed(P.level); $('xpt').textContent = P.xp >= need ? 'Full · kaam baaki' : P.xp + '/' + need; $('xpb').style.width = (P.xp / need * 100) + '%';
   $('hpt').textContent = Math.round(G.hp); $('hpb').style.width = G.hp + '%'; $('hut').textContent = Math.round(L.hunger); $('hub').style.width = L.hunger + '%';
 }
+// ================================================================ AAJ KE KAAM (daily tasks): panel, phone button, tap to go
+const TASK_ICON = { kamai: '₹', badla: '👊', shop: '🛍', club: '💃', job: '💼', thrill: '🔥', food: '🍲' };
+const kfmt = n => n >= 1000 ? (n / 1000).toFixed(n % 1000 && n < 1e4 ? 1 : 0) + 'k' : String(n);
+function dailyTasks() { return P && P.missions && P.missions.v === 2 ? P.missions.active : []; }
+function taskProg(a) { return a.done ? a.n : Math.max(0, Math.min(a.n, (P.c[a.k] || 0) - a.base)); }
+function taskCount(a, p) { return a.k === 'earned' ? kfmt(p) + '/' + kfmt(a.n) : p + '/' + a.n; }
+function streakNext() { const s = P.streak; return s && s.day && Date.parse(P.missions.day) - Date.parse(s.day) <= 864e5 ? s.n : 0; }
 function renderMissions() {
-  const box = $('mlist'); box.textContent = ''; if (!P) return; $('missions').querySelector('h4').textContent = 'Level ' + (P.level + 1) + ' ke liye · aaj ke kaam';
-  for (const a of P.missions.active) { const m = D.MISSIONS[a.id]; if (!m) continue; const need = m.k === 'earned' ? m.n * (1 + a.round) : Math.ceil(m.n * (1 + a.round * 0.5)); const prog = a.done ? need : Math.max(0, Math.min(need, (P.c[m.k] || 0) - a.base)); box.append(el('div', { class: 'm' + (a.done ? ' done' : '') }, el('span', { text: (a.done ? '✓ ' : '') + m.t }), el('span', { text: m.k === 'earned' ? fmt(prog) + '/' + fmt(need) : prog + '/' + need }))); }
+  const box = $('mlist'), act = dailyTasks(); if (!P) return; box.textContent = ''; const nd = act.filter(a => a.done).length;
+  $('missions').querySelector('h4').textContent = 'Aaj ke kaam · ' + nd + '/' + act.length + (P.streak && P.streak.n ? ' · 🔥' + P.streak.n : '');
+  for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
+  if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Kal naye kaam aayenge' : nd < 3 ? (3 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Saare 7 = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
+  $('mchip').textContent = '📋 Aaj ke kaam ' + nd + '/' + act.length;
+}
+function goTask(a) {
+  if (a.done) return toast('Ye kaam ho gaya ✓ Baaki kar!');
+  const near = pts => pts.reduce((b, q) => Math.hypot(q[0] - G.x, q[1] - G.z) < Math.hypot(b[0] - G.x, b[1] - G.z) ? q : b);
+  const go = { badla: () => setWaypoint(a.x, a.z, a.enemy + ' (' + a.place + ')'), mall: () => setWaypoint(DOORS.mall.x, DOORS.mall.z, 'Ambience Mall'), club: () => setWaypoint(DOORS.club.x, DOORS.club.z, 'Neon Nights club'),
+    office: () => setWaypoint(DOORS.office.x, DOORS.office.z, 'TechNova office'), dhaba: () => setWaypoint(DOORS.dhaba.x, DOORS.dhaba.z, 'Sher-e-Haryana Dhaba'), akhara: () => setWaypoint(AKHARA.x, AKHARA.z, 'Akhara, Leisure Valley'),
+    market: () => { const q = near([[-150, 0, 'Galleria Market'], [300, 0, 'Sadar Bazaar']]); setWaypoint(q[0], q[1], q[2]); }, jhatpat: appDelivery, chalo: appRide, races: appRaces, events: appEvents }[a.go];
+  closeModal(); if (go) go(); else toast(a.k === 'earned' ? 'Paise: Chalo rides, Jhatpat delivery, office shift, race, dangal. Phone (Tab) kholo.' : a.k === 'jacks' ? 'Sadak pe kisi gaadi ke paas jaa ke E dabao. Driver ko KO kar!' : 'Gali ke chhore sadkon pe ghoomte hain. Punch maar ke shuru kar!');
+}
+function openTasks() {
+  const act = dailyTasks(); if (!act.length) return; const nd = act.filter(a => a.done).length;
+  openModal('Aaj ke kaam · ' + nd + '/' + act.length, 'Naye kaam raat 12 baje · 3 poore = agla level · saare poore = bonus', b => {
+    for (const a of act) { const p = taskProg(a); const row = itemRow((a.done ? '✓ ' : TASK_ICON[a.slot] + ' ') + a.t, taskCount(a, p) + ' · inaam ' + fmt(a.r), a.done ? 'Ho gaya' : 'Chalo', () => goTask(a)); row.append(el('div', { class: 'tbar' }, el('i', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); b.append(row); }
+    b.append(el('p', { class: 'fine', text: 'Saare 7 poore: ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus + 10 respect. Roz poore karo, streak se bonus 2 guna tak.' + (P.streak && P.streak.n ? ' Abhi streak: ' + P.streak.n + ' din 🔥' : '') }));
+  });
+}
+// Badla: today's goon waits at his corner; KO him for the task
+let BADLA = null;
+function updateBadla() {
+  const a = dailyTasks().find(x => x.k === 'badla' && !x.done);
+  if (!a) { if (BADLA && BADLA.state !== 'ko') { scene.remove(BADLA.mesh); FIGHTERS.splice(FIGHTERS.indexOf(BADLA), 1); } if (!BADLA || BADLA.state !== 'ko') BADLA = null; return; }
+  if (BADLA && !FIGHTERS.includes(BADLA)) BADLA = null;
+  if (!BADLA) { const lv = Math.min(P.level, 10); BADLA = makeFighter(a.enemy + ' · badla', a.x, a.z, 100 + 10 * lv, 6 + (lv >> 1), 0x151515); BADLA.badla = a; FIGHTERS.push(BADLA); }
+  const n = BADLA, d = Math.hypot(G.x - n.x, G.z - n.z);
+  if (n.state === 'wander' && d < 12 && !G.inside && !G.veh && G.hp > 0) { n.state = 'aggro'; if (!n.taunted) { n.taunted = true; say(n, 'Haan maine peeta ' + a.friend + ' ne! Ke karega?', 3); bigText('BADLA!', a.enemy + ' mil gaya. Dhobi pachhad maar!', 1.6); } }
 }
 
 // ================================================================ SERVER CALLS
@@ -653,7 +688,7 @@ function openPhone() {
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]];
+    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Aaj ke kaam', '#e07b10', '✓', openTasks]);
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
@@ -860,15 +895,17 @@ const locked = () => document.pointerLockElement === canvas;
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && G.started && !G.map && $('modal').hidden && $('raceres').hidden) {
-    if (!locked()) { try { canvas.requestPointerLock(); } catch {} return; }
-    if (e.button === 0) punch(); else if (e.button === 2) doAction(); return;
+    if (locked()) { if (e.button === 0) punch(); else if (e.button === 2) doAction(); return; }
+    if (!G.noLock && now() - (G.lockTry || 0) > 1.2) { G.lockTry = now(); try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {} }
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, mouse: true }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; // no lock (yet): drag to look, click to punch
   }
   if (e.pointerType === 'touch' && e.clientX < window.innerWidth * 0.4 && document.body.classList.contains('touch')) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
 });
-document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('locked', locked()); if (locked()) { L.locked = 1; $('keyhint').hidden = true; } });
+document.addEventListener('pointerlockerror', () => { if (!G.noLock) { G.noLock = true; if (G.started) toast('Mouse: drag karke ghumao, click se punch, right-click se action'); } });
+document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('locked', locked()); if (locked()) L.locked = 1; });
 document.addEventListener('mousemove', e => { if (!locked()) return; G.yaw -= e.movementX * 0.0026; G.pitch = clamp(G.pitch + e.movementY * 0.002, 0.05, 1.2); G.lookAt = now(); });
 canvas.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; G.yaw -= dx * 0.006; G.pitch = clamp(G.pitch + dy * 0.004, 0.05, 1.2); G.lookAt = now(); if (Math.abs(dx) + Math.abs(dy) > 2) tutEvent('looked'); });
-canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) drag = null; }); canvas.addEventListener('pointercancel', () => { drag = null; });
+canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) { const d = drag; drag = null; if (d.mouse && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) setTimeout(() => { if (!locked() && G.started && $('modal').hidden && !G.map) { if (d.btn === 2) doAction(); else punch(); } }, 120); } }); canvas.addEventListener('pointercancel', () => { drag = null; });
 canvas.addEventListener('wheel', e => { G.dist = clamp(G.dist + e.deltaY * 0.01, 4, 22); e.preventDefault(); }, { passive: false });
 const joy = $('joy'), knob = $('knob'); let joyId = null;
 joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); joyMove(e); });
@@ -955,13 +992,27 @@ function updateCamera(dt) {
 function flashHit() { const h = $('hit'); h.style.transition = 'none'; h.style.opacity = 1; requestAnimationFrame(() => { h.style.transition = 'opacity .6s'; h.style.opacity = 0; }); }
 function punch() {
   if (G.frozen || G.veh || G.punchCD > now() || G.selfie) return; G.punchCD = now() + 0.42; player.userData.punchT = 0.22; G.dance = false; A.sfx('swing'); ev('punches');
-  const fx = Math.sin(G.r), fz = Math.cos(G.r); let best = null, bd = 2.9; const cands = [];
-  for (const n of FIGHTERS) if (n.state !== 'ko' && !G.inside && !(n.pehl && !AKHARA.fight)) cands.push({ kind: 'npc', o: n, x: n.x, z: n.z });
+  const cands = [], out = !G.inside;
+  for (const n of FIGHTERS) if (n.state !== 'ko' && out && !(n.pehl && !AKHARA.fight)) cands.push({ kind: 'npc', o: n, x: n.x, z: n.z });
   for (const [id, R] of REMOTES) if (R.visible && R.inn === (G.inside || '') && R.hp > 0 && !R.veh) cands.push({ kind: 'peer', id, x: R.mesh.position.x, z: R.mesh.position.z });
-  for (const c of cands) { const dx = c.x - G.x, dz = c.z - G.z, d = Math.hypot(dx, dz); if (d < bd && (dx * fx + dz * fz) / Math.max(d, 0.01) > 0.2) { bd = d; best = c; } }
-  if (!best) return; A.sfx('punch'); G.lastFight = now();
+  if (out) { for (const p of PEDS) if (!p.fighter && !(p.knock > 0) && p.mesh.visible) cands.push({ kind: 'ped', o: p, x: p.mesh.position.x, z: p.mesh.position.z });
+    for (const p of CROWD) if (!(p.knock > 0) && Math.abs(p.x - G.x) < 3.2 && Math.abs(p.z - G.z) < 3.2) cands.push({ kind: 'crowd', o: p, x: p.x, z: p.z }); }
+  // aim: whoever is closest in front of the camera or the body; anyone within arm's reach always counts
+  let best = null, bs = 1e9;
+  for (const c of cands) { const dx = c.x - G.x, dz = c.z - G.z, d = Math.hypot(dx, dz); if (d > 3.1) continue; const a = Math.atan2(dx, dz);
+    const off = Math.min(Math.abs(angDiff(a, G.yaw)), Math.abs(angDiff(a, G.r))); if (off > 1.2 && d > 1.7) continue; const sc = d + off * 1.2 + (c.kind === 'crowd' || c.kind === 'ped' ? 0.6 : 0); if (sc < bs) { bs = sc; best = c; } }
+  if (!best) return; G.r = Math.atan2(best.x - G.x, best.z - G.z); A.sfx('punch'); G.lastFight = now(); const fx = Math.sin(G.r), fz = Math.cos(G.r);
   if (best.kind === 'npc') { const n = best.o; const dmg = irnd(9, 14) + Math.min(6, Math.floor(P.respect / 100)); n.hp -= dmg; n.state = 'aggro'; n.hitT = 0.2; n.x += fx * 0.8; n.z += fz * 0.8; if (Math.random() < 0.4) say(n, pick(['Aaah!', 'Teri to!', 'Ruk ja!', 'Maar diya re!']), 1.5); if (n.hp <= 0) npcKO(n); }
+  else if (best.kind === 'ped') pedFight(best.o);
+  else if (best.kind === 'crowd') { const p = best.o; p.knock = 7; p.kx = fx * 3; p.kz = fz * 3; if (Math.random() < 0.5) toast(pick(['Arre! Bina baat ke maarega?', 'Police bulaunga!', 'Oye, hosh mein aa!']), 'bad'); }
   else net.send('hit', { target: best.id });
+}
+const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+// a punched passer-by squares up and fights back (they go home afterwards)
+function pedFight(p) {
+  const pos = p.mesh.position; const n = makeFighter(pick(['Raahgir', 'Sharma Uncle', 'Gym wala Bunty', 'Bhaiya ji', 'Delivery boy']), pos.x, pos.z, 40, 4, p.mesh.userData.torso ? p.mesh.userData.torso.material.color.getHex() : pick(D.SHIRTS));
+  n.fromPed = p; n.state = 'aggro'; n.cd = 0.9; n.hp -= irnd(9, 14); n.hitT = 0.2; p.fighter = n; p.mesh.visible = false; FIGHTERS.push(n);
+  say(n, pick(['Oye! Mere te haath uthaya?', 'Bina baat ke? Aaja fir!', 'Ab dekh tu!']), 2.2);
 }
 function takeHit(dmg, who) { G.lastFight = now(); if (G.hp <= 0) return; G.hp -= dmg; flashHit(); A.sfx('punch'); G.x -= Math.sin(G.r) * 0.4; G.z -= Math.cos(G.r) * 0.4; G.dance = false; if (G.hp <= 0) playerKO(who); updateHUD(); }
 function playerKO(who) {
@@ -976,6 +1027,8 @@ function spawnFighters() {
 }
 function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined }); scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
+  if (n.fromPed) { n.state = 'ko'; n.t = 4; A.sfx('ko'); say(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }
+  if (n.badla) { n.state = 'ko'; n.t = 6; A.sfx('ko'); ev('badla'); ev('npc_ko'); say(n, pick(['Maaf kar de! ' + n.badla.friend + ' te bhi maafi maang lunga!', 'Galti ho gayi bhai...']), 3); bigText('BADLA POORA!', n.badla.friend + ' ka badla le liya', 1.8); return; }
   if (n.jack) { n.state = 'ko'; n.t = 3; A.sfx('ko'); say(n, pick(['Le ja... le ja gaadi!', 'Police ko bataunga!', 'Mummy...!']), 2.5); ev('npc_ko'); return takeJacked(n.jack); }
   if (n.story) { n.state = 'ko'; n.t = 99; A.sfx('ko'); say(n, 'Maaf kar de bhai! Galti ho gayi!', 2.5); ev('npc_ko'); earn('loot', 150, 'Monu ne haar maani'); return storyKO(); }
   n.state = 'ko'; n.t = n.pehl ? 6 : 22; A.sfx('ko'); say(n, n.pehl ? 'Haar gaya... tu asli pehlwan se!' : pick(['Maaf kar de bhai!', 'Galti ho gayi!', 'Ab na karunga!']), 2.5);
@@ -1016,7 +1069,7 @@ function updateFighters(dt) {
   const gone = [];
   for (const n of FIGHTERS) {
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
-    if (n.jack && (n.state === 'ko' ? n.t - dt <= 0 : (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko') { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
+    if ((n.jack || n.badla || n.fromPed) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false;
     if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
@@ -1028,7 +1081,7 @@ function updateFighters(dt) {
     }
     n.cd -= dt; m.position.set(n.x, groundY(n.x, n.z) + (n.hitT > 0 ? 0.15 : 0), n.z); m.rotation.y = n.r; animChar(m, dt, moving ? 1 : 0, 1.3);
   }
-  for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); }
+  for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); if (n.fromPed) n.fromPed.fighter = null; }
 }
 
 // ================================================================ SHOW-OFF ACTIONS
@@ -1094,7 +1147,7 @@ function updateAmbient(dt) {
   for (const v of JAM) v.visible = out && jam;
   const ram = G.veh && Math.abs(G.vs) > 6;
   const ccx = camera.position.x, ccz = camera.position.z;
-  for (const p of PEDS) { p.mesh.visible = out && Math.abs(p.mesh.position.x - ccx) + Math.abs(p.mesh.position.z - ccz) < 160; if (!out) continue;
+  for (const p of PEDS) { if (p.fighter) { p.mesh.visible = false; continue; } p.mesh.visible = out && Math.abs(p.mesh.position.x - ccx) + Math.abs(p.mesh.position.z - ccz) < 160; if (!out) continue;
     if (p.knock > 0) { p.knock -= dt; const a = 6 - p.knock; if (a < 0.8) { p.mesh.position.x += p.kx * dt; p.mesh.position.z += p.kz * dt; p.mesh.position.y = 0.2 + Math.sin(a / 0.8 * Math.PI) * 2; } else p.mesh.position.y = 0.45; p.mesh.rotation.x = -Math.min(1, a / 0.5) * Math.PI / 2; if (p.knock <= 0) p.mesh.rotation.x = 0; continue; }
     if (ram && Math.hypot(p.mesh.position.x - G.x, p.mesh.position.z - G.z) < 2.1) { knockPerson({}); p.knock = 6; p.kx = Math.sin(G.r) * Math.abs(G.vs) * 0.5; p.kz = Math.cos(G.r) * Math.abs(G.vs) * 0.5; continue; }
     p.t += dt * p.sp / 272 * p.dir; const t = ((p.t % 1) + 1) % 1; const Lr = 68.5; let x, z; const s = t * 4; if (s < 1) { x = -Lr + 2 * Lr * s; z = -Lr; } else if (s < 2) { x = Lr; z = -Lr + 2 * Lr * (s - 1); } else if (s < 3) { x = Lr - 2 * Lr * (s - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (s - 3); } const px = p.cx + x, pz = p.cz + z; p.mesh.rotation.y = Math.atan2(px - p.mesh.position.x, pz - p.mesh.position.z); p.mesh.position.set(px, 0.2, pz); if (p.mesh.visible) animChar(p.mesh, dt, 1); p.talkT -= dt; if (p.talkT < 0) { p.talkT = rnd(15, 40); if (Math.hypot(px - G.x, pz - G.z) < 25) say(p, pick(NPC_LINES), 2.5); } }
@@ -1376,6 +1429,8 @@ net.on('weather', m => setWeather(m.w));
 net.on('chat', m => { const muted = lsGet('gl_muted') || []; if (muted.includes(m.id)) return; const mine = m.id === P?.id; chatLine(m.name + (mine ? ' (you)' : ''), m.text, m.tag); if (mine) say(player, m.text, 5); else { const R = REMOTES.get(m.id); if (R && R.visible) say(R, m.text, 5); A.sfx('chat'); } });
 net.on('jacked', m => { if (G.veh && !(G.race && G.race.phase !== 'done')) { G.vs = 0; dismount(); } G.lastFight = now(); A.sfx('punch'); bigText('GAADI CHHEENI!', m.name + ' ne gaadi se kheench liya. Lad ke wapas le!', 2); });
 net.on('jackwin', jackWin);
+net.on('mprog', m => { if (!P) return; P.c[m.k] = m.v; renderMissions(); });
+net.on('daydone', m => { bigText('AAJ KE SAARE KAAM POORE!', 'Bonus ' + fmt(m.bonus) + ' · streak ' + m.streak + ' din 🔥', 3.2); A.sfx('level'); for (let i = 0; i < 4; i++) setTimeout(() => firework(G.x + rnd(-30, 30), G.z + rnd(-30, 30)), i * 500); });
 net.on('dmg', m => { takeHit(m.d, m.name); if (Math.random() < 0.5) toast(m.name + ' ne kaan ke neeche baja diya!', 'bad'); });
 net.on('fx', m => {
   if (m.fx === 'punch') { const R = REMOTES.get(m.by); if (R) R.mesh.userData.punchT = 0.22; if (m.target !== P.id) A.sfx('punch', 0.5); }
@@ -1637,7 +1692,7 @@ canvas.addEventListener('pointerup', e => {
   if (hit) { const p = hit.object.userData.poi; closeMap3D(true); setWaypoint(p.x, p.z, p.name); }
 }, true);
 canvas.addEventListener('wheel', e => { if (!G.map) return; G.map.h = clamp(G.map.h * (e.deltaY > 0 ? 1.12 : 0.89), 120, 1100); e.preventDefault(); e.stopImmediatePropagation(); }, { passive: false, capture: true });
-$('mapClose').onclick = () => closeMap3D(); $('navx').onclick = () => { if (G.wp && !G.frun) { G.wp = null; wpBeacon.visible = false; toast('GPS band'); } }; $('mapwrap').addEventListener('click', openMap3D);
+$('mapClose').onclick = () => closeMap3D(); $('mchip').onclick = openTasks; $('navx').onclick = () => { if (G.wp && !G.frun) { G.wp = null; wpBeacon.visible = false; toast('GPS band'); } }; $('mapwrap').addEventListener('click', openMap3D);
 
 // ================================================================ STREET RACES + DRIVING THRILLS (NOS, drift, near miss)
 // Races: checkpoint gates on real roads vs a named rival. Win to unlock the next rival; rematch is one tap.
@@ -2014,7 +2069,7 @@ function startGame(daily) {
   player = makeChar(D.SHIRTS[P.color]); scene.add(player); sendAvatar(); applyMyLook();
   const st = STARTS.find(x => x[0] === G.startId) || STARTS[0]; const sp = st[3](); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; G.pitch = 0.12;
   updateHUD(); renderMissions(); setNetChip(); G.startedAt = now();
-  if (!L.locked) { const k = $('keyhint'); k.hidden = false; k.innerHTML = '<kbd>Click</kbd> mouse se dekho<br><kbd>W A S D</kbd> chalo · <kbd>Shift</kbd> daudo · <kbd>Space</kbd> jump<br><kbd>Left-click</kbd> punch · <kbd>E</kbd> action · <kbd>F</kbd> gaadi<br><kbd>Tab</kbd> menu · <kbd>M</kbd> map · <kbd>T</kbd> chat'; setTimeout(() => { k.hidden = true; }, 90000); }
+  { const k = $('keyhint'); k.hidden = false; k.innerHTML = '<kbd>W A S D</kbd> chalo · <kbd>Shift</kbd> daudo<br><kbd>Space</kbd> jump · <kbd>Click</kbd> punch<br><kbd>E</kbd> action · <kbd>F</kbd> gaadi · <kbd>M</kbd> map<br><kbd>Tab</kbd> menu · <kbd>T</kbd> chat · <kbd>Esc</kbd> mouse'; } // stays on screen
   const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length);
   step('play'); bigText(st[1].toUpperCase(), 'Gurugram · ' + clockText(), 2);
   if (fresh && st[0] === 'ambience') setTimeout(startStory, 2300); else if (fresh) { step('start_other'); endStoryCommon(); setTimeout(() => toast('Pehla Din story Ambience Mall pe milegi. Abhi ghoomo!'), 2600); }
@@ -2029,7 +2084,7 @@ function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel r
   if (pr !== PERF.pr) { PERF.pr = pr; renderer.setPixelRatio(pr); resize(); }
 }
 function loop(t) {
-  requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
+  requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
   updateDay(dt); updateWeather(dt);
   if (G.started) {
     updatePlayer(dt); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
@@ -2042,7 +2097,7 @@ function loop(t) {
       const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
     } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) updateNav();
+  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
