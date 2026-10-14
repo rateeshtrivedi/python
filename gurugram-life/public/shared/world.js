@@ -388,7 +388,7 @@ function handle(c, m) {
     }
     case 'hit': {
       const ai = ais.get(m.target);
-      if (ai) { if (!c.st || c.st.in || c.st.v || ai.hp <= 0 || !rateOk(c, 'hit', 0.35)) return; const p0 = aiPos(ai); if (dist(c.st, p0) > 3.6) return;
+      if (ai) { if (!c.st || c.st.in || c.st.v || ai.hp <= 0 || !rateOk(c, 'hit', 0.35)) return; const p0 = aiPos(ai); if (dist(c.st, p0) > 4.4) return; // a little slack: the AI walks while the punch is in flight
         const dmg = 9 + Math.floor(Math.random() * 6); ai.hp = Math.max(0, ai.hp - dmg); ai.foe = p.id; ai.foeUntil = now() + 8; ai.wait = 0; track(c, 'punches');
         broadcast({ t: 'fx', fx: 'punch', by: p.id, target: ai.id }, x => x.st && dist(x.st, c.st) < 60);
         if (ai.hp <= 0) { if (ai.jackBy === p.id && ai.jackV) send(c, { t: 'jackwin', v: ai.jackV, name: ai.name }); ai.jackBy = null; ai.jackV = null; ai.downUntil = now() + 8; ai.foe = null; p.respect += 3; track(c, 'kos'); addXP(c, 15); send(c, { t: 'toast', text: 'Tune ' + ai.name + ' ko dhobi pachhad maar diya! +3 respect', kind: 'money', sfx: 'ko' }); }
@@ -756,7 +756,7 @@ function aiTick(dt) {
     if (a.hp <= 0) { if (t > a.downUntil) a.hp = 100; else continue; }
     if (a.foe) { const fc = conns.get(a.foe); if (!fc || !fc.st || fc.st.in || t > a.foeUntil || fc.st.hp <= 0) { a.foe = null; if (a.jackV) { a.v = a.jackV; a.jackV = null; a.jackBy = null; } } else { a.v = null; const p0 = aiPos(a); const dx = fc.st.x - p0.x, dz = fc.st.z - p0.z, d = Math.hypot(dx, dz); a.r = Math.atan2(dx, dz); if (d > 1.9) { a.x += dx / d * 5.5 * dt; a.z += dz / d * 5.5 * dt; a.tx = a.x + dx; a.tz = a.z + dz; a.a = 1; } else { a.a = 0; if (t > (a.punchAt || 0)) { a.punchAt = t + 1.3; send(fc, { t: 'dmg', by: a.id, name: a.name, d: 4 + Math.floor(Math.random() * 4) }); broadcast({ t: 'fx', fx: 'punch', by: a.id, target: fc.p.id }, x => x.st && dist(x.st, p0) < 60); } } continue; } }
     if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0) a.a = 1; continue; }
-    if (a.v) { const p0 = aiPos(a); if (outside.some(c => !c.st.v && Math.hypot(c.st.x - p0.x, c.st.z - p0.z) < 7)) { a.a = 0; continue; } } // brakes for someone standing in the road, like traffic does
+    { const p0 = aiPos(a); if (outside.some(c => !c.st.v && Math.hypot(c.st.x - p0.x, c.st.z - p0.z) < (a.v ? 7 : 3.6))) { a.a = 0; continue; } } // stops for someone standing in the way (drivers brake, walkers face up)
     const sp = a.v ? (a.v === 'scooty' ? 14 : 20) : 5; const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz);
     if (d < 0.5) { a.x = a.tx; a.z = a.tz; if (!a.v && Math.random() < 0.25) { a.wait = 5 + Math.random() * 8; a.a = Math.random() < 0.5 ? 3 : 0; } aiNext(a); }
     else { const k = Math.min(d, sp * dt); a.x += dx / d * k; a.z += dz / d * k; a.r = Math.atan2(dx, dz); a.a = a.v ? 0 : 1; }

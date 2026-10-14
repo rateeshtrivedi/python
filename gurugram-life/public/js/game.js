@@ -895,15 +895,17 @@ const locked = () => document.pointerLockElement === canvas;
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && G.started && !G.map && $('modal').hidden && $('raceres').hidden) {
-    if (!locked()) { try { canvas.requestPointerLock(); } catch {} return; }
-    if (e.button === 0) punch(); else if (e.button === 2) doAction(); return;
+    if (locked()) { if (e.button === 0) punch(); else if (e.button === 2) doAction(); return; }
+    if (!G.noLock && now() - (G.lockTry || 0) > 1.2) { G.lockTry = now(); try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {} }
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, mouse: true }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; // no lock (yet): drag to look, click to punch
   }
   if (e.pointerType === 'touch' && e.clientX < window.innerWidth * 0.4 && document.body.classList.contains('touch')) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
 });
+document.addEventListener('pointerlockerror', () => { if (!G.noLock) { G.noLock = true; if (G.started) toast('Mouse: drag karke ghumao, click se punch, right-click se action'); } });
 document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('locked', locked()); if (locked()) L.locked = 1; });
 document.addEventListener('mousemove', e => { if (!locked()) return; G.yaw -= e.movementX * 0.0026; G.pitch = clamp(G.pitch + e.movementY * 0.002, 0.05, 1.2); G.lookAt = now(); });
 canvas.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; G.yaw -= dx * 0.006; G.pitch = clamp(G.pitch + dy * 0.004, 0.05, 1.2); G.lookAt = now(); if (Math.abs(dx) + Math.abs(dy) > 2) tutEvent('looked'); });
-canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) drag = null; }); canvas.addEventListener('pointercancel', () => { drag = null; });
+canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) { const d = drag; drag = null; if (d.mouse && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) setTimeout(() => { if (!locked() && G.started && $('modal').hidden && !G.map) { if (d.btn === 2) doAction(); else punch(); } }, 120); } }); canvas.addEventListener('pointercancel', () => { drag = null; });
 canvas.addEventListener('wheel', e => { G.dist = clamp(G.dist + e.deltaY * 0.01, 4, 22); e.preventDefault(); }, { passive: false });
 const joy = $('joy'), knob = $('knob'); let joyId = null;
 joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); joyMove(e); });
@@ -990,13 +992,27 @@ function updateCamera(dt) {
 function flashHit() { const h = $('hit'); h.style.transition = 'none'; h.style.opacity = 1; requestAnimationFrame(() => { h.style.transition = 'opacity .6s'; h.style.opacity = 0; }); }
 function punch() {
   if (G.frozen || G.veh || G.punchCD > now() || G.selfie) return; G.punchCD = now() + 0.42; player.userData.punchT = 0.22; G.dance = false; A.sfx('swing'); ev('punches');
-  const fx = Math.sin(G.r), fz = Math.cos(G.r); let best = null, bd = 2.9; const cands = [];
-  for (const n of FIGHTERS) if (n.state !== 'ko' && !G.inside && !(n.pehl && !AKHARA.fight)) cands.push({ kind: 'npc', o: n, x: n.x, z: n.z });
+  const cands = [], out = !G.inside;
+  for (const n of FIGHTERS) if (n.state !== 'ko' && out && !(n.pehl && !AKHARA.fight)) cands.push({ kind: 'npc', o: n, x: n.x, z: n.z });
   for (const [id, R] of REMOTES) if (R.visible && R.inn === (G.inside || '') && R.hp > 0 && !R.veh) cands.push({ kind: 'peer', id, x: R.mesh.position.x, z: R.mesh.position.z });
-  for (const c of cands) { const dx = c.x - G.x, dz = c.z - G.z, d = Math.hypot(dx, dz); if (d < bd && (dx * fx + dz * fz) / Math.max(d, 0.01) > 0.2) { bd = d; best = c; } }
-  if (!best) return; A.sfx('punch'); G.lastFight = now();
+  if (out) { for (const p of PEDS) if (!p.fighter && !(p.knock > 0) && p.mesh.visible) cands.push({ kind: 'ped', o: p, x: p.mesh.position.x, z: p.mesh.position.z });
+    for (const p of CROWD) if (!(p.knock > 0) && Math.abs(p.x - G.x) < 3.2 && Math.abs(p.z - G.z) < 3.2) cands.push({ kind: 'crowd', o: p, x: p.x, z: p.z }); }
+  // aim: whoever is closest in front of the camera or the body; anyone within arm's reach always counts
+  let best = null, bs = 1e9;
+  for (const c of cands) { const dx = c.x - G.x, dz = c.z - G.z, d = Math.hypot(dx, dz); if (d > 3.1) continue; const a = Math.atan2(dx, dz);
+    const off = Math.min(Math.abs(angDiff(a, G.yaw)), Math.abs(angDiff(a, G.r))); if (off > 1.2 && d > 1.7) continue; const sc = d + off * 1.2 + (c.kind === 'crowd' || c.kind === 'ped' ? 0.6 : 0); if (sc < bs) { bs = sc; best = c; } }
+  if (!best) return; G.r = Math.atan2(best.x - G.x, best.z - G.z); A.sfx('punch'); G.lastFight = now(); const fx = Math.sin(G.r), fz = Math.cos(G.r);
   if (best.kind === 'npc') { const n = best.o; const dmg = irnd(9, 14) + Math.min(6, Math.floor(P.respect / 100)); n.hp -= dmg; n.state = 'aggro'; n.hitT = 0.2; n.x += fx * 0.8; n.z += fz * 0.8; if (Math.random() < 0.4) say(n, pick(['Aaah!', 'Teri to!', 'Ruk ja!', 'Maar diya re!']), 1.5); if (n.hp <= 0) npcKO(n); }
+  else if (best.kind === 'ped') pedFight(best.o);
+  else if (best.kind === 'crowd') { const p = best.o; p.knock = 7; p.kx = fx * 3; p.kz = fz * 3; if (Math.random() < 0.5) toast(pick(['Arre! Bina baat ke maarega?', 'Police bulaunga!', 'Oye, hosh mein aa!']), 'bad'); }
   else net.send('hit', { target: best.id });
+}
+const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+// a punched passer-by squares up and fights back (they go home afterwards)
+function pedFight(p) {
+  const pos = p.mesh.position; const n = makeFighter(pick(['Raahgir', 'Sharma Uncle', 'Gym wala Bunty', 'Bhaiya ji', 'Delivery boy']), pos.x, pos.z, 40, 4, p.mesh.userData.torso ? p.mesh.userData.torso.material.color.getHex() : pick(D.SHIRTS));
+  n.fromPed = p; n.state = 'aggro'; n.cd = 0.9; n.hp -= irnd(9, 14); n.hitT = 0.2; p.fighter = n; p.mesh.visible = false; FIGHTERS.push(n);
+  say(n, pick(['Oye! Mere te haath uthaya?', 'Bina baat ke? Aaja fir!', 'Ab dekh tu!']), 2.2);
 }
 function takeHit(dmg, who) { G.lastFight = now(); if (G.hp <= 0) return; G.hp -= dmg; flashHit(); A.sfx('punch'); G.x -= Math.sin(G.r) * 0.4; G.z -= Math.cos(G.r) * 0.4; G.dance = false; if (G.hp <= 0) playerKO(who); updateHUD(); }
 function playerKO(who) {
@@ -1011,6 +1027,7 @@ function spawnFighters() {
 }
 function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined }); scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
+  if (n.fromPed) { n.state = 'ko'; n.t = 4; A.sfx('ko'); say(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }
   if (n.badla) { n.state = 'ko'; n.t = 6; A.sfx('ko'); ev('badla'); ev('npc_ko'); say(n, pick(['Maaf kar de! ' + n.badla.friend + ' te bhi maafi maang lunga!', 'Galti ho gayi bhai...']), 3); bigText('BADLA POORA!', n.badla.friend + ' ka badla le liya', 1.8); return; }
   if (n.jack) { n.state = 'ko'; n.t = 3; A.sfx('ko'); say(n, pick(['Le ja... le ja gaadi!', 'Police ko bataunga!', 'Mummy...!']), 2.5); ev('npc_ko'); return takeJacked(n.jack); }
   if (n.story) { n.state = 'ko'; n.t = 99; A.sfx('ko'); say(n, 'Maaf kar de bhai! Galti ho gayi!', 2.5); ev('npc_ko'); earn('loot', 150, 'Monu ne haar maani'); return storyKO(); }
@@ -1052,7 +1069,7 @@ function updateFighters(dt) {
   const gone = [];
   for (const n of FIGHTERS) {
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
-    if ((n.jack || n.badla) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko') { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
+    if ((n.jack || n.badla || n.fromPed) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false;
     if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
@@ -1064,7 +1081,7 @@ function updateFighters(dt) {
     }
     n.cd -= dt; m.position.set(n.x, groundY(n.x, n.z) + (n.hitT > 0 ? 0.15 : 0), n.z); m.rotation.y = n.r; animChar(m, dt, moving ? 1 : 0, 1.3);
   }
-  for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); }
+  for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); if (n.fromPed) n.fromPed.fighter = null; }
 }
 
 // ================================================================ SHOW-OFF ACTIONS
@@ -1130,7 +1147,7 @@ function updateAmbient(dt) {
   for (const v of JAM) v.visible = out && jam;
   const ram = G.veh && Math.abs(G.vs) > 6;
   const ccx = camera.position.x, ccz = camera.position.z;
-  for (const p of PEDS) { p.mesh.visible = out && Math.abs(p.mesh.position.x - ccx) + Math.abs(p.mesh.position.z - ccz) < 160; if (!out) continue;
+  for (const p of PEDS) { if (p.fighter) { p.mesh.visible = false; continue; } p.mesh.visible = out && Math.abs(p.mesh.position.x - ccx) + Math.abs(p.mesh.position.z - ccz) < 160; if (!out) continue;
     if (p.knock > 0) { p.knock -= dt; const a = 6 - p.knock; if (a < 0.8) { p.mesh.position.x += p.kx * dt; p.mesh.position.z += p.kz * dt; p.mesh.position.y = 0.2 + Math.sin(a / 0.8 * Math.PI) * 2; } else p.mesh.position.y = 0.45; p.mesh.rotation.x = -Math.min(1, a / 0.5) * Math.PI / 2; if (p.knock <= 0) p.mesh.rotation.x = 0; continue; }
     if (ram && Math.hypot(p.mesh.position.x - G.x, p.mesh.position.z - G.z) < 2.1) { knockPerson({}); p.knock = 6; p.kx = Math.sin(G.r) * Math.abs(G.vs) * 0.5; p.kz = Math.cos(G.r) * Math.abs(G.vs) * 0.5; continue; }
     p.t += dt * p.sp / 272 * p.dir; const t = ((p.t % 1) + 1) % 1; const Lr = 68.5; let x, z; const s = t * 4; if (s < 1) { x = -Lr + 2 * Lr * s; z = -Lr; } else if (s < 2) { x = Lr; z = -Lr + 2 * Lr * (s - 1); } else if (s < 3) { x = Lr - 2 * Lr * (s - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (s - 3); } const px = p.cx + x, pz = p.cz + z; p.mesh.rotation.y = Math.atan2(px - p.mesh.position.x, pz - p.mesh.position.z); p.mesh.position.set(px, 0.2, pz); if (p.mesh.visible) animChar(p.mesh, dt, 1); p.talkT -= dt; if (p.talkT < 0) { p.talkT = rnd(15, 40); if (Math.hypot(px - G.x, pz - G.z) < 25) say(p, pick(NPC_LINES), 2.5); } }
@@ -2067,7 +2084,7 @@ function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel r
   if (pr !== PERF.pr) { PERF.pr = pr; renderer.setPixelRatio(pr); resize(); }
 }
 function loop(t) {
-  requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
+  requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
   updateDay(dt); updateWeather(dt);
   if (G.started) {
     updatePlayer(dt); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
