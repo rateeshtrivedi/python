@@ -96,29 +96,30 @@ export const EARN = {
   quest: { max: 1600, cd: 90 }, flood: { max: 1200, cd: 30 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
 };
 
-export const MISSIONS = [
-  { t: 'Eat at Sher-e-Haryana Dhaba', k: 'eat_dhaba', n: 1, r: 300 },
-  { t: 'Complete Jhatpat deliveries', k: 'deliveries', n: 2, r: 450 },
-  { t: 'Visit Ambience Mall', k: 'visit_mall', n: 1, r: 200 },
-  { t: 'Work a shift at TechNova', k: 'shifts', n: 1, r: 400 },
-  { t: 'Throw punches', k: 'punches', n: 6, r: 150 },
-  { t: 'Knock someone out', k: 'kos', n: 1, r: 350 },
-  { t: 'Complete Chalo rides', k: 'rides', n: 2, r: 700 },
-  { t: 'Ride the Rapid Metro', k: 'metro', n: 1, r: 150 },
-  { t: 'Dance at Neon Nights club', k: 'dance', n: 1, r: 250 },
-  { t: 'Send chat messages', k: 'chats', n: 3, r: 150 },
-  { t: 'Watch a movie at Reel Star', k: 'movies', n: 1, r: 300 },
-  { t: 'Win a dangal at the akhara', k: 'wrestle', n: 1, r: 1000, hard: 1 },
-  { t: 'Buy a vehicle or upgrade', k: 'vehbuy', n: 1, r: 600, hard: 1 },
-  { t: 'Earn money', k: 'earned', n: 3000, r: 800 },
-  { t: 'Join a baraat and dance', k: 'baraat', n: 1, r: 400, hard: 1 },
-  { t: 'Win a street race', k: 'race_wins', n: 1, r: 500 },
-  { t: 'Baarish mein paani bhare ilaake paar karo', k: 'flood_runs', n: 1, r: 600 },
-  { t: 'Knock out an (AI) player or a street chhora', k: 'kos', n: 1, r: 350 },
-  { t: 'Show off: buy bling or a car mod', k: 'showoff', n: 1, r: 500, hard: 1 },
-  { t: 'Share your Mera Gurugram card', k: 'card', n: 1, r: 300 },
-  { t: 'Eat street food in a market', k: 'eat_market', n: 1, r: 200 },
-];
+
+// Aaj ke kaam: seven tasks a day (one from each slot), the same all day, new at midnight Gurugram time.
+// Roughly 30-40 minutes of play; {n} is filled from the player's level. go = where the task's GPS points.
+export const DAILY = {
+  kamai:  [{ k: 'earned', t: 'Aaj {n} kamao: kaam, race, delivery, sab chalega', n: l => 2500 + 900 * Math.min(l, 12), money: 1, r: 600 }],
+  badla:  [{ k: 'badla', t: '{enemy} ne tere dost {friend} ko {place} pe peeta! Dhoond ke sabak sikha', n: () => 1, r: 900, go: 'badla' }],
+  shop:   [{ k: 'mallbuy', t: 'Ambience Mall se naye kapde ya topi le', n: () => 1, r: 400, go: 'mall' }],
+  club:   [{ k: 'dance', t: 'Neon Nights, Sector 29 pe 1 minute naacho', n: () => 3, r: 500, go: 'club' },
+           { k: 'baraat', t: 'Kisi ki baraat mein naacho (Events dekh)', n: () => 1, r: 600, min: 3, go: 'events' }],
+  job:    [{ k: 'deliveries', t: 'Jhatpat ki deliveries karo', n: l => 2 + (l > 5 ? 1 : 0), r: 600, go: 'jhatpat' },
+           { k: 'rides', t: 'Chalo pe sawaari chalao', n: l => 2 + (l > 5 ? 1 : 0), r: 700, go: 'chalo' },
+           { k: 'shifts', t: 'TechNova office mein shift lagao', n: () => 1, r: 500, go: 'office' }],
+  thrill: [{ k: 'race_wins', t: 'Ek street race jeeto', n: () => 1, r: 700, go: 'races' },
+           { k: 'wrestle', t: 'Leisure Valley akhare mein dangal jeeto', n: () => 1, r: 1000, min: 3, go: 'akhara' },
+           { k: 'jacks', t: 'Sadak pe kisi ki gaadi chheeno (E dabao)', n: () => 1, r: 600 },
+           { k: 'npc_ko', t: 'Gali ke do chhore dhobi pachhad karo', n: () => 2, r: 500 }],
+  food:   [{ k: 'eat_dhaba', t: 'Sher-e-Haryana Dhaba pe khana khao', n: () => 1, r: 300, go: 'dhaba' },
+           { k: 'eat_market', t: 'Galleria ya Sadar Bazaar mein chaat-mithai khao', n: () => 1, r: 300, go: 'market' }],
+};
+export const DAILY_SLOTS = ['kamai', 'badla', 'job', 'shop', 'thrill', 'club', 'food'];
+export const BADLA_ENEMY = ['Rinku Chhapri', 'Lalit Lambu', 'Sandy Gunda', 'Bittu Bawli', 'Kallu Kaanpur', 'Pintu Pataka', 'Sonu Supari'];
+export const BADLA_FRIEND = ['Golu', 'Monu', 'Deepu', 'Happy', 'Sunny', 'Neha', 'Pinky'];
+export const BADLA_SPOTS = [[300, 0, 'Sadar Bazaar'], [-150, 0, 'Galleria Market'], [-150, 150, 'Sector 14 Market'], [150, -150, 'Sector 29'], [150, 150, 'Badshahpur'], [300, 150, 'Old Gurgaon']]; // street chhora corners
+export const dailyBonus = (lvl, streak) => Math.round((1500 + 400 * Math.min(lvl, 12)) * (1 + 0.25 * Math.min(streak, 4)));
 
 // District grid: i,j in -2..2; block centre = (i*150, j*150). Place names are real Gurugram localities.
 export const DIST = [

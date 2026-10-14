@@ -39,10 +39,18 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--sarson);outline
 #job{position:absolute;left:12px;top:calc(196px + env(safe-area-inset-top,0px));width:236px;background:var(--panel-2);border-radius:12px;padding:10px 12px;border-left:5px solid var(--sarson);font-size:13px}
 #job b{font:700 15px var(--display);color:var(--sarson);display:block}
 #job .dist{font:800 20px var(--display);font-variant-numeric:tabular-nums}
-#missions{position:absolute;left:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:236px;background:var(--panel);border-radius:12px;padding:8px 12px;font-size:12.5px;display:grid;gap:4px}
+#missions{position:absolute;left:12px;bottom:calc(118px + env(safe-area-inset-bottom,0px));width:236px;background:var(--panel);border-radius:12px;padding:8px 10px 6px;font-size:12.5px;display:grid;gap:2px}
 #missions h4{margin:0;font:700 12px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--sarson)}
-#missions .m{display:flex;justify-content:space-between;gap:8px}
-#missions .m span:last-child{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+#missions .m{position:relative;display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:5px;width:100%;background:none;border:0;padding:3px 0 5px;color:inherit;font:inherit;text-align:left;cursor:pointer}
+#missions .m:hover span{color:var(--sarson)}
+#missions .m i{font-style:normal;text-align:center;font-size:12px}
+#missions .m span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#missions .m b{color:var(--muted);font:700 11.5px var(--body);font-variant-numeric:tabular-nums;white-space:nowrap}
+#missions .m em{position:absolute;left:23px;bottom:1px;height:2px;border-radius:2px;background:var(--sarson);max-width:calc(100% - 23px)}
+#missions .mfoot{margin-top:2px;padding-top:4px;border-top:1px solid rgba(255,255,255,.1);font:700 11px var(--body);color:#ffd27a}
+#mchip{display:none;position:absolute;left:12px;top:calc(236px + env(safe-area-inset-top,0px));background:var(--panel);border:2px solid var(--sarson);border-radius:99px;padding:4px 12px;font:800 13px var(--display);color:var(--cream)}
+body.touch #mchip{display:block}
+.tbar{grid-column:1/-1;height:4px;border-radius:3px;background:rgba(0,0,0,.12);margin-top:4px;overflow:hidden}.tbar i{display:block;height:100%;background:var(--sarson)}
 #tut{position:absolute;left:50%;top:calc(56px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(440px,calc(100% - 32px));background:var(--cream);color:var(--ink);border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.35);border:3px solid var(--lal)}
 #tut .k{font:700 11px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--lal)}
 #tut p{margin:2px 0 6px;font:600 15px/1.35 var(--body)}
@@ -244,7 +252,7 @@ body.racing #quest{display:none!important}
 #controls .cbtn.menu{grid-column:1/-1;width:auto!important;height:44px!important;border-radius:22px;padding:0 18px;flex-direction:row;gap:8px}
 body:not(.touch) #controls .touchonly{display:none}
 body:not(.touch) #bAct{display:none}
-#keyhint{position:absolute;left:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));background:rgba(27,20,16,.82);border-radius:12px;padding:8px 12px;font:600 13px/1.5 var(--body);max-width:320px;pointer-events:none}
+#keyhint{position:absolute;left:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:236px;background:rgba(27,20,16,.82);border-radius:12px;padding:7px 10px;font:600 12.5px/1.55 var(--body);pointer-events:none}
 #keyhint kbd{display:inline-block;min-width:22px;text-align:center;background:var(--cream);color:var(--ink);border-radius:5px;padding:0 5px;margin-right:4px;font:800 12px var(--display)}
 body.touch #keyhint{display:none}
 #lockhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.85);pointer-events:none;display:none}
@@ -261,7 +269,7 @@ body.mapmode #hud{display:none!important}
 #map3d .mchips button.on{background:var(--c)}
 #map3d .mhint{align-self:center;margin-bottom:calc(16px + env(safe-area-inset-bottom,0px));background:rgba(27,20,16,.82);border-radius:12px;padding:6px 14px;font:700 13px var(--display);pointer-events:none}
 @media (max-width:700px){#loc{left:16px!important;right:auto!important;transform:none!important;bottom:calc(166px + env(safe-area-inset-bottom,0px))!important;max-width:150px!important}}
-#missions .m.done{color:#8fe3a6;text-decoration:line-through;opacity:.8}
+#missions .m.done{color:#8fe3a6;opacity:.75}#missions .m.done span{text-decoration:line-through}#missions .m.done em{background:#2fc46b}
 @media (max-width:700px){#chatlog{left:16px!important;width:calc(100% - 32px)!important;bottom:calc(200px + env(safe-area-inset-bottom,0px))!important}}
 
 /* small GPS chip under the minimap: direction arrow, place, distance */

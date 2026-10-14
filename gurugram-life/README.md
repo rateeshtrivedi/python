@@ -71,7 +71,9 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **Computer players**: with fewer than 4 people online, up to 3 "(AI)" players walk and drive the roads nearby, chat, greet newcomers, reply sometimes and fight back. They are not counted as online players.
 
-**Levels**: each day a player gets 3 tasks for their next level; XP stops at full until they are done.
+**Aaj ke kaam (daily tasks)**: seven tasks a day, the same all day, new at midnight Gurugram time (about 30-40 minutes): earn ₹X (scaled to level), *badla* (a named goon beat up your friend at a real market: find him with GPS and KO him), shopping at Ambience Mall, dancing at Neon Nights, a job (deliveries / Chalo rides / office shift), a thrill (race, dangal, taking a vehicle, beating street chhore) and street food. Live progress in the panel (desktop) or the "Aaj ke kaam" button (phones); tapping a task sets GPS or opens the right app. Each task pays; three unlock the next level (XP waits at full until then); all seven pay a big bonus that grows with a daily streak.
+
+**Controls help** stays on screen (bottom-left) on laptops.
 
 **Weather and water**: the server changes the weather every 3-7 minutes for everyone: clear, boonda-baandi (drizzle), halki, tez and moosladhaar baarish. Rain falls (GPU shader, no per-frame cost), the sky greys, visibility drops, thunder and lightning come with heavy rain, and rain sound follows. Water rises at Gurugram's famous waterlogging spots (Hero Honda Chowk, Golf Course Road underpass, Sohna Road, Narsinghpur, Sheetla Mata Road, Iffco Chowk) and drains slowly after. Deep water slows walkers and cars, can stall engines, and bikes struggle. "Paani paar karo" (Menu, or the marker at a flooded chowk) is a timed run straight through the water; it is also a daily task.
 
