@@ -89,6 +89,12 @@ body.touch #chatlog{left:170px;width:calc(100% - 420px)}
 .plate h1 span{color:#fff}
 .plate .tag{font:600 14px var(--body);color:#ffe3a6;margin-top:6px}
 .plate .body{padding:18px 22px 22px;display:grid;gap:14px}
+.plate .lbl{font:700 12px var(--display);letter-spacing:.1em;text-transform:uppercase;color:#7a4a1b;display:block;margin-bottom:4px}
+.langpick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.langpick .lang{display:grid;gap:1px;padding:8px 6px;border-radius:12px;border:2px solid #d9b26a;background:#fffaf0;color:var(--ink);cursor:pointer;text-align:center;font:inherit}
+.langpick .lang b{font:800 17px/1.1 var(--display)}.langpick .lang small{font:600 10.5px/1.2 var(--body);color:#7a4a1b}
+.langpick .lang.on{background:var(--lal);border-color:var(--lal);color:#fff}.langpick .lang.on small{color:#ffe3a6}
+.langpick .lang:focus-visible{outline:3px solid var(--sarson);outline-offset:2px}
 .plate label{font:700 12px var(--display);letter-spacing:.1em;text-transform:uppercase;color:#7a4a1b;display:block;margin-bottom:4px}
 .plate input{width:100%;font:700 20px var(--display);padding:10px 14px;border-radius:12px;border:2px solid #d9b26a;background:#fffaf0;color:var(--ink)}
 .sw{display:flex;gap:8px;flex-wrap:wrap}

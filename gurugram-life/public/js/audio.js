@@ -1,4 +1,4 @@
-// Sound: live Haryanvi and Punjabi internet radio (real songs), the player's own song files, and SFX.
+// Sound: live Haryanvi, Punjabi and Bollywood internet radio (real songs), the player's own song files, and SFX.
 export const hooks = { toast: () => {}, label: () => {} };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
@@ -7,10 +7,11 @@ function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch
 export const Music = { ctx: null, vol: 0.22, sfx: null }; // music starts quiet; the player can turn it up in Radio
 export const STATIONS = [
   { id: 'har', name: 'Haryanvi Live', freq: 'LIVE', sub: 'Asli Haryanvi gaane, live internet radio se' },
+  { id: 'bol', name: 'Bollywood Live', freq: 'LIVE', sub: 'Bollywood hits, live internet radio se' },
   { id: 'pun', name: 'Punjabi Live', freq: 'LIVE', sub: 'Punjabi aur bhangra hits, live' },
   { id: 'mine', name: 'Meri Playlist', freq: 'MP3', sub: 'Your own Haryanvi & Punjabi songs' },
 ];
-export const Radio = { st: 'har', playing: false, audio: null, live: null, list: [], idx: 0, src: null, override: null, chans: { har: [], pun: [] }, ci: { har: 0, pun: 0 }, loading: null, fails: 0 };
+export const Radio = { st: 'har', playing: false, audio: null, live: null, list: [], idx: 0, src: null, override: null, chans: { har: [], pun: [], bol: [] }, ci: { har: 0, pun: 0, bol: 0 }, loading: null, fails: 0 };
 let NOISE = null;
 export function initAudio() {
   if (Music.ctx) return; const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
@@ -28,21 +29,22 @@ const RB_HOSTS = ['de1.api.radio-browser.info', 'de2.api.radio-browser.info', 'f
 async function fetchDirect() { // solo build without our server: ask the public directory straight from the browser
   const q = async tag => { for (const h of RB_HOSTS) { try { const r = await fetch('https://' + h + '/json/stations/search?tag=' + encodeURIComponent(tag) + '&hidebroken=true&order=clickcount&reverse=true&limit=40'); if (r.ok) return await r.json(); } catch {} } return []; };
   const pick = list => list.filter(s => /^https:\/\//.test(s.url_resolved || '') && /mp3|aac/i.test(s.codec || '') && !/gurbani|kirtan|gurdwara|sikh|paath|bhajan|news|talk/i.test((s.name || '') + ' ' + (s.tags || ''))).slice(0, 15).map(s => ({ name: String(s.name || 'Live radio').trim().slice(0, 40), url: s.url_resolved }));
-  const [h, p, b] = await Promise.all([q('haryanvi'), q('punjabi'), q('bhangra')]);
-  return { har: pick(h), pun: pick([...p, ...b]) };
+  const [h, p, b, bw, hn] = await Promise.all([q('haryanvi'), q('punjabi'), q('bhangra'), q('bollywood'), q('hindi')]);
+  return { har: pick(h), pun: pick([...p, ...b]), bol: pick([...bw, ...hn]) };
 }
 export function loadStations() {
   if (Radio.loading) return Radio.loading;
   Radio.loading = (async () => {
     let d = null; try { const r = await fetch('/api/stations'); if (r.ok) d = await r.json(); } catch {}
-    if (!d || !(d.har || []).length && !(d.pun || []).length) { try { d = await fetchDirect(); } catch {} }
-    d = d || {}; Radio.chans.har = d.har || []; Radio.chans.pun = d.pun || [];
+    if (!d || !(d.har || []).length && !(d.pun || []).length && !(d.bol || []).length) { try { d = await fetchDirect(); } catch {} }
+    d = d || {}; Radio.chans.har = d.har || []; Radio.chans.pun = d.pun || []; Radio.chans.bol = d.bol || [];
     if (!Radio.chans.har.length) Radio.chans.har = Radio.chans.pun.slice(); // no Haryanvi stream up right now: fall back to Punjabi
     if (!Radio.chans.pun.length) Radio.chans.pun = Radio.chans.har.slice();
-    const saved = lsGet('gl_chan'); if (saved) for (const k of ['har', 'pun']) { const i = Radio.chans[k].findIndex(c => c.url === saved[k]); if (i >= 0) Radio.ci[k] = i; }
+    if (!Radio.chans.bol.length) Radio.chans.bol = Radio.chans.har.slice(); // no Bollywood stream up: desi beats it is
+    const saved = lsGet('gl_chan'); if (saved) for (const k of ['har', 'pun', 'bol']) { const i = Radio.chans[k].findIndex(c => c.url === saved[k]); if (i >= 0) Radio.ci[k] = i; }
     return Radio.chans;
   })();
-  Radio.loading.then(c => { if (!c.har.length) Radio.loading = null; }); // retry later if nothing came back
+  Radio.loading.then(c => { if (!c.har.length && !c.bol.length) Radio.loading = null; }); // retry later if nothing came back
   return Radio.loading;
 }
 function liveSt() { const s = activeSt(); return s === 'club' ? 'pun' : s; }
@@ -59,7 +61,7 @@ async function playLive() {
   const ch = L[Radio.ci[st] % L.length]; const a = liveAudio(); a.src = ch.url; a.volume = Music.vol;
   clearTimeout(Radio.stallT); Radio.stallT = setTimeout(() => { if (a.paused || a.readyState < 3) a.dispatchEvent(new Event('error')); }, 12000);
   const p = a.play(); if (p && p.catch) p.catch(e => { if (e && e.name === 'NotAllowedError') { Radio.playing = false; hooks.label(); } else if (e && e.name !== 'AbortError') a.dispatchEvent(new Event('error')); });
-  lsSet('gl_chan', { har: (Radio.chans.har[Radio.ci.har] || {}).url, pun: (Radio.chans.pun[Radio.ci.pun] || {}).url });
+  lsSet('gl_chan', { har: (Radio.chans.har[Radio.ci.har] || {}).url, pun: (Radio.chans.pun[Radio.ci.pun] || {}).url, bol: (Radio.chans.bol[Radio.ci.bol] || {}).url });
 }
 function stopLive() { clearTimeout(Radio.stallT); if (Radio.live) { Radio.live.pause(); Radio.live.removeAttribute('src'); Radio.live.load(); } }
 export function nextChannel(d, auto) { const st = liveSt(); if (st === 'mine') return mineNext(d); const n = Radio.chans[st].length; if (!n) return; Radio.ci[st] = (Radio.ci[st] + d + n) % n; if (!auto) Radio.fails = 0; if (Radio.playing) playLive(); hooks.label(); }
@@ -72,6 +74,8 @@ export function radioOn() { initAudio(); if (Radio.st === 'mine' && !Radio.list.
 export function radioOff() { Radio.playing = false; stopLive(); stopMine(); hooks.label(); lsSet('gl_radio', { on: false, st: Radio.st }); }
 export function toggleMusic() { if (Radio.playing) radioOff(); else radioOn(); }
 export function setStation(id) { if (id === 'mine' && !Radio.list.length) { hooks.toast('Pehle apne gaane add kar (Radio → Meri Playlist)'); return; } stopLive(); stopMine(); Radio.st = id; Radio.fails = 0; radioOn(); }
+// The station that goes with the player's language; switches now if the radio is on, else remembers it for next time.
+export function preferStation(id) { if (!STATIONS.some(s => s.id === id) || Radio.st === id) return; if (Radio.playing && !Radio.override) setStation(id); else { Radio.st = id; const rs = lsGet('gl_radio'); lsSet('gl_radio', { on: rs ? rs.on !== false : true, st: id }); } }
 export function nextStation() { const ids = STATIONS.map(s => s.id).filter(id => id !== 'mine' || Radio.list.length); const i = ids.indexOf(Radio.st); setStation(ids[(i + 1) % ids.length]); }
 // The club plays Punjabi live while you are inside, then hands back to your station.
 export function setOverride(st) { if (Radio.override === st) return; const before = liveSt(); Radio.override = st; if (!Radio.playing || liveSt() === before) return; stopLive(); stopMine(); if (liveSt() === 'mine') playMine(); else playLive(); hooks.label(); }

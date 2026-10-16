@@ -1,4 +1,4 @@
-// Live Haryanvi and Punjabi radio for the in-game Radio. The game can't ship hit songs itself (copyright),
+// Live Haryanvi, Punjabi and Bollywood radio for the in-game Radio. The game can't ship hit songs itself (copyright),
 // so it tunes into stations that broadcast them live, found through the public radio-browser.info directory.
 // The list is cached for 6 hours; only HTTPS MP3/AAC streams that passed the directory's last check are kept.
 const HOSTS = ['de1.api.radio-browser.info', 'de2.api.radio-browser.info', 'fi1.api.radio-browser.info', 'nl1.api.radio-browser.info'];
@@ -31,9 +31,9 @@ export function cleanStations(list, max = 15) {
 export async function stations() {
   if (cache.data && Date.now() - cache.at < TTL) return cache.data;
   if (!pending) pending = (async () => {
-    const [h1, h2, p1, p2] = await Promise.all([query('tag=haryanvi'), query('name=haryanvi'), query('tag=punjabi'), query('tag=bhangra')]);
-    const data = { har: cleanStations([...h1, ...h2]), pun: cleanStations([...p1, ...p2]) };
-    if (data.har.length || data.pun.length) cache = { at: Date.now(), data };
+    const [h1, h2, p1, p2, b1, b2] = await Promise.all([query('tag=haryanvi'), query('name=haryanvi'), query('tag=punjabi'), query('tag=bhangra'), query('tag=bollywood'), query('tag=hindi')]);
+    const data = { har: cleanStations([...h1, ...h2]), pun: cleanStations([...p1, ...p2]), bol: cleanStations([...b1, ...b2]) };
+    if (data.har.length || data.pun.length || data.bol.length) cache = { at: Date.now(), data };
     pending = null; return cache.data || data;
   })();
   return pending;
