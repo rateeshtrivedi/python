@@ -113,14 +113,15 @@ function charge(c, amount) { if (c.p.money < amount) return false; c.p.money -= 
 let worldEvent = null; // {type,start,end,data}
 // weather: random and unpredictable. Random start, spells of ~1-15 minutes, rain usually builds up or eases off
 // a step at a time, but now and then a sudden cloudburst or an abrupt stop, like Gurugram in the monsoon.
-const W_PICK = () => { const r = Math.random(); return r < 0.4 ? 0 : r < 0.58 ? 1 : r < 0.74 ? 2 : r < 0.9 ? 3 : 4; };
+const W_PICK = () => { const r = Math.random(); return r < 0.58 ? 0 : r < 0.74 ? 1 : r < 0.86 ? 2 : r < 0.95 ? 3 : 4; }; // mostly dry, rain often enough to matter
 const W_SPELL = lvl => Math.min(1200, (lvl >= 3 ? 50 + Math.random() * 400 : 70 + Math.random() * 830) * (0.6 + Math.random() * 0.8));
-let weather = (() => { const lvl = W_PICK(), t = now(); return { lvl, since: t, until: t + W_SPELL(lvl) * Math.random() }; })();
+// the server often starts fresh when the first player joins (free hosting sleeps), so the opening weather is clear most of the time
+let weather = (() => { const r = Math.random(), lvl = r < 0.7 ? 0 : r < 0.85 ? 1 : W_PICK(), t = now(); return { lvl, since: t, until: t + W_SPELL(lvl) * (0.4 + 0.6 * Math.random()) }; })();
 function weatherTick() {
   const t = now(); if (t < weather.until) return; const cur = weather.lvl; let lvl; const r = Math.random();
   if (r < 0.12) lvl = W_PICK(); // sudden jump: cloudburst out of nowhere, or rain stops dead
   else if (r < 0.3 && t - weather.since < 1200) lvl = cur; // the same weather carries on a while longer (never past ~20 min)
-  else { const step = Math.random() < 0.75 ? 1 : 2; lvl = Math.max(0, Math.min(4, cur + (Math.random() < (cur === 0 ? 0.55 : cur === 4 ? 0.15 : 0.45) ? step : -step))); if (lvl === cur) lvl = cur === 0 ? 1 : cur - 1; }
+  else { const step = Math.random() < 0.75 ? 1 : 2; lvl = Math.max(0, Math.min(4, cur + (Math.random() < (cur === 0 ? 0.4 : cur === 4 ? 0.15 : 0.38) ? step : -step))); if (lvl === cur) lvl = cur === 0 ? 1 : cur - 1; }
   const since = lvl === cur ? weather.since : t; weather = { lvl, since, until: Math.min(t + W_SPELL(lvl), since + 1200) }; if (lvl !== cur) broadcast({ t: 'weather', w: weather });
 }
 let eventIdx = Number((globalThis.process && globalThis.process.env && globalThis.process.env.GL_FIRST_EVENT_IDX) || 0);

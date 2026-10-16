@@ -1838,10 +1838,12 @@ function makeNavArrow() {
   g.rotation.order = 'YXZ'; g.visible = false; scene.add(g); return g;
 }
 const raceArrow = makeNavArrow(), wpArrow = makeNavArrow();
-function navPoint(o, tx, tz) { // place the arrow on a little circle around the player, facing the target
-  const a = Math.atan2(tx - G.x, tz - G.z), t = now(); const R = G.veh ? (playerVeh ? playerVeh.userData.len || 4 : 4) / 2 + 1.8 : 1.6; const dep = Math.min(waterDepth(G.x, G.z), 1);
-  o.position.set(G.x + Math.sin(a) * R, (G.veh && D.VEH[G.veh].kind === 2 ? 0.45 : 0.32) + dep * 0.4, G.z + Math.cos(a) * R); o.rotation.y = a; o.rotation.x = -0.5; // tip tilted up so it reads from the chase camera
-  const s = (G.veh ? 1.6 : 1.15) * (1 + Math.sin(t * 5) * 0.05); o.scale.set(s, s, s); o.visible = true;
+function navPoint(o, tx, tz) { // the arrow sits by your feet; when the target is ahead it floats up in front at head height so your own body never hides it
+  const a = Math.atan2(tx - G.x, tz - G.z), t = now(); const ahead = Math.max(0, Math.cos(a - G.yaw)) ** 2; const car = !!G.veh;
+  const R = car ? (playerVeh ? playerVeh.userData.len || 4 : 4) / 2 + 1.8 + 1.5 * ahead : 1.6 + 0.9 * ahead; const dep = Math.min(waterDepth(G.x, G.z), 1);
+  const y = (car && D.VEH[G.veh].kind === 2 ? 0.45 : 0.32) + ahead * (car ? 2.0 : 2.4) + dep * 0.4;
+  o.position.set(G.x + Math.sin(a) * R, y, G.z + Math.cos(a) * R); o.rotation.y = a; o.rotation.x = -0.5 - 0.55 * ahead; // tip tilted up so it reads from the chase camera
+  const s = (car ? 1.6 : 1.15) * (1 + Math.sin(t * 5) * 0.05); o.scale.set(s, s, s); o.visible = true;
   o.children.forEach((m, i) => { const k = i >> 1; const f = 0.5 + 0.5 * Math.sin(t * 6 - k * 1.7); m.material.opacity = (i % 2 ? 0.55 + 0.45 * f : 0.25 + 0.4 * f); });
 }
 function navTarget() { if (G.wp) return G.wp; if (G.job) { const t = jobTarget(); return { x: t.x, z: t.z, name: G.job.stage === 'pickup' ? 'Pickup' : 'Drop' }; } return null; }
