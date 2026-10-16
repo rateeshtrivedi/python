@@ -962,8 +962,10 @@ joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCa
 joy.addEventListener('pointermove', e => { if (e.pointerId === joyId) joyMove(e); });
 const joyEnd = e => { if (e.pointerId !== joyId) return; joyId = null; joyX = joyY = 0; knob.style.transform = ''; }; joy.addEventListener('pointerup', joyEnd); joy.addEventListener('pointercancel', joyEnd);
 function joyMove(e) { const r = joy.getBoundingClientRect(); let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); const m = Math.hypot(dx, dy), R = r.width / 2 - 20; if (m > R) { dx *= R / m; dy *= R / m; } knob.style.transform = `translate(${dx}px,${dy}px)`; joyX = dx / R; joyY = -dy / R; }
-window.addEventListener('touchstart', () => document.body.classList.add('touch'), { once: true, passive: true });
-if (matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch');
+// touch layout follows the last input: a tap switches to joystick + buttons, moving with W A S D / arrows (outside text boxes) switches back to the keyboard help, so touchscreen laptops keep the controls help
+window.addEventListener('touchstart', () => document.body.classList.add('touch'), { passive: true });
+window.addEventListener('keydown', e => { if (/^(Key[WASD]|Arrow(Up|Down|Left|Right))$/.test(e.code) && !(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) document.body.classList.remove('touch'); });
+if (matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches) document.body.classList.add('touch');
 const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.started) fn(); });
 tap('bAct', doAction); tap('bPunch', punch); tap('bVeh', toggleVehicle); tap('bMenu', openPhone);
 $('bRun').addEventListener('pointerdown', e => { e.preventDefault(); if (G.veh) { nosHeld = true; return; } G.jumpReq = true; }); // Jump on foot, hold for NOS in a car
