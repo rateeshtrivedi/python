@@ -101,19 +101,19 @@ if (typeof CanvasRenderingContext2D !== 'undefined') {
 }
 
 const LOAD = { hi: () => import('./lang/hi.js'), en: () => import('./lang/en.js') };
-let loading = null;
+let switchNo = 0;
 async function loadDict(id) { const m = await LOAD[id](); return m.default; }
 // Switch language (also used at startup). Resolves once the page is translated.
 export async function setLang(id, remember = true) {
   if (!LANGS.some(l => l.id === id)) id = 'har';
   if (remember) lsSet('gl_lang', id);
-  const job = (loading = (async () => {
+  const no = ++switchNo;
+  return (async () => {
     let pairs = null; if (id !== 'har') { try { pairs = await loadDict(id); } catch (e) { console.warn('Gurugram Life: could not load language', id, e); id = 'har'; } }
-    if (job !== loading) return; // a newer switch won
+    if (no !== switchNo) return; // a newer switch won
     LANG = id; if (pairs) compile(pairs); else { EXACT = null; cache = new Map(); }
     document.documentElement.lang = id === 'en' ? 'en' : id === 'hi' ? 'hi' : 'hi-IN';
     if (id !== 'har') watch(); if (document.body) retranslate();
-  })());
-  return job;
+  })();
 }
 export const ready = setLang(LANG, false);

@@ -1,5 +1,6 @@
 // Controls regression: drives the game ONLY through real keyboard / mouse / touch events and checks the effect.
 // Start the server first (npm start), then: npm run test:controls   (NOLOCK=1 also tests a browser that refuses pointer lock)
+// GL_LANG=hi or en runs the same checks with the game translated.
 // Needs Playwright with Chromium: PLAYWRIGHT=/path/to/node_modules/playwright CHROMIUM=/path/to/chrome are optional overrides.
 const path = require('path'); const fs = require('fs');
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
@@ -7,7 +8,7 @@ const URL = process.env.URL || 'http://localhost:3000/'; const GAME_JS = path.jo
 const HOOK = '\nwindow.__t={G,FIGHTERS,REMOTES,PEDS,CROWD,DOORS,AKHARA,get P(){return P},get PV(){return playerVeh},get player(){return player}};';
 const results = []; const rec = (id, ok, info) => { results.push([id, ok, info]); console.log((ok ? 'PASS ' : 'FAIL ') + id + (info ? '  — ' + info : '')); };
 async function open(browser, opts, name, noLock) {
-  const ctx = await browser.newContext(opts); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+  const ctx = await browser.newContext(opts); if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' })); await p.route('**/api/stations', r => r.fulfill({ json: { har: [], pun: [] } })); await p.route('**/radio-browser.info/**', r => r.abort());
   await p.route('**/js/game.js', r => r.fulfill({ body: fs.readFileSync(GAME_JS, 'utf8') + HOOK, contentType: 'application/javascript' }));
   if (noLock) await p.addInitScript(() => { HTMLCanvasElement.prototype.requestPointerLock = function () { setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 10); }; });
