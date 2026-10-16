@@ -1838,13 +1838,20 @@ function makeNavArrow() {
   g.rotation.order = 'YXZ'; g.visible = false; scene.add(g); return g;
 }
 const raceArrow = makeNavArrow(), wpArrow = makeNavArrow();
-function navPoint(o, tx, tz) { // the arrow sits by your feet; when the target is ahead it floats up in front at head height so your own body never hides it
-  const a = Math.atan2(tx - G.x, tz - G.z), t = now(); const ahead = Math.max(0, Math.cos(a - G.yaw)) ** 2; const car = !!G.veh;
-  const R = car ? (playerVeh ? playerVeh.userData.len || 4 : 4) / 2 + 1.8 + 1.5 * ahead : 1.6 + 0.9 * ahead; const dep = Math.min(waterDepth(G.x, G.z), 1);
-  const y = (car && D.VEH[G.veh].kind === 2 ? 0.45 : 0.32) + ahead * (car ? 2.0 : 2.4) + dep * 0.4;
-  o.position.set(G.x + Math.sin(a) * R, y, G.z + Math.cos(a) * R); o.rotation.y = a; o.rotation.x = -0.5 - 0.55 * ahead; // tip tilted up so it reads from the chase camera
-  const s = (car ? 1.6 : 1.15) * (1 + Math.sin(t * 5) * 0.05); o.scale.set(s, s, s); o.visible = true;
-  o.children.forEach((m, i) => { const k = i >> 1; const f = 0.5 + 0.5 * Math.sin(t * 6 - k * 1.7); m.material.opacity = (i % 2 ? 0.55 + 0.45 * f : 0.25 + 0.4 * f); });
+function navPoint(o, tx, tz) { // remember where this arrow points; it is drawn on screen by drawNavRing (the 3D meshes stay hidden)
+  o.visible = true; for (const m of o.children) m.visible = false; NAVT[o === raceArrow ? 'race' : 'wp'] = { x: tx, z: tz, t: now() };
+}
+const NAVT = { race: null, wp: null }; const navV1 = new THREE.Vector3(), navV2 = new THREE.Vector3();
+// an arrow drawn over the 3D view, around wherever the player is on screen, pointing at the target: nothing in the world can hide it
+function drawNavRing() {
+  const el2 = $('navring'); const fresh = q => q && now() - q.t < 0.3; const tg = fresh(NAVT.race) ? NAVT.race : fresh(NAVT.wp) ? NAVT.wp : null;
+  if (!tg || G.map || G.inside || G.selfie || !$('modal').hidden) { if (!el2.hidden) el2.hidden = true; return; }
+  const h = G.veh ? 1.3 : 1.1; navV1.set(G.x, h, G.z).project(camera); if (navV1.z > 1) { if (!el2.hidden) el2.hidden = true; return; }
+  const dx = tg.x - G.x, dz = tg.z - G.z, dl = Math.hypot(dx, dz) || 1; navV2.set(G.x + dx / dl * 3, h, G.z + dz / dl * 3).project(camera);
+  const W = innerWidth, H = innerHeight, sx = (navV1.x + 1) / 2 * W, sy = (1 - navV1.y) / 2 * H; let vx = (navV2.x - navV1.x) * W, vy = -(navV2.y - navV1.y) * H;
+  if (navV2.z > 1) { vx = -vx; vy = -vy; } const ang = Math.atan2(vy, vx); const R = (G.veh ? 105 : 78) * (W < 700 ? 0.8 : 1);
+  const x = clamp(sx + Math.cos(ang) * R, 30, W - 30), y = clamp(sy + Math.sin(ang) * R, 60, H - 30); const pulse = 1 + Math.sin(now() * 6) * 0.06;
+  el2.hidden = false; el2.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) translate(-50%,-50%) rotate(' + (ang * 180 / Math.PI + 90).toFixed(1) + 'deg) scale(' + pulse.toFixed(3) + ')';
 }
 function navTarget() { if (G.wp) return G.wp; if (G.job) { const t = jobTarget(); return { x: t.x, z: t.z, name: G.job.stage === 'pickup' ? 'Pickup' : 'Drop' }; } return null; }
 // rush: GPS to the event, first three there win (the money bag: first one only)
@@ -1863,7 +1870,8 @@ function updateRush() {
 }
 function updateNav() {
   const tg = !G.inside && !G.map && !raceArrow.visible ? navTarget() : null; const d = tg ? Math.hypot(tg.x - G.x, tg.z - G.z) : 0;
-  if (tg && d > 9) navPoint(wpArrow, tg.x, tg.z); else wpArrow.visible = false;
+  if (tg && d > 9) navPoint(wpArrow, tg.x, tg.z); else { wpArrow.visible = false; NAVT.wp = null; }
+  drawNavRing();
   const chip = $('navchip'), show = !!tg && !(G.race && G.race.phase !== 'done');
   if (chip.hidden === show) chip.hidden = !show; if (!show) return;
   const a = Math.atan2(tg.x - G.x, tg.z - G.z) - G.yaw; $('navdir').style.transform = 'rotate(' + (-a * 180 / Math.PI).toFixed(1) + 'deg)';

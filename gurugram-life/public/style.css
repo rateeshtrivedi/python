@@ -290,3 +290,5 @@ body.racing #navchip{display:none!important}
 #doncall .dc-msg{font:700 17px/1.35 var(--body);margin-bottom:18px}
 #doncall .dc-btns{display:flex;gap:10px}#doncall button{flex:1;border:0;border-radius:99px;padding:12px 8px;font:800 16px var(--display);cursor:pointer}
 #doncall .dc-no{background:#d7331f;color:#fff}#doncall .dc-yes{background:#2fc46b;color:#fff}
+#navring{position:fixed;left:0;top:0;width:48px;height:48px;z-index:6;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));will-change:transform}
+@media (max-width:760px){#navring svg{width:40px;height:40px}}
