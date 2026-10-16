@@ -177,8 +177,26 @@ export const WORLD_EVENTS = {
   holi:   { name: 'Holi on Sohna Road', dur: 240 },
   diwali: { name: 'Diwali night', dur: 240 },
   ipl:    { name: 'IPL screening at Cyber Hub', dur: 240 },
+  thaila: { name: 'Paison ka thaila gira!', dur: 120 },
 };
-export const EVENT_ORDER = ['baraat', 'jam', 'holi', 'ipl', 'flood', 'baraat', 'diwali', 'jam'];
+export const EVENT_ORDER = ['baraat', 'thaila', 'jam', 'holi', 'thaila', 'ipl', 'flood', 'baraat', 'thaila', 'diwali', 'jam'];
+// where each event happens: the first three players to get there win cash (the baraat moves along Golf Course Road)
+export const EVENT_SPOTS = { baraat: { x: -225, z: 0, line: 1 }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, diwali: { x: 0, z: 40 } };
+export const RUSH_PRIZE = [700, 400, 250];
+// Gali ke Don: a five-chapter gang story, one chapter a day, new every Monday (Gurugram time)
+export const DON = [
+  { boss: 'Rinku Chhapri', at: [300, 0, 'Sadar Bazaar'], hench: 0, hp: 120, dmg: 7, r: 1500,
+    intro: 'Rinku Chhapri ne tere dost Golu ka phone cheen liya. Sadar Bazaar mein ghoom rya se.', taunt: 'Phone chahiye? Pehle mujhe hara!', outro: 'Rinku: "Mera bhai Lalit tujhe chhodega nahi!"' },
+  { boss: 'Lalit Lambu', at: [150, -150, 'Sector 29'], hench: 1, hp: 150, dmg: 8, r: 2000,
+    intro: 'Rinku ka bhai Lalit Lambu apne chele ke saath Sector 29 mein badla lene aaya se.', taunt: 'Mere bhai ko maara? Ab dekh!', outro: 'Lalit: "Sandy bhai ko pata chal gaya to tera kya hoga..."' },
+  { boss: 'Sandy Gunda', at: [300, 150, 'Old Gurgaon'], hench: 2, hp: 180, dmg: 9, r: 2600,
+    intro: 'Sandy Gunda, Dalal Bhai ka right hand. Old Gurgaon mein do chelon ke saath khada se.', taunt: 'Chhore, galat gali mein aa gaya!', outro: 'Sandy: "Kallu ko bhej diya hai Sector 14... dukaanein bacha sake to bacha!"' },
+  { boss: 'Kallu Kaanpur', at: [-150, 150, 'Sector 14 Market'], hench: 2, hp: 210, dmg: 10, r: 3200,
+    intro: 'Kallu Kaanpur ne Sector 14 Market mein hafta vasooli shuru kar di. Dukaanwale pareshan se.', taunt: 'Hafta de, warna dukaan band!', outro: 'Kallu: "Kal Dalal Bhai khud Sohna Road aayega. Bach sake to bach!"' },
+  { boss: 'Dalal Bhai', at: [150, 0, 'Sohna Road'], hench: 3, hp: 280, dmg: 11, r: 6000, final: true,
+    intro: 'FINALE! Dalal Bhai, Sohna Road ka don. Teen chele, ek sapna: tera haarna.', taunt: 'Aaja Gali ke Don... aaj dekhte se kaun asli!', outro: 'Dalal Bhai: "Aaj se tu hi Gali ka Don se..." 👑' },
+];
+export const donScale = lvl => 1 + 0.08 * Math.min(lvl, 10);
 export const FLOOD_DISTRICTS = ['Sector 56', 'Sushant Lok', 'Golf Course Extension', 'Huda City Centre', 'Sector 14 Market', 'Civil Hospital'];
 export const IPL_TEAMS = ['Gurugram Gladiators', 'Faridabad Falcons'];
 

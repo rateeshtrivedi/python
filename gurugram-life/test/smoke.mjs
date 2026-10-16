@@ -7,7 +7,7 @@ import WebSocket from 'ws';
 
 const PORT = 3999;
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gl-'));
-const srv = spawn(process.execPath, ['server/index.js'], { env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir }, stdio: ['ignore', 'pipe', 'inherit'] });
+const srv = spawn(process.execPath, ['server/index.js'], { env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, GL_FIRST_EVENT_S: '4', GL_FIRST_EVENT_IDX: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
 await new Promise(r => srv.stdout.on('data', d => String(d).includes('server on') && r()));
 
 let failures = 0;
@@ -48,6 +48,21 @@ try {
   const wrong = await a.req('buy', { kind: 'food', id: 't_whisky', shop: 'dhaba' }); check(!wrong.ok, 'cannot buy theka items at the dhaba');
   const car = await a.req('buy', { kind: 'vehicle', id: 'cruiser' }); check(!car.ok, 'cannot buy a ₹4 lakh car with starter money');
   const scooty = await a.req('buy', { kind: 'vehicle', id: 'scooty' }); check(!scooty.ok || scooty.price === 8000, 'scooty purchase validated');
+  // Gali ke Don: chapter 1 only counts next to the boss, once a day
+  check(wa.profile.don && wa.profile.don.ch === 0, 'Gali ke Don starts at chapter 1');
+  a.send('st', { x: 0, z: 0, r: 0, a: 0, v: null, in: '', hp: 100 }); await new Promise(r => setTimeout(r, 150)); a.send('donko', { ch: 0 }); await new Promise(r => setTimeout(r, 300));
+  check(!a.inbox.some(m => m.t === 'don'), 'a Don chapter far from the boss is rejected');
+  a.send('st', { x: 300, z: 2, r: 0, a: 0, v: null, in: '', hp: 100 }); await new Promise(r => setTimeout(r, 150)); a.send('donko', { ch: 0 }); const dn = await a.wait(m => m.t === 'don');
+  check(dn.ch === 1 && dn.reward >= 1500, 'beating Rinku Chhapri completes chapter 1 and pays');
+  a.send('donko', { ch: 1 }); await new Promise(r => setTimeout(r, 300)); check(a.inbox.filter(m => m.t === 'don').length === 1, 'only one Don chapter per day');
+  // live events: 30 s warning, then the money bag goes to whoever reaches it first
+  const soon = await a.wait(m => m.t === 'evsoon', 8000); check(soon.type === 'thaila' && soon.in > 0, 'players get a countdown before a city event');
+  const bag = await a.wait(m => m.t === 'event' && m.ev && m.ev.type === 'thaila', 9000); const bd = bag.ev.data;
+  check(Number.isFinite(bd.x) && bd.prize >= 1500 && bd.place, 'money bag event has a spot, a place and a prize');
+  const m0 = a.inbox.filter(m => m.t === 'toast').length; a.send('st', { x: bd.x + 2, z: bd.z, r: 0, a: 0, v: null, in: '', hp: 100 }); await new Promise(r => setTimeout(r, 150)); a.send('evreach', {});
+  const won = await a.wait(m => m.t === 'toast' && /thaila/.test(m.text)); const over = await a.wait(m => m.t === 'event' && m.ev === null, 5000);
+  check(!!won && !!over, 'first player to the money bag takes it and the event ends');
+  a.send('st', { x: 300, z: 2, r: 0, a: 0, v: null, in: '', hp: 100 });
   const e1 = await a.req('earn', { reason: 'delivery', amount: 999999 }); check(e1.ok && e1.amount === 700, 'earning is capped by the server');
   const mp = await a.wait(m => m.t === 'mprog' && m.k === 'earned'); check(mp.v >= 700, 'earning shows live progress on the kamai task');
   const e2 = await a.req('earn', { reason: 'delivery', amount: 300 }); check(!e2.ok, 'earning cooldown enforced');
