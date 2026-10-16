@@ -13,7 +13,7 @@ async function open(browser, opts, name, noLock) {
   if (noLock) await p.addInitScript(() => { HTMLCanvasElement.prototype.requestPointerLock = function () { setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 10); }; });
   await p.goto(URL); await p.waitForTimeout(1200); await p.fill('#nameIn', name).catch(() => {}); await p.click('#playBtn'); await p.waitForTimeout(500); if (await p.$('#cNext:visible')) await p.click('#cNext'); await p.waitForTimeout(300);
   await p.click('.splace >> text=Rajiv Chowk'); await p.waitForFunction(() => window.__t && window.__t.G.started, null, { timeout: 30000 }); await p.waitForTimeout(2500);
-  await p.evaluate(() => { document.querySelectorAll('#modal').forEach(m => m.hidden = true); const G = window.__t.G; G.story = null; G.tut = false; });
+  await p.evaluate(() => { document.querySelectorAll('#modal').forEach(m => m.hidden = true); const G = window.__t.G; G.story = null; G.tut = false; G.donCallNext = 1e12; }); // no Gali ke Don phone call during the checks
   return p;
 }
 const E = (p, f, a) => p.evaluate(f, a);

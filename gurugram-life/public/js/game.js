@@ -598,6 +598,7 @@ function streakNext() { const s = P.streak; return s && s.day && Date.parse(P.mi
 function renderMissions() {
   const box = $('mlist'), act = dailyTasks(); if (!P) return; box.textContent = ''; const nd = act.filter(a => a.done).length;
   $('missions').querySelector('h4').textContent = 'Aaj ke kaam · ' + nd + '/' + act.length + (P.streak && P.streak.n ? ' · 🔥' + P.streak.n : '');
+  const ds = donState(); if (ds) box.append(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? (ds.called ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.at[2] + ')' : '📞 Golu ka call: Gali ke Don ch ' + (ds.ch + 1)) : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
   for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
   if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Kal naye kaam aayenge' : nd < 3 ? (3 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Saare 7 = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
   $('mchip').textContent = '📋 Aaj ke kaam ' + nd + '/' + act.length;
@@ -613,8 +614,57 @@ function goTask(a) {
 function openTasks() {
   const act = dailyTasks(); if (!act.length) return; const nd = act.filter(a => a.done).length;
   openModal('Aaj ke kaam · ' + nd + '/' + act.length, 'Naye kaam raat 12 baje · 3 poore = agla level · saare poore = bonus', b => {
+    const ds = donState(); if (ds) b.append(itemRow((ds.champ ? '👑 ' : '📖 ') + 'Gali ke Don · chapter ' + Math.min(ds.ch + 1, 5) + '/5', ds.champ ? 'Tu is hafte ka Don se!' : ds.avail ? ds.C.boss + (ds.called ? ' (' + ds.at[2] + ')' : ' · tere paas aayega') + ' · inaam ' + donRewardText(ds.ch) : 'Aaj ka chapter ho gaya, kal agla', 'Kahani', openDon));
+    b.append(itemRow('📸 Aaj ka Hisaab card', 'Aaj ke kaarname ek card pe · Story pe daalo', 'Banao', () => { closeModal(); makeDayCard(); }));
     for (const a of act) { const p = taskProg(a); const row = itemRow((a.done ? '✓ ' : TASK_ICON[a.slot] + ' ') + a.t, taskCount(a, p) + ' · inaam ' + fmt(a.r), a.done ? 'Ho gaya' : 'Chalo', () => goTask(a)); row.append(el('div', { class: 'tbar' }, el('i', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); b.append(row); }
     b.append(el('p', { class: 'fine', text: 'Saare 7 poore: ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus + 10 respect. Roz poore karo, streak se bonus 2 guna tak.' + (P.streak && P.streak.n ? ' Abhi streak: ' + P.streak.n + ' din 🔥' : '') }));
+  });
+}
+// Gali ke Don: one chapter a day; the boss and his chele wait at their corner
+function donState() { const d = P && P.don; if (!d) return null; const ch = d.ch, C = D.DON[ch]; const at = (d.spot != null && D.DON_SPOTS[d.spot]) || (C && C.at); return { d, ch, C, at, called: d.spot != null, avail: !!C && d.last !== (P.missions && P.missions.day), champ: d.champ === d.wk }; }
+let DONF = [];
+function clearDon() { for (const n of DONF) if (FIGHTERS.includes(n)) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); } DONF = []; }
+function updateDon() {
+  const s = donState(); if (!s || !s.avail) { if (DONF.length && !DONF.some(n => n.state === 'ko')) clearDon(); return; }
+  if (!s.called) { if (DONF.length) clearDon(); maybeDonCall(s); return; }
+  if (DONF.length && (DONF[0].donCh !== s.ch || DONF[0].donSpot !== s.d.spot)) clearDon(); DONF = DONF.filter(n => FIGHTERS.includes(n));
+  if (!DONF.length || !DONF.some(n => n.donBoss)) { clearDon(); const k = D.donScale(P.level), [x, z] = s.at;
+    const boss = makeFighter(s.C.boss + ' · Don ch ' + (s.ch + 1), x, z, Math.round(s.C.hp * k), s.C.dmg, 0x3b0d0d); boss.donBoss = true; boss.donCh = s.ch; boss.donSpot = s.d.spot; boss.don = true; boss.mesh.scale.set(1.12, 1.12, 1.12); FIGHTERS.push(boss); DONF.push(boss);
+    for (let i = 0; i < s.C.hench; i++) { const h = makeFighter(pick(['Chela', 'Chamcha', 'Chela No. ' + (i + 1)]), x + Math.cos(i * 2.1) * 3, z + Math.sin(i * 2.1) * 3, Math.round(45 * k), 5, 0x222222); h.don = true; h.donCh = s.ch; h.donSpot = s.d.spot; FIGHTERS.push(h); DONF.push(h); } }
+  const boss = DONF.find(n => n.donBoss); if (!boss) return; const d = Math.hypot(G.x - boss.x, G.z - boss.z);
+  if (!boss.seen && d < 45 && !G.inside) { boss.seen = true; bigText('CHAPTER ' + (s.ch + 1) + ': ' + s.C.boss.toUpperCase(), s.at[2] + ' · Gali ke Don', 2.2); }
+  if (d < 13 && !G.inside && !G.veh && G.hp > 0) for (const n of DONF) if (n.state === 'wander') { n.state = 'aggro'; if (n.donBoss && !n.taunted) { n.taunted = true; say(n, s.C.taunt, 3); } }
+}
+// the phone rings: how a new player finds the story. Accepting brings the boss to the nearest corner.
+function maybeDonCall(s) {
+  if (G.donCallOpen || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return;
+  if (G.story || (G.race && G.race.phase !== 'done') || G.frun || G.map || G.inside || G.selfie || G.minigame || G.chase || !$('modal').hidden || !$('raceres').hidden || G.veh && Math.abs(G.vs) > 20) return;
+  const day = P.missions && P.missions.day; const lc = L.donCalls && L.donCalls.day === day ? L.donCalls : { day, n: 0 }; if (lc.n >= 2) return;
+  lc.n++; L.donCalls = lc; saveLocal(); showDonCall(s);
+}
+function showDonCall(s) {
+  const [who, face, msg] = D.DON_CALLS[s.ch] || D.DON_CALLS[0]; G.donCallOpen = true; if (document.pointerLockElement) document.exitPointerLock();
+  const box = el('div', { id: 'doncall' }); box.innerHTML = '<div class="dc-in"><div class="dc-face">' + face + '</div><div class="dc-who"></div><div class="dc-sub">📞 Incoming call · Gali ke Don ch ' + (s.ch + 1) + '</div><div class="dc-msg"></div><div class="dc-btns"><button type="button" class="dc-no">Baad mein</button><button type="button" class="dc-yes">Chal, aata hoon 👊</button></div></div>';
+  box.querySelector('.dc-who').textContent = who; box.querySelector('.dc-msg').textContent = '"' + msg + '"'; document.body.append(box);
+  let rings = 0; const ring = setInterval(() => { if (rings++ > 6 || !box.isConnected) return clearInterval(ring); A.sfx('beep'); setTimeout(() => A.sfx('beep'), 180); }, 1300);
+  const close = () => { clearInterval(ring); box.remove(); G.donCallOpen = false; };
+  box.querySelector('.dc-no').onclick = () => { close(); G.donCallNext = now() + 600; toast('Golu: "Theek se bhai, jab time ho phone (Tab) mein Gali ke Don dabana."'); };
+  box.querySelector('.dc-yes').onclick = () => { close(); G.donCallNext = now() + 600; acceptDon(); }; // no second ring while the server confirms
+}
+async function acceptDon() {
+  const s = donState(); if (!s || !s.avail) return; let best = 0, bd = 1e9;
+  D.DON_SPOTS.forEach((q, i) => { const d = Math.hypot(q[0] - G.x, q[1] - G.z), sc = d < 50 ? d + 400 : d; if (sc < bd) { bd = sc; best = i; } }); // nearest corner, but not right on top of you
+  const r = await net.req('donstart', { spot: best }); if (!r.ok) return toast('Abhi nahi ho paya, thodi der mein try kar');
+  const q = D.DON_SPOTS[best]; setWaypoint(q[0], q[1], s.C.boss + ' (' + q[2] + ')'); const dist = Math.round(Math.hypot(q[0] - G.x, q[1] - G.z) / 5) * 5;
+  showCard('Chapter ' + (s.ch + 1) + ': ' + s.C.boss, s.C.intro.replace(s.C.at[2], q[2]) + ' (' + dist + ' m door)', [['🛺 Auto bulao (₹50)', async () => { $('raceres').hidden = true; const b2 = await buy('misc', 'don_auto'); if (!b2.ok) return; if (G.veh) dismount(); fadeTo('Auto wale bhaiya ' + q[2] + ' le ja rahe se...', 1400, () => { G.x = q[0] + 9; G.z = q[1] + 9; G.r = G.yaw = Math.atan2(-9, -9); }); }, 'alt'], ['Khud jaunga (GPS on)', () => { $('raceres').hidden = true; }, 'alt2']], 'GPS laga diya · Chele bhi saath honge, taiyaar reh!');
+}
+function donRewardText(i) { return fmt(Math.round(D.DON[i].r * (1 + 0.1 * Math.min(P.level, 10)) / 10) * 10); }
+function openDon() {
+  const s = donState(); if (!s) return; closeModal();
+  openModal('Gali ke Don · is hafte ki kahani', 'Roz ek chapter · har Monday nayi kahani · finale jeeto, bano Gali ka Don 👑', b => {
+    D.DON.forEach((C, i) => { const done = i < s.ch, today = i === s.ch && s.avail, locked = !done && !today;
+      const row = itemRow((done ? '✓ ' : today ? '👊 ' : '🔒 ') + 'Ch ' + (i + 1) + ': ' + C.boss + ' · ' + C.at[2], done ? 'Ho gaya' : today ? (s.called ? C.boss + ' ' + s.at[2] + ' mein wait kar rya se.' : C.intro.split('.')[0] + '. Boss tere sabse paas wale chowk pe aayega.') + ' Inaam ' + donRewardText(i) : i === s.ch ? 'Aaj ka chapter ho gaya. Kal khulega!' : 'Pichhla chapter poora karo', today ? 'Chalo' : done ? '✓' : '🔒', () => { if (!today) return; closeModal(); if (s.called) setWaypoint(s.at[0], s.at[1], C.boss + ' (' + s.at[2] + ')'); else acceptDon(); }, !today); b.append(row); });
+    if (s.champ) b.append(el('p', { class: 'fine', text: '👑 Tu is hafte ka Gali ka Don se! Monday ko nayi kahani.' }));
   });
 }
 // Badla: today's goon waits at his corner; KO him for the task
@@ -688,7 +738,7 @@ function openPhone() {
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Aaj ke kaam', '#e07b10', '✓', openTasks]);
+    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
@@ -749,8 +799,8 @@ function appEvents() {
     b.append(el('h3', { text: 'Akhara champion' }), el('p', { text: G.belt ? G.belt.name + ' ke paas aaj ka belt se. Akhara mein unhe KO kar ke belt chheen.' : 'Aaj ka belt Pehlwan Bhola ke paas se. Dangal jeet ke champion ban.' }));
   });
 }
-function eventHelp(t) { return { baraat: 'Golf Course Road pe baraat nikal rahi se. Paas jaake B se naacho, ₹1,000 ke note udao', jam: 'Iffco Chowk pe mahajam. Phansi gaadiyon ko chai becho (E)', flood: 'Kuch sectors mein paani bhar gaya. Chalo aur Jhatpat pe 2x surge', holi: 'Sohna Road pe Holi. G dabao, logon pe rang daalo', diwali: 'Diwali ki raat. Rocket chhodo (phone → Events, ya Action)', ipl: 'Cyber Hub big screen pe match. Cheer karo aur dekho' }[t] || ''; }
-function eventSpot(t) { return { baraat: { x: -225, z: baraatZ() }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, flood: null, diwali: { x: 0, z: 40 } }[t]; }
+function eventHelp(t) { return { thaila: 'Sabse pehle pahuncho, saara paisa tera! GPS laga diya.', baraat: 'Golf Course Road pe baraat nikal rahi se. Paas jaake B se naacho, ₹1,000 ke note udao', jam: 'Iffco Chowk pe mahajam. Phansi gaadiyon ko chai becho (E)', flood: 'Kuch sectors mein paani bhar gaya. Chalo aur Jhatpat pe 2x surge', holi: 'Sohna Road pe Holi. G dabao, logon pe rang daalo', diwali: 'Diwali ki raat. Rocket chhodo (phone → Events, ya Action)', ipl: 'Cyber Hub big screen pe match. Cheer karo aur dekho' }[t] || ''; }
+function eventSpot(t) { if (t === 'thaila') return G.ev && G.ev.data && G.ev.data.x != null ? { x: G.ev.data.x, z: G.ev.data.z } : null; return { baraat: { x: -225, z: baraatZ() }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, flood: null, diwali: { x: 0, z: 40 } }[t]; }
 function appOnline() {
   openModal('Online players', net.solo ? 'Solo mode' : (G.peerCount || 1) + ' online', b => {
     if (net.solo) { b.append(el('p', { text: window.GL_SOLO ? 'Tu solo mode mein khel rya se. Leaderboard, crews aur VIP plate ki boli mein rival log computer chalata se.' : 'Solo mode: multiplayer server se connection nahi bana. Wajah: ' + (G.soloReason || 'unknown') })); if (!window.GL_SOLO) b.append(itemRow('Try multiplayer again', 'Page reload karke server se dobara judega', 'Try again', () => location.reload())); }
@@ -1027,6 +1077,7 @@ function spawnFighters() {
 }
 function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined }); scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
+  if (n.donBoss) { n.state = 'ko'; n.t = 8; A.sfx('ko'); say(n, 'Bas kar... maan gaya tujhe!', 3); ev('npc_ko'); net.send('donko', { ch: n.donCh }); for (const h of DONF) if (h !== n && h.state !== 'ko') { h.state = 'ko'; h.t = 6; say(h, 'Bhaago!', 1.5); } bigText('CHAPTER ' + (n.donCh + 1) + ' POORA!', D.DON[n.donCh].boss + ' dhobi pachhad', 1.8); return; }
   if (n.fromPed) { n.state = 'ko'; n.t = 4; A.sfx('ko'); say(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }
   if (n.badla) { n.state = 'ko'; n.t = 6; A.sfx('ko'); ev('badla'); ev('npc_ko'); say(n, pick(['Maaf kar de! ' + n.badla.friend + ' te bhi maafi maang lunga!', 'Galti ho gayi bhai...']), 3); bigText('BADLA POORA!', n.badla.friend + ' ka badla le liya', 1.8); return; }
   if (n.jack) { n.state = 'ko'; n.t = 3; A.sfx('ko'); say(n, pick(['Le ja... le ja gaadi!', 'Police ko bataunga!', 'Mummy...!']), 2.5); ev('npc_ko'); return takeJacked(n.jack); }
@@ -1069,7 +1120,7 @@ function updateFighters(dt) {
   const gone = [];
   for (const n of FIGHTERS) {
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
-    if ((n.jack || n.badla || n.fromPed) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
+    if ((n.jack || n.badla || n.fromPed || n.don) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && !n.don && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false;
     if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
@@ -1081,7 +1132,7 @@ function updateFighters(dt) {
     }
     n.cd -= dt; m.position.set(n.x, groundY(n.x, n.z) + (n.hitT > 0 ? 0.15 : 0), n.z); m.rotation.y = n.r; animChar(m, dt, moving ? 1 : 0, 1.3);
   }
-  for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); if (n.fromPed) n.fromPed.fighter = null; }
+  for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); if (n.fromPed) n.fromPed.fighter = null; if (n.don) DONF = DONF.filter(x => x !== n); }
 }
 
 // ================================================================ SHOW-OFF ACTIONS
@@ -1207,6 +1258,7 @@ function updateEvents(dt) {
 function updateBanner() {
   const b = $('banner'); if (G.chase) return;
   if (G.ev) { const left = Math.max(0, Math.round(G.ev.end - serverNow())); b.hidden = false; b.textContent = G.ev.name + ' · ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); }
+  else if (G.evSoon && G.evSoon.at > now()) { b.hidden = false; b.textContent = '⏱ ' + Math.ceil(G.evSoon.at - now()) + 's mein: ' + G.evSoon.name; }
   else if (G.beef && G.beef.until > now()) { b.hidden = false; b.textContent = 'ROAD RAGE vs ' + G.beef.name + ' · ' + Math.ceil(G.beef.until - now()) + 's'; }
   else b.hidden = true;
   $('ipl').hidden = G.ev?.type !== 'ipl';
@@ -1276,6 +1328,54 @@ $('snapBtn').onclick = () => {
   renderer.render(scene, camera); const shot = renderer.domElement.toDataURL('image/jpeg', 0.9); A.sfx('shutter'); endSelfie();
   const img = new Image(); img.onload = () => makeCard(img); img.src = shot;
 };
+// share sheet used by both photo cards
+function shareSheet(title, url, fileName, text) {
+  openModal(title, 'Story pe daalo, WhatsApp pe bhejo', b => {
+    b.append(el('img', { src: url, class: 'cardimg', alt: title }));
+    if (window.GL_SOLO) b.append(el('p', { text: 'Photo save karne ke liye image pe long-press (phone) ya right-click → Save image (computer) karo.' }));
+    else b.append(el('a', { href: url, download: fileName, class: 'buy', style: 'text-align:center;text-decoration:none;display:block;padding:10px', text: 'Download photo' }));
+    if (navigator.canShare) b.append(el('button', { class: 'buy alt', style: 'padding:10px', text: 'Share (Instagram, WhatsApp...)', onclick: async () => { try { const blob = await (await fetch(url)).blob(); const file = new File([blob], fileName, { type: 'image/jpeg' }); if (navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text }); else await navigator.share({ text }); } catch {} } }));
+    b.append(el('a', { class: 'buy', style: 'text-align:center;text-decoration:none;display:block;padding:10px;background:#25d366', href: 'https://wa.me/?text=' + encodeURIComponent(text), target: '_blank', rel: 'noopener', text: 'Send on WhatsApp' }));
+  });
+}
+// Aaj ka Hisaab: today's exploits on a 9:16 story card with a funny title
+function dayStats() {
+  const b = (P.dayBase && P.dayBase.c) || {}, c = P.c, d = k => Math.max(0, (c[k] || 0) - (b[k] || 0));
+  return { wallet: Math.max(0, P.money - ((P.dayBase && P.dayBase.money) || P.money)), tasks: dailyTasks().filter(a => a.done).length, earned: d('earned'), kos: d('kos') + d('npc_ko'), races: d('race_wins'), dangal: d('wrestle'), floods: d('flood_runs'), jacks: d('jacks'), jobs: d('deliveries') + d('rides') + d('shifts'), badla: d('badla'), don: d('don'), dance: d('dance') + d('baraat') };
+}
+function dayTitle(s) {
+  if (s.don && P.don && P.don.champ === P.don.wk) return ['👑', 'GALI KA DON'];
+  if (s.kos >= 6) return ['👊', 'GALI KA GUNDA']; if (s.earned >= 20000) return ['💰', 'GURUGRAM KA SETH']; if (s.floods || s.jacks >= 2) return [s.floods ? '🚣' : '🛺', s.floods ? 'NAAV KING' : 'AUTO CHOR NO. 1'];
+  if (s.races >= 2) return ['🏎️', 'GOLF COURSE ROAD KA RAJA']; if (s.dance >= 3) return ['💃', 'NEON NIGHTS KA HERO']; if (s.jobs >= 4) return ['💼', 'MEHNATI CHHORA']; if (s.kos >= 1) return ['🥊', 'CHHOTA PEHLWAN'];
+  return ['🙏', 'NAYA GURUGRAMI'];
+}
+function makeDayCard() {
+  renderer.render(scene, camera); const img = new Image(); img.onload = () => drawDayCard(img); img.src = renderer.domElement.toDataURL('image/jpeg', 0.9);
+}
+function drawDayCard(photo) {
+  const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); const s = dayStats(), [ico, title] = dayTitle(s);
+  x.fillStyle = '#1b1410'; x.fillRect(0, 0, W, H);
+  const ph = 860, sc = Math.max(W / photo.width, ph / photo.height), sw = W / sc, sh = ph / sc; x.drawImage(photo, (photo.width - sw) / 2, (photo.height - sh) / 2, sw, sh, 0, 0, W, ph);
+  const gr = x.createLinearGradient(0, ph - 260, 0, ph); gr.addColorStop(0, 'rgba(27,20,16,0)'); gr.addColorStop(1, '#1b1410'); x.fillStyle = gr; x.fillRect(0, ph - 260, W, 260);
+  const cols = ['#d7331f', '#f6c026', '#1a8a4a', '#2563b8']; for (let i = 0; i < W / 40; i++) { x.fillStyle = cols[i % 4]; x.fillRect(i * 40, 0, 40, 14); x.fillRect(i * 40, H - 14, 40, 14); }
+  x.fillStyle = 'rgba(27,20,16,.75)'; rrect(x, 40, 50, 560, 84, 42); x.fill(); x.fillStyle = '#f6c026'; x.font = '800 50px "Baloo 2", sans-serif'; x.textAlign = 'left'; x.fillText('AAJ KA HISAAB', 72, 110);
+  x.textAlign = 'center'; x.fillStyle = '#fff4d8'; x.font = '700 40px Mukta, sans-serif'; x.fillText(P.name + ' · Level ' + P.level + ' · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), W / 2, ph + 10);
+  let tf = 104; do { x.font = '800 ' + tf + 'px "Baloo 2", sans-serif'; tf -= 4; } while (x.measureText(ico + ' ' + title).width > W - 90 && tf > 48); x.fillStyle = '#f6c026'; x.strokeStyle = '#120c08'; x.lineWidth = 14; x.lineJoin = 'round'; x.strokeText(ico + ' ' + title, W / 2, ph + 140); x.fillText(ico + ' ' + title, W / 2, ph + 140);
+  const rows = [[Math.max(s.wallet, s.earned), '₹', 'kamaye', v => fmt(v)], [s.tasks, '✅', 'aaj ke kaam'], [s.kos, '👊', 'dhobi pachhad'], [s.races, '🏁', 'race jeeti'], [s.dangal, '🤼', 'dangal jeete'], [s.floods, '🌊', 'baadh paar ki'], [s.jacks, '🛺', 'gaadi chheeni'], [s.jobs, '💼', 'kaam kiye'], [s.badla, '😤', 'badla liya'], [s.don ? (P.don ? P.don.ch : s.don) : 0, '📖', 'Don chapter (/5)'], [s.dance, '💃', 'baar naache']].filter(r => r[0] > 0).slice(0, 6);
+  if (!rows.length) rows.push([1, '🙏', 'din Gurugram mein']);
+  const nr = Math.ceil(rows.length / 2), top = ph + 200, bottom = H - 400, y0 = top + (bottom - top - nr * 190) / 2 + 80;
+  rows.forEach((r, i) => { const solo = i === rows.length - 1 && rows.length % 2, cx = solo ? W / 2 : i % 2 ? W * 0.75 : W * 0.25, cy = y0 + Math.floor(i / 2) * 190; x.fillStyle = 'rgba(255,244,216,.07)'; rrect(x, cx - 230, cy - 70, 460, 160, 26); x.fill();
+    x.fillStyle = '#fff'; x.font = '800 70px "Baloo 2", sans-serif'; x.fillText((r[3] ? r[3](r[0]) : r[0]) + (r[1] === '₹' ? '' : ' ' + r[1]), cx, cy + 10); x.fillStyle = '#d9c7a3'; x.font = '700 36px Mukta, sans-serif'; x.fillText(r[2], cx, cy + 62); });
+  const quip = { 'GALI KA DON': 'Dalal Bhai bhi salaam karta se 👑', 'GALI KA GUNDA': 'Mohalle mein naam chal rya se 😎', 'GURUGRAM KA SETH': 'Flat ki EMI? Chutki mein 💸', 'NAAV KING': 'Baarish aayi, gaadi nahi naav nikali 🚣', 'AUTO CHOR NO. 1': 'Ola cancel? Auto apna 🛺',
+    'GOLF COURSE ROAD KA RAJA': '200 se neeche to beizzati 🏎️', 'NEON NIGHTS KA HERO': 'Thumke dekh ke DJ bhi ruk gaya 💃', 'MEHNATI CHHORA': 'Malhotra Sir bhi khush 💼', 'CHHOTA PEHLWAN': 'Agli baar Sharma Uncle ki baari 😤', 'NAYA GURUGRAMI': 'Abhi to bas shuruaat se 🙏' }[title];
+  x.fillStyle = '#fff4d8'; x.font = '700 44px Mukta, sans-serif'; x.fillText(quip, W / 2, ph + 215);
+  const st = P.streak && P.streak.n ? '🔥 ' + P.streak.n + ' din ki streak' : ''; x.fillStyle = '#ffd27a'; x.font = '800 44px "Baloo 2", sans-serif'; if (st) x.fillText(st, W / 2, H - 330);
+  x.fillStyle = '#f6c026'; rrect(x, 90, H - 280, W - 180, 120, 30); x.fill(); x.fillStyle = '#1b1410'; x.font = '800 52px "Baloo 2", sans-serif'; x.fillText('Mera record tod ke dikha 👊', W / 2, H - 202);
+  x.fillStyle = '#fff'; x.font = '800 60px "Baloo 2", sans-serif'; x.fillText('Gurugram Life', W / 2, H - 80); x.fillStyle = '#d9c7a3'; x.font = '600 32px Mukta, sans-serif'; x.fillText(window.GL_SOLO ? 'Free game · phone ya laptop' : location.host + ' · free game', W / 2, H - 36);
+  const url = c.toDataURL('image/jpeg', 0.9); ev('card');
+  const text = 'Aaj Gurugram Life mein main bana ' + title + ' ' + ico + (s.earned ? ', ' + fmt(s.earned) + ' kamaye' : '') + '! Mera record tod ke dikha: ' + (window.GL_SHARE_URL || location.origin);
+  shareSheet('Aaj ka Hisaab', url, 'aaj-ka-hisaab-' + P.name.replace(/\W+/g, '-') + '.jpg', text);
+}
 function makeCard(photo) {
   const W = 1080, H = 1350; const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
   x.fillStyle = '#1b1410'; x.fillRect(0, 0, W, H);
@@ -1429,8 +1529,9 @@ net.on('weather', m => setWeather(m.w));
 net.on('chat', m => { const muted = lsGet('gl_muted') || []; if (muted.includes(m.id)) return; const mine = m.id === P?.id; chatLine(m.name + (mine ? ' (you)' : ''), m.text, m.tag); if (mine) say(player, m.text, 5); else { const R = REMOTES.get(m.id); if (R && R.visible) say(R, m.text, 5); A.sfx('chat'); } });
 net.on('jacked', m => { if (G.veh && !(G.race && G.race.phase !== 'done')) { G.vs = 0; dismount(); } G.lastFight = now(); A.sfx('punch'); bigText('GAADI CHHEENI!', m.name + ' ne gaadi se kheench liya. Lad ke wapas le!', 2); });
 net.on('jackwin', jackWin);
+net.on('don', m => { A.sfx('level'); const C = D.DON[m.ch - 1], N = D.DON[m.ch]; setTimeout(() => showCard(m.final ? '👑 GALI KA DON!' : 'Chapter ' + m.ch + ' poora! +' + fmt(m.reward), C.outro, [[m.final ? 'Card banao, sabko dikhao 📸' : 'Aaj ka card banao 📸', () => { $('raceres').hidden = true; makeDayCard(); }, 'alt'], ['Theek se', () => { $('raceres').hidden = true; }, 'alt2']], m.final ? 'Monday ko nayi kahani shuru hogi.' : 'Kal milte hain... Chapter ' + (m.ch + 1) + ': ' + N.boss + ' (' + N.at[2] + ')'), 1600); });
 net.on('mprog', m => { if (!P) return; P.c[m.k] = m.v; renderMissions(); });
-net.on('daydone', m => { bigText('AAJ KE SAARE KAAM POORE!', 'Bonus ' + fmt(m.bonus) + ' · streak ' + m.streak + ' din 🔥', 3.2); A.sfx('level'); for (let i = 0; i < 4; i++) setTimeout(() => firework(G.x + rnd(-30, 30), G.z + rnd(-30, 30)), i * 500); });
+net.on('daydone', m => { setTimeout(() => showCard('Aaj ka din: kamaal! 🔥', 'Saare kaam poore, streak ' + m.streak + ' din. Sabko dikha de!', [['Aaj ka card banao 📸', () => { $('raceres').hidden = true; makeDayCard(); }, 'alt'], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]), 3600); bigText('AAJ KE SAARE KAAM POORE!', 'Bonus ' + fmt(m.bonus) + ' · streak ' + m.streak + ' din 🔥', 3.2); A.sfx('level'); for (let i = 0; i < 4; i++) setTimeout(() => firework(G.x + rnd(-30, 30), G.z + rnd(-30, 30)), i * 500); });
 net.on('dmg', m => { takeHit(m.d, m.name); if (Math.random() < 0.5) toast(m.name + ' ne kaan ke neeche baja diya!', 'bad'); });
 net.on('fx', m => {
   if (m.fx === 'punch') { const R = REMOTES.get(m.by); if (R) R.mesh.userData.punchT = 0.22; if (m.target !== P.id) A.sfx('punch', 0.5); }
@@ -1440,7 +1541,8 @@ net.on('fx', m => {
   if (m.fx === 'gulal') burst(m.x, 2, m.z, m.color, 40, { speed: 5 });
   if (m.fx === 'bottle' && G.inside === 'club') { for (let i = 0; i < 4; i++) setTimeout(() => burst(3200 + rnd(-8, 8), 6, 2000 + rnd(-6, 6), pick([0xffd400, 0xff2bd6, 0x00e5ff]), 50, { speed: 8 }), i * 300); A.sfx('cheer'); }
 });
-net.on('event', m => { const prev = G.ev; G.ev = m.ev; buildFlood(); if (G.ev?.type === 'ipl') drawIpl(G.ev.data); else drawIpl(null); if (G.story || G.race) { /* no interruptions during the story or a race */ } else if (G.ev) { toast(G.ev.name + ' shuru! ' + eventHelp(G.ev.type)); A.sfx('ok'); } else if (prev) toast(prev.name + ' khatam'); renderJob(); });
+net.on('evsoon', m => { G.evSoon = { name: m.name, at: now() + m.in }; if (!G.story && !G.race) toast('⏱ ' + m.in + ' second mein: ' + m.name + '. Pehle 3 ko inaam!'); updateBanner(); });
+net.on('event', m => { const prev = G.ev; G.ev = m.ev; G.evSoon = null; G.evReached = false; rushStart(); buildFlood(); if (G.ev?.type === 'ipl') drawIpl(G.ev.data); else drawIpl(null); if (G.story || G.race) { /* no interruptions during the story or a race */ } else if (G.ev) { toast(G.ev.name + ' shuru! ' + eventHelp(G.ev.type)); A.sfx('ok'); } else if (prev) toast(prev.name + ' khatam'); renderJob(); });
 net.on('ipl', m => { if (G.ev) G.ev.data = m.d; drawIpl(m.d); });
 net.on('auction', m => { G.auction = m.a; });
 net.on('party', m => { const was = G.party; G.party = m.party; if (m.party && !was && m.party.host !== P.id) showPartyInvite(m.party); });
@@ -1635,7 +1737,7 @@ function roadHazards(dt) {
 // ================================================================ 3D MAP: fly up over the real city, pins for every useful place
 const MAPCAT = { kaam: ['Kaam', '#2563b8'], khana: ['Khana', '#e07b10'], police: ['Police', '#1b3a8a'], mall: ['Shopping', '#8b3fc4'], party: ['Party', '#d61f9a'], race: ['Race', '#d7331f'], gaadi: ['Gaadi', '#0f766e'], hospital: ['Hospital', '#e11d48'], metro: ['Metro', '#3a6fd8'], ghoomo: ['Ghoomo', '#1a8a4a'] };
 const POI_EXTRA = []; // places added by the city builder (police thana etc.)
-MAPCAT.paani = ['Paani bhara', '#1f7ab8'];
+MAPCAT.paani = ['Paani bhara', '#1f7ab8']; MAPCAT.don = ['Gali ke Don', '#7a1010'];
 function mapCat(t) {
   if (/race/i.test(t)) return 'race'; if (/police|thana|naka/i.test(t)) return 'police'; if (/treatment|hospital/i.test(t)) return 'hospital'; if (/metro/i.test(t)) return 'metro';
   if (/technova|office|ramphal|kaam/i.test(t)) return 'kaam'; if (/dhaba|menu|sweets|chaat|brew|food|chai|order|khana/i.test(t)) return 'khana';
@@ -1645,6 +1747,7 @@ function mapPOIs() {
   const out = []; const seen = new Set();
   for (const Z of ZONES) { if (Z.zone !== 'out') continue; let t; try { t = Z.label(); } catch { t = null; } if (!t) continue; const name = t.replace(/^Enter /, '').replace(/^Race lagao: /, 'Race: ').split(/:| \(|·/)[0].trim().slice(0, 30); const k = name + Math.round(Z.x / 20) + Math.round(Z.z / 20); if (seen.has(k)) continue; seen.add(k); out.push({ x: Z.x, z: Z.z, name, cat: mapCat(t) }); }
   out.push({ x: D.SPOTS.naka.x, z: D.SPOTS.naka.z, name: 'Police naka, Iffco Chowk', cat: 'police' }, { x: D.SPOTS.akhara.x, z: D.SPOTS.akhara.z, name: 'Akhara (dangal)', cat: 'ghoomo' });
+  { const ds = donState(); if (ds && ds.avail && ds.called) out.push({ x: ds.at[0], z: ds.at[1], name: ds.C.boss + ' (ch ' + (ds.ch + 1) + ')', cat: 'don' }); }
   for (const p of POI_EXTRA) out.push(p); if (WX.ww > 0.2) for (const s2 of D.FLOOD_SPOTS) out.push({ x: s2.x, z: s2.z, name: s2.name + ' (paani)', cat: 'paani' }); if (P) { const h = homePos(); out.push({ x: h.x, z: h.z, name: 'Mera ghar', cat: 'ghoomo' }); }
   return out;
 }
@@ -1742,6 +1845,20 @@ function navPoint(o, tx, tz) { // place the arrow on a little circle around the 
   o.children.forEach((m, i) => { const k = i >> 1; const f = 0.5 + 0.5 * Math.sin(t * 6 - k * 1.7); m.material.opacity = (i % 2 ? 0.55 + 0.45 * f : 0.25 + 0.4 * f); });
 }
 function navTarget() { if (G.wp) return G.wp; if (G.job) { const t = jobTarget(); return { x: t.x, z: t.z, name: G.job.stage === 'pickup' ? 'Pickup' : 'Drop' }; } return null; }
+// rush: GPS to the event, first three there win (the money bag: first one only)
+const BAG = (() => { const g = new THREE.Group(); const gold = new THREE.MeshStandardMaterial({ color: 0xf6c026, emissive: 0x7a5200, roughness: 0.4 }); const b = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 10), gold); b.scale.set(1, 0.85, 1); b.position.y = 1.1; g.add(b); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 0.6, 10), gold); k.position.y = 2.05; g.add(k); g.visible = false; scene.add(g); return g; })();
+const bagBeacon = makeBeacon(0xf6c026); bagBeacon.visible = false;
+function rushStart() {
+  const e = G.ev; BAG.visible = bagBeacon.visible = false; if (!e) return; const sp = eventSpot(e.type); if (!sp) return;
+  if (e.type === 'thaila') { BAG.position.set(sp.x, 0, sp.z); bagBeacon.position.set(sp.x, 0, sp.z); BAG.visible = bagBeacon.visible = !e.data.taken; }
+  if (!G.story && !G.race && !G.job && !G.frun && (!G.wp || e.type === 'thaila')) setWaypoint(sp.x, sp.z, e.type === 'thaila' ? '💰 Thaila (' + e.data.place + ')' : e.name);
+  if (!G.story && !G.race) bigText(e.type === 'thaila' ? '💰 PAISON KA THAILA!' : 'CITY EVENT!', e.type === 'thaila' ? e.data.place + ' · pehle pahuncho, ' + fmt(e.data.prize) + ' tera' : e.name + ' · pehle 3 ko inaam', 2);
+}
+function updateRush() {
+  const e = G.ev; if (BAG.visible) { BAG.rotation.y += 0.04; BAG.children[0].position.y = 1.1 + Math.sin(now() * 3) * 0.15; BAG.visible = bagBeacon.visible = !G.inside; }
+  if (!e || G.evReached || G.inside || (e.rush && e.rush.length >= 3)) return; const sp = eventSpot(e.type); if (!sp) return;
+  const d = e.type === 'baraat' ? Math.abs(G.x - sp.x) : Math.hypot(G.x - sp.x, G.z - sp.z); if (d < (e.type === 'thaila' ? 6 : 20)) { G.evReached = true; net.send('evreach', {}); if (e.type === 'thaila') { BAG.visible = bagBeacon.visible = false; A.sfx('cash'); } }
+}
 function updateNav() {
   const tg = !G.inside && !G.map && !raceArrow.visible ? navTarget() : null; const d = tg ? Math.hypot(tg.x - G.x, tg.z - G.z) : 0;
   if (tg && d > 9) navPoint(wpArrow, tg.x, tg.z); else wpArrow.visible = false;
@@ -2097,7 +2214,7 @@ function loop(t) {
       const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
     } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
+  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }

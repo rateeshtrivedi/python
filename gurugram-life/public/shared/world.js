@@ -88,8 +88,11 @@ function track(c, k, n = 1) {
 const istDay = (t = Date.now()) => new Date(t + 5.5 * 3600e3).toISOString().slice(0, 10);
 const prevDay = d => new Date(Date.parse(d + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
 function tasksDone(p) { const a = p.missions.active; return a.length > 0 && a.filter(x => x.done).length >= Math.min(3, a.length); }
+const istWeek = () => { const d = new Date(Date.now() + 5.5 * 3600e3); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0, 10); };
+function ensureDon(p) { const wk = istWeek(); if (!p.don || p.don.wk !== wk) p.don = { wk, ch: 0, last: null, champ: p.don && p.don.champ || null, spot: null }; if (p.don.spotDay && p.don.spotDay !== istDay()) { p.don.spot = null; p.don.spotDay = null; } }
+const donAt = dn => (dn.spot != null && D.DON_SPOTS[dn.spot]) || D.DON[dn.ch].at;
 function ensureMissions(p) {
-  const ms = p.missions; const day = istDay(); if (ms.v === 2 && ms.day === day && ms.active.length) return;
+  const ms = p.missions; const day = istDay(); ensureDon(p); if (!p.dayBase || p.dayBase.day !== day) p.dayBase = { day, c: { ...p.c }, money: p.money }; if (ms.v === 2 && ms.day === day && ms.active.length) return;
   let seed = 7; for (const ch of p.id + day) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647; const pk = a => a[Math.floor(r() * a.length)];
   const lvl = p.level;
   ms.active = D.DAILY_SLOTS.map(slot => {
@@ -120,12 +123,14 @@ function weatherTick() {
   else { const step = Math.random() < 0.75 ? 1 : 2; lvl = Math.max(0, Math.min(4, cur + (Math.random() < (cur === 0 ? 0.55 : cur === 4 ? 0.15 : 0.45) ? step : -step))); if (lvl === cur) lvl = cur === 0 ? 1 : cur - 1; }
   const since = lvl === cur ? weather.since : t; weather = { lvl, since, until: Math.min(t + W_SPELL(lvl), since + 1200) }; if (lvl !== cur) broadcast({ t: 'weather', w: weather });
 }
-let eventIdx = 0;
-let nextEventAt = now() + 90;
+let eventIdx = Number((globalThis.process && globalThis.process.env && globalThis.process.env.GL_FIRST_EVENT_IDX) || 0);
+const ENV = (globalThis.process && globalThis.process.env) || {}; // tests can start the event loop early at a chosen event
+let nextEventAt = now() + (Number(ENV.GL_FIRST_EVENT_S) || 90), soonSent = false;
 function startEvent() {
   const type = D.EVENT_ORDER[eventIdx++ % D.EVENT_ORDER.length];
   const def = D.WORLD_EVENTS[type]; const t = now();
-  worldEvent = { type, name: def.name, start: t, end: t + def.dur, data: {} };
+  worldEvent = { type, name: def.name, start: t, end: t + def.dur, data: {}, rush: [] }; soonSent = false;
+  if (type === 'thaila') { const R = [-375, -225, -75, 75, 225, 375]; const x = pick(R.slice(1, 5)), z = pick(R.slice(1, 5)); const d = D.districtAt(x + 20, z + 20); worldEvent.data = { x, z, place: d ? d[2] : 'Gurugram', prize: 1500 + Math.floor(Math.random() * 6) * 250 }; worldEvent.name = 'Paison ka thaila gira at ' + worldEvent.data.place + '!'; }
   if (type === 'flood') worldEvent.data.districts = D.FLOOD_DISTRICTS.slice().sort(() => Math.random() - 0.5).slice(0, 4);
   if (type === 'ipl') worldEvent.data = { teams: D.IPL_TEAMS, runs: [0, 0], wkts: [0, 0], balls: 0, inn: 0, target: 0, cheers: [0, 0], last: '' };
   broadcast({ t: 'event', ev: worldEvent });
@@ -436,6 +441,26 @@ function handle(c, m) {
       send(c, { t: 'toast', text: tc.p.name + ' ko gaadi se kheench liya! KO kar, gaadi teri.', kind: 'money' });
       break;
     }
+    case 'donstart': { // took the call: today's chapter plays out at the chosen corner
+      ensureMissions(p); const dn = p.don; const i = Math.floor(num(m.spot, -1));
+      if (dn.ch >= D.DON.length || dn.last === istDay() || !D.DON_SPOTS[i]) return reply({ ok: false });
+      dn.spot = i; dn.spotDay = istDay(); dirty = true; sendProfile(c); return reply({ ok: true, spot: i });
+    }
+    case 'donko': { // beat today's Gali ke Don boss
+      ensureMissions(p); const dn = p.don, ch = dn.ch; if (m.ch !== ch || ch >= D.DON.length || dn.last === istDay() || !c.st || c.st.in) return;
+      const C = D.DON[ch], at = donAt(dn); if (dist(c.st, { x: at[0], z: at[1] }) > 60 || !rateOk(c, 'donko', 20)) return;
+      const r = Math.round(C.r * (1 + 0.1 * Math.min(p.level, 10)) / 10) * 10; p.money += r; p.respect += 10 + ch * 5; dn.ch++; dn.last = istDay(); dn.spot = null; dn.spotDay = null; track(c, 'don'); addXP(c, 60 + ch * 20);
+      if (C.final) { dn.champ = dn.wk; announce('👑 ' + p.name + ' ne Dalal Bhai ko hara diya! Is hafte ka GALI KA DON!', 'fight'); }
+      else if (ch >= 2) announce(p.name + ' ne ' + C.boss + ' ko ' + at[2] + ' mein dhobi pachhad maara (Gali ke Don, chapter ' + (ch + 1) + ')', 'fight');
+      send(c, { t: 'don', ch: dn.ch, reward: r, final: !!C.final }); sendProfile(c); dirty = true; break;
+    }
+    case 'evreach': { // first three to an event spot win; the money bag goes to the first one only
+      const e = worldEvent; if (!e || !c.st || c.st.in || e.rush.includes(p.id) || !rateOk(c, 'evreach', 2)) return;
+      if (e.type === 'thaila') { if (e.data.taken || dist(c.st, e.data) > 8) return; e.data.taken = p.name; e.rush.push(p.id); credit(c, e.data.prize, 'Paison ka thaila!'); sendProfile(c); announce('💰 ' + p.name + ' ne ' + e.data.place + ' pe thaila utha liya (' + fmt(e.data.prize) + ')!', 'event'); e.end = Math.min(e.end, now() + 2); break; }
+      const sp = D.EVENT_SPOTS[e.type]; if (!sp || e.rush.length >= 3) return; const ok = sp.line ? Math.abs(c.st.x - sp.x) < 20 : dist(c.st, sp) < 28; if (!ok) return;
+      e.rush.push(p.id); const k = e.rush.length; credit(c, Math.round(D.RUSH_PRIZE[k - 1] * (1 + 0.1 * Math.min(p.level, 10))), '#' + k + ' pahuncha · ' + e.name); sendProfile(c);
+      if (k === 1) announce(p.name + ' sabse pehle pahuncha: ' + e.name + '!', 'event'); break;
+    }
     case 'bump': { // vehicle collision with another player's vehicle -> road rage
       const tc = conns.get(m.target); if (!tc || tc === c || !c.st?.v || !tc.st?.v || c.st.in || tc.st.in) return;
       if (dist(c.st, tc.st) > 9) return;
@@ -700,6 +725,7 @@ let slow = 0;
 function tick1s() {
   slow++; const t = now();
   weatherTick();
+  if (!worldEvent && !soonSent && t >= nextEventAt - 30) { soonSent = true; const type = D.EVENT_ORDER[eventIdx % D.EVENT_ORDER.length]; broadcast({ t: 'evsoon', type, name: D.WORLD_EVENTS[type].name, in: Math.round(nextEventAt - t) }); }
   if (!worldEvent && t >= nextEventAt) startEvent();
   if (worldEvent && t >= worldEvent.end) endEvent();
   if (worldEvent?.type === 'ipl' && slow % 5 === 0) iplTick();

@@ -87,7 +87,7 @@ export const MISC = {
   hospital: ['Civil Hospital treatment', 100], shirt: ['New shirt', 600], toll: ['Kherki Daula toll', 50],
   challan: ['Drunk-driving challan', 2000], challan_big: ['Challan after argument', 4000], challan_chase: ['Challan after chase', 5000], challan_film: ['Black film challan', 1000],
   bottle: ['Bottle service for the whole club', 15000], notes: ['Note udao at the baraat', 1000], party: ['Host a farmhouse party', 20000],
-  firework: ['Diwali rocket', 200], dangal: ['Dangal entry', 100], plate: ['Random HR26 number plate', RANDOM_PLATE_PRICE], ko_bill: ['Hospital bill', 200],
+  firework: ['Diwali rocket', 200], don_auto: ['Auto to the Gali ke Don fight', 50], dangal: ['Dangal entry', 100], plate: ['Random HR26 number plate', RANDOM_PLATE_PRICE], ko_bill: ['Hospital bill', 200],
 };
 
 // Earning caps the server enforces: reason -> {max per event, cooldown seconds}
@@ -177,8 +177,36 @@ export const WORLD_EVENTS = {
   holi:   { name: 'Holi on Sohna Road', dur: 240 },
   diwali: { name: 'Diwali night', dur: 240 },
   ipl:    { name: 'IPL screening at Cyber Hub', dur: 240 },
+  thaila: { name: 'Paison ka thaila gira!', dur: 120 },
 };
-export const EVENT_ORDER = ['baraat', 'jam', 'holi', 'ipl', 'flood', 'baraat', 'diwali', 'jam'];
+export const EVENT_ORDER = ['baraat', 'thaila', 'jam', 'holi', 'thaila', 'ipl', 'flood', 'baraat', 'thaila', 'diwali', 'jam'];
+// where each event happens: the first three players to get there win cash (the baraat moves along Golf Course Road)
+export const EVENT_SPOTS = { baraat: { x: -225, z: 0, line: 1 }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, diwali: { x: 0, z: 40 } };
+export const RUSH_PRIZE = [700, 400, 250];
+// Gali ke Don: a five-chapter gang story, one chapter a day, new every Monday (Gurugram time)
+export const DON = [
+  { boss: 'Rinku Chhapri', at: [300, 0, 'Sadar Bazaar'], hench: 0, hp: 120, dmg: 7, r: 1500,
+    intro: 'Rinku Chhapri ne tere dost Golu ka phone cheen liya. Sadar Bazaar mein ghoom rya se.', taunt: 'Phone chahiye? Pehle mujhe hara!', outro: 'Rinku: "Mera bhai Lalit tujhe chhodega nahi!"' },
+  { boss: 'Lalit Lambu', at: [150, -150, 'Sector 29'], hench: 1, hp: 150, dmg: 8, r: 2000,
+    intro: 'Rinku ka bhai Lalit Lambu apne chele ke saath Sector 29 mein badla lene aaya se.', taunt: 'Mere bhai ko maara? Ab dekh!', outro: 'Lalit: "Sandy bhai ko pata chal gaya to tera kya hoga..."' },
+  { boss: 'Sandy Gunda', at: [300, 150, 'Old Gurgaon'], hench: 2, hp: 180, dmg: 9, r: 2600,
+    intro: 'Sandy Gunda, Dalal Bhai ka right hand. Old Gurgaon mein do chelon ke saath khada se.', taunt: 'Chhore, galat gali mein aa gaya!', outro: 'Sandy: "Kallu ko bhej diya hai Sector 14... dukaanein bacha sake to bacha!"' },
+  { boss: 'Kallu Kaanpur', at: [-150, 150, 'Sector 14 Market'], hench: 2, hp: 210, dmg: 10, r: 3200,
+    intro: 'Kallu Kaanpur ne Sector 14 Market mein hafta vasooli shuru kar di. Dukaanwale pareshan se.', taunt: 'Hafta de, warna dukaan band!', outro: 'Kallu: "Kal Dalal Bhai khud Sohna Road aayega. Bach sake to bach!"' },
+  { boss: 'Dalal Bhai', at: [150, 0, 'Sohna Road'], hench: 3, hp: 280, dmg: 11, r: 6000, final: true,
+    intro: 'FINALE! Dalal Bhai, Sohna Road ka don. Teen chele, ek sapna: tera haarna.', taunt: 'Aaja Gali ke Don... aaj dekhte se kaun asli!', outro: 'Dalal Bhai: "Aaj se tu hi Gali ka Don se..." 👑' },
+];
+// who phones the player for each chapter (the call is how new players discover the story)
+export const DON_CALLS = [
+  ['Golu', '🧑', 'Bhai! Rinku Chhapri ne mera phone cheen liya... tere paas hi ghoom rya se. Madad kar!'],
+  ['Golu', '🧑', 'Bhai, Rinku ka bhai Lalit Lambu aa gaya chele ke saath! Mujhe dhoond rya se. Bacha le!'],
+  ['Sharma ji (dukaandar)', '👴', 'Beta, Sandy Gunda ne dukaan ke aage tamasha laga diya. Tu hi kuch kar sake!'],
+  ['Gupta ji (kirana)', '🧔', 'Kallu Kaanpur hafta maang rya se! Poora mohalla pareshan. Aaja jaldi!'],
+  ['Unknown number', '🕶️', 'Main Dalal Bhai bol rya hoon. Mere aadmi bahut maar liye tune... aaja, aakhri faisla.'],
+];
+// corners where a chapter can play out; the boss turns up at the one nearest the player who takes the call
+export const DON_SPOTS = [[300, 0, 'Sadar Bazaar'], [-150, 0, 'Galleria Market'], [-150, 150, 'Sector 14 Market'], [150, -150, 'Sector 29'], [150, 150, 'Badshahpur'], [300, 150, 'Old Gurgaon'], [150, 0, 'Sohna Road'], [0, 0, 'Rajiv Chowk']];
+export const donScale = lvl => 1 + 0.08 * Math.min(lvl, 10);
 export const FLOOD_DISTRICTS = ['Sector 56', 'Sushant Lok', 'Golf Course Extension', 'Huda City Centre', 'Sector 14 Market', 'Civil Hospital'];
 export const IPL_TEAMS = ['Gurugram Gladiators', 'Faridabad Falcons'];
 

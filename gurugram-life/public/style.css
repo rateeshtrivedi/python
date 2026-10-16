@@ -280,3 +280,13 @@ body.mapmode #hud{display:none!important}
 #navx{flex:none;width:22px;height:22px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff4d8;font:700 11px var(--body);cursor:pointer;padding:0}
 body.racing #navchip{display:none!important}
 @media (max-width:760px){#navchip{right:12px;top:calc(238px + env(safe-area-inset-top,0px));max-width:min(230px,calc(100% - 24px));font-size:12px}}
+#missions .m.don span{color:#ffb4a8}#missions .m.don em{background:#e3261b}
+/* Gali ke Don: incoming call */
+#doncall{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(10,7,5,.72);backdrop-filter:blur(3px)}
+#doncall .dc-in{width:min(380px,calc(100% - 32px));background:linear-gradient(180deg,#2a1b12,#140d09);border:3px solid var(--sarson);border-radius:28px;padding:26px 22px 20px;text-align:center;color:var(--cream);box-shadow:0 18px 60px rgba(0,0,0,.6)}
+#doncall .dc-face{width:96px;height:96px;margin:0 auto 10px;border-radius:50%;background:#3b2a1d;display:grid;place-items:center;font-size:54px;animation:dcring 1.3s ease-in-out infinite}
+@keyframes dcring{0%,100%{box-shadow:0 0 0 0 rgba(47,196,107,.6)}50%{box-shadow:0 0 0 18px rgba(47,196,107,0)}}
+#doncall .dc-who{font:800 26px var(--display);color:#fff}#doncall .dc-sub{font:700 13px var(--body);color:#8fe3a6;margin:2px 0 12px}
+#doncall .dc-msg{font:700 17px/1.35 var(--body);margin-bottom:18px}
+#doncall .dc-btns{display:flex;gap:10px}#doncall button{flex:1;border:0;border-radius:99px;padding:12px 8px;font:800 16px var(--display);cursor:pointer}
+#doncall .dc-no{background:#d7331f;color:#fff}#doncall .dc-yes{background:#2fc46b;color:#fff}
