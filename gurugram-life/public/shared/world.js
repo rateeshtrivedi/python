@@ -89,7 +89,8 @@ const istDay = (t = Date.now()) => new Date(t + 5.5 * 3600e3).toISOString().slic
 const prevDay = d => new Date(Date.parse(d + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
 function tasksDone(p) { const a = p.missions.active; return a.length > 0 && a.filter(x => x.done).length >= Math.min(3, a.length); }
 const istWeek = () => { const d = new Date(Date.now() + 5.5 * 3600e3); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0, 10); };
-function ensureDon(p) { const wk = istWeek(); if (!p.don || p.don.wk !== wk) p.don = { wk, ch: 0, last: null, champ: p.don && p.don.champ || null }; }
+function ensureDon(p) { const wk = istWeek(); if (!p.don || p.don.wk !== wk) p.don = { wk, ch: 0, last: null, champ: p.don && p.don.champ || null, spot: null }; if (p.don.spotDay && p.don.spotDay !== istDay()) { p.don.spot = null; p.don.spotDay = null; } }
+const donAt = dn => (dn.spot != null && D.DON_SPOTS[dn.spot]) || D.DON[dn.ch].at;
 function ensureMissions(p) {
   const ms = p.missions; const day = istDay(); ensureDon(p); if (!p.dayBase || p.dayBase.day !== day) p.dayBase = { day, c: { ...p.c }, money: p.money }; if (ms.v === 2 && ms.day === day && ms.active.length) return;
   let seed = 7; for (const ch of p.id + day) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647; const pk = a => a[Math.floor(r() * a.length)];
@@ -440,12 +441,17 @@ function handle(c, m) {
       send(c, { t: 'toast', text: tc.p.name + ' ko gaadi se kheench liya! KO kar, gaadi teri.', kind: 'money' });
       break;
     }
+    case 'donstart': { // took the call: today's chapter plays out at the chosen corner
+      ensureMissions(p); const dn = p.don; const i = Math.floor(num(m.spot, -1));
+      if (dn.ch >= D.DON.length || dn.last === istDay() || !D.DON_SPOTS[i]) return reply({ ok: false });
+      dn.spot = i; dn.spotDay = istDay(); dirty = true; sendProfile(c); return reply({ ok: true, spot: i });
+    }
     case 'donko': { // beat today's Gali ke Don boss
       ensureMissions(p); const dn = p.don, ch = dn.ch; if (m.ch !== ch || ch >= D.DON.length || dn.last === istDay() || !c.st || c.st.in) return;
-      const C = D.DON[ch]; if (dist(c.st, { x: C.at[0], z: C.at[1] }) > 60 || !rateOk(c, 'donko', 20)) return;
-      const r = Math.round(C.r * (1 + 0.1 * Math.min(p.level, 10)) / 10) * 10; p.money += r; p.respect += 10 + ch * 5; dn.ch++; dn.last = istDay(); track(c, 'don'); addXP(c, 60 + ch * 20);
+      const C = D.DON[ch], at = donAt(dn); if (dist(c.st, { x: at[0], z: at[1] }) > 60 || !rateOk(c, 'donko', 20)) return;
+      const r = Math.round(C.r * (1 + 0.1 * Math.min(p.level, 10)) / 10) * 10; p.money += r; p.respect += 10 + ch * 5; dn.ch++; dn.last = istDay(); dn.spot = null; dn.spotDay = null; track(c, 'don'); addXP(c, 60 + ch * 20);
       if (C.final) { dn.champ = dn.wk; announce('👑 ' + p.name + ' ne Dalal Bhai ko hara diya! Is hafte ka GALI KA DON!', 'fight'); }
-      else if (ch >= 2) announce(p.name + ' ne ' + C.boss + ' ko ' + C.at[2] + ' mein dhobi pachhad maara (Gali ke Don, chapter ' + (ch + 1) + ')', 'fight');
+      else if (ch >= 2) announce(p.name + ' ne ' + C.boss + ' ko ' + at[2] + ' mein dhobi pachhad maara (Gali ke Don, chapter ' + (ch + 1) + ')', 'fight');
       send(c, { t: 'don', ch: dn.ch, reward: r, final: !!C.final }); sendProfile(c); dirty = true; break;
     }
     case 'evreach': { // first three to an event spot win; the money bag goes to the first one only

@@ -87,7 +87,7 @@ export const MISC = {
   hospital: ['Civil Hospital treatment', 100], shirt: ['New shirt', 600], toll: ['Kherki Daula toll', 50],
   challan: ['Drunk-driving challan', 2000], challan_big: ['Challan after argument', 4000], challan_chase: ['Challan after chase', 5000], challan_film: ['Black film challan', 1000],
   bottle: ['Bottle service for the whole club', 15000], notes: ['Note udao at the baraat', 1000], party: ['Host a farmhouse party', 20000],
-  firework: ['Diwali rocket', 200], dangal: ['Dangal entry', 100], plate: ['Random HR26 number plate', RANDOM_PLATE_PRICE], ko_bill: ['Hospital bill', 200],
+  firework: ['Diwali rocket', 200], don_auto: ['Auto to the Gali ke Don fight', 50], dangal: ['Dangal entry', 100], plate: ['Random HR26 number plate', RANDOM_PLATE_PRICE], ko_bill: ['Hospital bill', 200],
 };
 
 // Earning caps the server enforces: reason -> {max per event, cooldown seconds}
@@ -196,6 +196,16 @@ export const DON = [
   { boss: 'Dalal Bhai', at: [150, 0, 'Sohna Road'], hench: 3, hp: 280, dmg: 11, r: 6000, final: true,
     intro: 'FINALE! Dalal Bhai, Sohna Road ka don. Teen chele, ek sapna: tera haarna.', taunt: 'Aaja Gali ke Don... aaj dekhte se kaun asli!', outro: 'Dalal Bhai: "Aaj se tu hi Gali ka Don se..." 👑' },
 ];
+// who phones the player for each chapter (the call is how new players discover the story)
+export const DON_CALLS = [
+  ['Golu', '🧑', 'Bhai! Rinku Chhapri ne mera phone cheen liya... tere paas hi ghoom rya se. Madad kar!'],
+  ['Golu', '🧑', 'Bhai, Rinku ka bhai Lalit Lambu aa gaya chele ke saath! Mujhe dhoond rya se. Bacha le!'],
+  ['Sharma ji (dukaandar)', '👴', 'Beta, Sandy Gunda ne dukaan ke aage tamasha laga diya. Tu hi kuch kar sake!'],
+  ['Gupta ji (kirana)', '🧔', 'Kallu Kaanpur hafta maang rya se! Poora mohalla pareshan. Aaja jaldi!'],
+  ['Unknown number', '🕶️', 'Main Dalal Bhai bol rya hoon. Mere aadmi bahut maar liye tune... aaja, aakhri faisla.'],
+];
+// corners where a chapter can play out; the boss turns up at the one nearest the player who takes the call
+export const DON_SPOTS = [[300, 0, 'Sadar Bazaar'], [-150, 0, 'Galleria Market'], [-150, 150, 'Sector 14 Market'], [150, -150, 'Sector 29'], [150, 150, 'Badshahpur'], [300, 150, 'Old Gurgaon'], [150, 0, 'Sohna Road'], [0, 0, 'Rajiv Chowk']];
 export const donScale = lvl => 1 + 0.08 * Math.min(lvl, 10);
 export const FLOOD_DISTRICTS = ['Sector 56', 'Sushant Lok', 'Golf Course Extension', 'Huda City Centre', 'Sector 14 Market', 'Civil Hospital'];
 export const IPL_TEAMS = ['Gurugram Gladiators', 'Faridabad Falcons'];

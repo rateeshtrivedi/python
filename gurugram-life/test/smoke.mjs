@@ -50,10 +50,12 @@ try {
   const scooty = await a.req('buy', { kind: 'vehicle', id: 'scooty' }); check(!scooty.ok || scooty.price === 8000, 'scooty purchase validated');
   // Gali ke Don: chapter 1 only counts next to the boss, once a day
   check(wa.profile.don && wa.profile.don.ch === 0, 'Gali ke Don starts at chapter 1');
-  a.send('st', { x: 0, z: 0, r: 0, a: 0, v: null, in: '', hp: 100 }); await new Promise(r => setTimeout(r, 150)); a.send('donko', { ch: 0 }); await new Promise(r => setTimeout(r, 300));
-  check(!a.inbox.some(m => m.t === 'don'), 'a Don chapter far from the boss is rejected');
-  a.send('st', { x: 300, z: 2, r: 0, a: 0, v: null, in: '', hp: 100 }); await new Promise(r => setTimeout(r, 150)); a.send('donko', { ch: 0 }); const dn = await a.wait(m => m.t === 'don');
-  check(dn.ch === 1 && dn.reward >= 1500, 'beating Rinku Chhapri completes chapter 1 and pays');
+  const ds = await a.req('donstart', { spot: 1 }); check(ds.ok && ds.spot === 1, 'taking the call puts the chapter at the chosen corner');
+  a.send('st', { x: 300, z: 2, r: 0, a: 0, v: null, in: '', hp: 100 }); await new Promise(r => setTimeout(r, 150)); a.send('donko', { ch: 0 }); await new Promise(r => setTimeout(r, 300));
+  check(!a.inbox.some(m => m.t === 'don'), 'a Don chapter away from the chosen corner is rejected');
+  a.send('st', { x: -150, z: 2, r: 0, a: 0, v: null, in: '', hp: 100 }); await new Promise(r => setTimeout(r, 150)); a.send('donko', { ch: 0 }); const dn = await a.wait(m => m.t === 'don');
+  check(dn.ch === 1 && dn.reward >= 1500, 'beating Rinku Chhapri at that corner completes chapter 1 and pays');
+  const ds2 = await a.req('donstart', { spot: 2 }); check(!ds2.ok, 'no second chapter call on the same day');
   a.send('donko', { ch: 1 }); await new Promise(r => setTimeout(r, 300)); check(a.inbox.filter(m => m.t === 'don').length === 1, 'only one Don chapter per day');
   // live events: 30 s warning, then the money bag goes to whoever reaches it first
   const soon = await a.wait(m => m.t === 'evsoon', 8000); check(soon.type === 'thaila' && soon.in > 0, 'players get a countdown before a city event');

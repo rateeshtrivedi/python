@@ -598,7 +598,7 @@ function streakNext() { const s = P.streak; return s && s.day && Date.parse(P.mi
 function renderMissions() {
   const box = $('mlist'), act = dailyTasks(); if (!P) return; box.textContent = ''; const nd = act.filter(a => a.done).length;
   $('missions').querySelector('h4').textContent = 'Aaj ke kaam · ' + nd + '/' + act.length + (P.streak && P.streak.n ? ' · 🔥' + P.streak.n : '');
-  const ds = donState(); if (ds) box.append(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.C.at[2] + ')' : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
+  const ds = donState(); if (ds) box.append(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? (ds.called ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.at[2] + ')' : '📞 Golu ka call: Gali ke Don ch ' + (ds.ch + 1)) : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
   for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
   if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Kal naye kaam aayenge' : nd < 3 ? (3 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Saare 7 = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
   $('mchip').textContent = '📋 Aaj ke kaam ' + nd + '/' + act.length;
@@ -614,32 +614,56 @@ function goTask(a) {
 function openTasks() {
   const act = dailyTasks(); if (!act.length) return; const nd = act.filter(a => a.done).length;
   openModal('Aaj ke kaam · ' + nd + '/' + act.length, 'Naye kaam raat 12 baje · 3 poore = agla level · saare poore = bonus', b => {
-    const ds = donState(); if (ds) b.append(itemRow((ds.champ ? '👑 ' : '📖 ') + 'Gali ke Don · chapter ' + Math.min(ds.ch + 1, 5) + '/5', ds.champ ? 'Tu is hafte ka Don se!' : ds.avail ? ds.C.boss + ' (' + ds.C.at[2] + ') · inaam ' + donRewardText(ds.ch) : 'Aaj ka chapter ho gaya, kal agla', 'Kahani', openDon));
+    const ds = donState(); if (ds) b.append(itemRow((ds.champ ? '👑 ' : '📖 ') + 'Gali ke Don · chapter ' + Math.min(ds.ch + 1, 5) + '/5', ds.champ ? 'Tu is hafte ka Don se!' : ds.avail ? ds.C.boss + (ds.called ? ' (' + ds.at[2] + ')' : ' · tere paas aayega') + ' · inaam ' + donRewardText(ds.ch) : 'Aaj ka chapter ho gaya, kal agla', 'Kahani', openDon));
     b.append(itemRow('📸 Aaj ka Hisaab card', 'Aaj ke kaarname ek card pe · Story pe daalo', 'Banao', () => { closeModal(); makeDayCard(); }));
     for (const a of act) { const p = taskProg(a); const row = itemRow((a.done ? '✓ ' : TASK_ICON[a.slot] + ' ') + a.t, taskCount(a, p) + ' · inaam ' + fmt(a.r), a.done ? 'Ho gaya' : 'Chalo', () => goTask(a)); row.append(el('div', { class: 'tbar' }, el('i', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); b.append(row); }
     b.append(el('p', { class: 'fine', text: 'Saare 7 poore: ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus + 10 respect. Roz poore karo, streak se bonus 2 guna tak.' + (P.streak && P.streak.n ? ' Abhi streak: ' + P.streak.n + ' din 🔥' : '') }));
   });
 }
 // Gali ke Don: one chapter a day; the boss and his chele wait at their corner
-function donState() { const d = P && P.don; if (!d) return null; const ch = d.ch, C = D.DON[ch]; return { d, ch, C, avail: !!C && d.last !== (P.missions && P.missions.day), champ: d.champ === d.wk }; }
+function donState() { const d = P && P.don; if (!d) return null; const ch = d.ch, C = D.DON[ch]; const at = (d.spot != null && D.DON_SPOTS[d.spot]) || (C && C.at); return { d, ch, C, at, called: d.spot != null, avail: !!C && d.last !== (P.missions && P.missions.day), champ: d.champ === d.wk }; }
 let DONF = [];
 function clearDon() { for (const n of DONF) if (FIGHTERS.includes(n)) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); } DONF = []; }
 function updateDon() {
   const s = donState(); if (!s || !s.avail) { if (DONF.length && !DONF.some(n => n.state === 'ko')) clearDon(); return; }
-  if (DONF.length && DONF[0].donCh !== s.ch) clearDon(); DONF = DONF.filter(n => FIGHTERS.includes(n));
-  if (!DONF.length || !DONF.some(n => n.donBoss)) { clearDon(); const k = D.donScale(P.level), [x, z] = s.C.at;
-    const boss = makeFighter(s.C.boss + ' · Don ch ' + (s.ch + 1), x, z, Math.round(s.C.hp * k), s.C.dmg, 0x3b0d0d); boss.donBoss = true; boss.donCh = s.ch; boss.don = true; boss.mesh.scale.set(1.12, 1.12, 1.12); FIGHTERS.push(boss); DONF.push(boss);
-    for (let i = 0; i < s.C.hench; i++) { const h = makeFighter(pick(['Chela', 'Chamcha', 'Chela No. ' + (i + 1)]), x + Math.cos(i * 2.1) * 3, z + Math.sin(i * 2.1) * 3, Math.round(45 * k), 5, 0x222222); h.don = true; h.donCh = s.ch; FIGHTERS.push(h); DONF.push(h); } }
+  if (!s.called) { if (DONF.length) clearDon(); maybeDonCall(s); return; }
+  if (DONF.length && (DONF[0].donCh !== s.ch || DONF[0].donSpot !== s.d.spot)) clearDon(); DONF = DONF.filter(n => FIGHTERS.includes(n));
+  if (!DONF.length || !DONF.some(n => n.donBoss)) { clearDon(); const k = D.donScale(P.level), [x, z] = s.at;
+    const boss = makeFighter(s.C.boss + ' · Don ch ' + (s.ch + 1), x, z, Math.round(s.C.hp * k), s.C.dmg, 0x3b0d0d); boss.donBoss = true; boss.donCh = s.ch; boss.donSpot = s.d.spot; boss.don = true; boss.mesh.scale.set(1.12, 1.12, 1.12); FIGHTERS.push(boss); DONF.push(boss);
+    for (let i = 0; i < s.C.hench; i++) { const h = makeFighter(pick(['Chela', 'Chamcha', 'Chela No. ' + (i + 1)]), x + Math.cos(i * 2.1) * 3, z + Math.sin(i * 2.1) * 3, Math.round(45 * k), 5, 0x222222); h.don = true; h.donCh = s.ch; h.donSpot = s.d.spot; FIGHTERS.push(h); DONF.push(h); } }
   const boss = DONF.find(n => n.donBoss); if (!boss) return; const d = Math.hypot(G.x - boss.x, G.z - boss.z);
-  if (!boss.seen && d < 45 && !G.inside) { boss.seen = true; bigText('CHAPTER ' + (s.ch + 1) + ': ' + s.C.boss.toUpperCase(), s.C.at[2] + ' · Gali ke Don', 2.2); }
+  if (!boss.seen && d < 45 && !G.inside) { boss.seen = true; bigText('CHAPTER ' + (s.ch + 1) + ': ' + s.C.boss.toUpperCase(), s.at[2] + ' · Gali ke Don', 2.2); }
   if (d < 13 && !G.inside && !G.veh && G.hp > 0) for (const n of DONF) if (n.state === 'wander') { n.state = 'aggro'; if (n.donBoss && !n.taunted) { n.taunted = true; say(n, s.C.taunt, 3); } }
+}
+// the phone rings: how a new player finds the story. Accepting brings the boss to the nearest corner.
+function maybeDonCall(s) {
+  if (G.donCallOpen || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return;
+  if (G.story || (G.race && G.race.phase !== 'done') || G.frun || G.map || G.inside || G.selfie || G.minigame || G.chase || !$('modal').hidden || !$('raceres').hidden || G.veh && Math.abs(G.vs) > 20) return;
+  const day = P.missions && P.missions.day; const lc = L.donCalls && L.donCalls.day === day ? L.donCalls : { day, n: 0 }; if (lc.n >= 2) return;
+  lc.n++; L.donCalls = lc; saveLocal(); showDonCall(s);
+}
+function showDonCall(s) {
+  const [who, face, msg] = D.DON_CALLS[s.ch] || D.DON_CALLS[0]; G.donCallOpen = true; if (document.pointerLockElement) document.exitPointerLock();
+  const box = el('div', { id: 'doncall' }); box.innerHTML = '<div class="dc-in"><div class="dc-face">' + face + '</div><div class="dc-who"></div><div class="dc-sub">📞 Incoming call · Gali ke Don ch ' + (s.ch + 1) + '</div><div class="dc-msg"></div><div class="dc-btns"><button type="button" class="dc-no">Baad mein</button><button type="button" class="dc-yes">Chal, aata hoon 👊</button></div></div>';
+  box.querySelector('.dc-who').textContent = who; box.querySelector('.dc-msg').textContent = '"' + msg + '"'; document.body.append(box);
+  let rings = 0; const ring = setInterval(() => { if (rings++ > 6 || !box.isConnected) return clearInterval(ring); A.sfx('beep'); setTimeout(() => A.sfx('beep'), 180); }, 1300);
+  const close = () => { clearInterval(ring); box.remove(); G.donCallOpen = false; };
+  box.querySelector('.dc-no').onclick = () => { close(); G.donCallNext = now() + 600; toast('Golu: "Theek se bhai, jab time ho phone (Tab) mein Gali ke Don dabana."'); };
+  box.querySelector('.dc-yes').onclick = () => { close(); G.donCallNext = now() + 600; acceptDon(); }; // no second ring while the server confirms
+}
+async function acceptDon() {
+  const s = donState(); if (!s || !s.avail) return; let best = 0, bd = 1e9;
+  D.DON_SPOTS.forEach((q, i) => { const d = Math.hypot(q[0] - G.x, q[1] - G.z), sc = d < 50 ? d + 400 : d; if (sc < bd) { bd = sc; best = i; } }); // nearest corner, but not right on top of you
+  const r = await net.req('donstart', { spot: best }); if (!r.ok) return toast('Abhi nahi ho paya, thodi der mein try kar');
+  const q = D.DON_SPOTS[best]; setWaypoint(q[0], q[1], s.C.boss + ' (' + q[2] + ')'); const dist = Math.round(Math.hypot(q[0] - G.x, q[1] - G.z) / 5) * 5;
+  showCard('Chapter ' + (s.ch + 1) + ': ' + s.C.boss, s.C.intro.replace(s.C.at[2], q[2]) + ' (' + dist + ' m door)', [['🛺 Auto bulao (₹50)', async () => { $('raceres').hidden = true; const b2 = await buy('misc', 'don_auto'); if (!b2.ok) return; if (G.veh) dismount(); fadeTo('Auto wale bhaiya ' + q[2] + ' le ja rahe se...', 1400, () => { G.x = q[0] + 9; G.z = q[1] + 9; G.r = G.yaw = Math.atan2(-9, -9); }); }, 'alt'], ['Khud jaunga (GPS on)', () => { $('raceres').hidden = true; }, 'alt2']], 'GPS laga diya · Chele bhi saath honge, taiyaar reh!');
 }
 function donRewardText(i) { return fmt(Math.round(D.DON[i].r * (1 + 0.1 * Math.min(P.level, 10)) / 10) * 10); }
 function openDon() {
   const s = donState(); if (!s) return; closeModal();
   openModal('Gali ke Don · is hafte ki kahani', 'Roz ek chapter · har Monday nayi kahani · finale jeeto, bano Gali ka Don 👑', b => {
     D.DON.forEach((C, i) => { const done = i < s.ch, today = i === s.ch && s.avail, locked = !done && !today;
-      const row = itemRow((done ? '✓ ' : today ? '👊 ' : '🔒 ') + 'Ch ' + (i + 1) + ': ' + C.boss + ' · ' + C.at[2], done ? 'Ho gaya' : today ? C.intro + ' Inaam ' + donRewardText(i) : i === s.ch ? 'Aaj ka chapter ho gaya. Kal khulega!' : 'Pichhla chapter poora karo', today ? 'Chalo' : done ? '✓' : '🔒', () => { if (!today) return; closeModal(); setWaypoint(C.at[0], C.at[1], C.boss + ' (' + C.at[2] + ')'); }, !today); b.append(row); });
+      const row = itemRow((done ? '✓ ' : today ? '👊 ' : '🔒 ') + 'Ch ' + (i + 1) + ': ' + C.boss + ' · ' + C.at[2], done ? 'Ho gaya' : today ? (s.called ? C.boss + ' ' + s.at[2] + ' mein wait kar rya se.' : C.intro.split('.')[0] + '. Boss tere sabse paas wale chowk pe aayega.') + ' Inaam ' + donRewardText(i) : i === s.ch ? 'Aaj ka chapter ho gaya. Kal khulega!' : 'Pichhla chapter poora karo', today ? 'Chalo' : done ? '✓' : '🔒', () => { if (!today) return; closeModal(); if (s.called) setWaypoint(s.at[0], s.at[1], C.boss + ' (' + s.at[2] + ')'); else acceptDon(); }, !today); b.append(row); });
     if (s.champ) b.append(el('p', { class: 'fine', text: '👑 Tu is hafte ka Gali ka Don se! Monday ko nayi kahani.' }));
   });
 }
@@ -1713,7 +1737,7 @@ function roadHazards(dt) {
 // ================================================================ 3D MAP: fly up over the real city, pins for every useful place
 const MAPCAT = { kaam: ['Kaam', '#2563b8'], khana: ['Khana', '#e07b10'], police: ['Police', '#1b3a8a'], mall: ['Shopping', '#8b3fc4'], party: ['Party', '#d61f9a'], race: ['Race', '#d7331f'], gaadi: ['Gaadi', '#0f766e'], hospital: ['Hospital', '#e11d48'], metro: ['Metro', '#3a6fd8'], ghoomo: ['Ghoomo', '#1a8a4a'] };
 const POI_EXTRA = []; // places added by the city builder (police thana etc.)
-MAPCAT.paani = ['Paani bhara', '#1f7ab8'];
+MAPCAT.paani = ['Paani bhara', '#1f7ab8']; MAPCAT.don = ['Gali ke Don', '#7a1010'];
 function mapCat(t) {
   if (/race/i.test(t)) return 'race'; if (/police|thana|naka/i.test(t)) return 'police'; if (/treatment|hospital/i.test(t)) return 'hospital'; if (/metro/i.test(t)) return 'metro';
   if (/technova|office|ramphal|kaam/i.test(t)) return 'kaam'; if (/dhaba|menu|sweets|chaat|brew|food|chai|order|khana/i.test(t)) return 'khana';
@@ -1723,6 +1747,7 @@ function mapPOIs() {
   const out = []; const seen = new Set();
   for (const Z of ZONES) { if (Z.zone !== 'out') continue; let t; try { t = Z.label(); } catch { t = null; } if (!t) continue; const name = t.replace(/^Enter /, '').replace(/^Race lagao: /, 'Race: ').split(/:| \(|·/)[0].trim().slice(0, 30); const k = name + Math.round(Z.x / 20) + Math.round(Z.z / 20); if (seen.has(k)) continue; seen.add(k); out.push({ x: Z.x, z: Z.z, name, cat: mapCat(t) }); }
   out.push({ x: D.SPOTS.naka.x, z: D.SPOTS.naka.z, name: 'Police naka, Iffco Chowk', cat: 'police' }, { x: D.SPOTS.akhara.x, z: D.SPOTS.akhara.z, name: 'Akhara (dangal)', cat: 'ghoomo' });
+  { const ds = donState(); if (ds && ds.avail && ds.called) out.push({ x: ds.at[0], z: ds.at[1], name: ds.C.boss + ' (ch ' + (ds.ch + 1) + ')', cat: 'don' }); }
   for (const p of POI_EXTRA) out.push(p); if (WX.ww > 0.2) for (const s2 of D.FLOOD_SPOTS) out.push({ x: s2.x, z: s2.z, name: s2.name + ' (paani)', cat: 'paani' }); if (P) { const h = homePos(); out.push({ x: h.x, z: h.z, name: 'Mera ghar', cat: 'ghoomo' }); }
   return out;
 }
