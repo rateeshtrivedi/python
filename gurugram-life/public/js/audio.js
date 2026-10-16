@@ -170,9 +170,10 @@ export function setRain(level) {
   if (!Music.ctx) return; const c = Music.ctx;
   if (!RainS.src) {
     const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6000;
+    const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
     const g = c.createGain(); g.gain.value = 0; src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(c.destination); src.start(); RainS.src = src; RainS.gain = g;
   }
-  RainS.gain.gain.setTargetAtTime(clamp(level, 0, 1) * 0.16, c.currentTime, 0.5);
+  const radioOn = [Radio.live, Radio.audio].some(a => a && !a.paused); // a soft hiss; even softer under the radio so songs stay clear
+  RainS.gain.gain.setTargetAtTime(clamp(level, 0, 1) * (radioOn ? 0.035 : 0.07), c.currentTime, 0.5);
 }
 export function thunder() { if (!Music.ctx) return; const t = Music.ctx.currentTime; noise(t, 1.6, 0.5, 120, 0.7, 'lowpass', Music.sfx); noise(t + 0.15, 1.2, 0.35, 260, 0.8, 'lowpass', Music.sfx); }
