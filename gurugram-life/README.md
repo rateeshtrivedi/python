@@ -57,7 +57,9 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **City-wide events** (every few minutes, same for everyone): baraat, Iffco Chowk mahajam, monsoon flood with surge pay, Holi colours, Diwali fireworks, IPL screening at Cyber Hub.
 
-**Radio**: real Haryanvi and Punjabi songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
+**Language**: the login screen (and Menu → Bhasha) lets players pick Haryanvi, Hindi (Devanagari) or English. The game is written in Haryanvi; for Hindi and English every piece of text on screen is translated as it appears, using the language packs in `public/js/lang/`. Names of people, places and shops stay as they are. Hindi and English players join with the Bollywood station on.
+
+**Radio**: real Haryanvi, Punjabi and Bollywood songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
 
 **Joining**: name → character creator (ladka/ladki, skin, 5 hairstyles each, hair colour, T-shirt/kurta/jacket or kurti/jacket/saree, colours, pants, moonchh/daadhi or bindi/jhumke, cap/pagdi/dupatta, kaala chashma, and Chacha's car) with a live 3D preview → choose where to start (Ambience Mall runs the Pehla Din story).
 
@@ -93,7 +95,7 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 ## Testing
 
-`npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock.
+`npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock. `GL_LANG=hi` or `GL_LANG=en` runs it with the game translated.
 
 ## How it's built
 
@@ -102,5 +104,6 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 - `public/js/game.js`: the 3D city (three.js), controls, interface and client side of every system.
 - `public/js/audio.js`: radio stations, the player's own songs and sound effects.
 - `public/js/net.js`: WebSocket connection with automatic reconnect.
+- `public/js/i18n.js` and `public/js/lang/`: the language picker and the Hindi and English packs. Each pack is a list of [Haryanvi text, translation] pairs; `{}` stands for a name or number and `{1}` `{2}` let a translation reorder them. Text that is added to the game and not yet in a pack shows in Haryanvi.
 
 Players log in with just a name. The browser keeps a private login key, so the same device returns to the same character.

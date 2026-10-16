@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import * as D from '../shared/data.js';
 import { net } from './net.js';
 import * as A from './audio.js';
+import * as I18N from './i18n.js';
 
 // ================================================================ UTIL
 const $ = id => document.getElementById(id);
@@ -578,7 +579,7 @@ function buildInteriors() {
 
 // ================================================================ HUD
 // At most two short toasts at a time, never the same text twice
-function toast(msg, cls) { const box = $('toasts'); for (const c of box.children) if (c.textContent === msg) return; const t = el('div', { class: 'toast' + (cls ? ' ' + cls : ''), text: msg }); box.prepend(t); while (box.children.length > 2) box.lastChild.remove(); setTimeout(() => t.remove(), 3200); }
+function toast(msg, cls) { const box = $('toasts'); for (const c of box.children) if (c.dataset.src === msg) return; const t = el('div', { class: 'toast' + (cls ? ' ' + cls : ''), text: msg }); t.dataset.src = msg; box.prepend(t); while (box.children.length > 2) box.lastChild.remove(); setTimeout(() => t.remove(), 3200); }
 A.hooks.toast = toast; A.hooks.label = radioLabel;
 // City news: quiet for the first 20 s and during races, at most three lines
 function feed(text, kind) { if (G.race || G.story || now() - (G.startedAt || 0) < 20) return; const d = el('div', { class: kind || '', text }); $('feed').prepend(d); while ($('feed').children.length > 3) $('feed').lastChild.remove(); setTimeout(() => d.remove(), 10500); }
@@ -684,7 +685,7 @@ async function earn(reason, amount, why) { const r = await net.req('earn', { rea
 const ev = k => net.send('ev', { k });
 
 // ================================================================ MODALS & SHOPS
-function openModal(title, sub, build) { if (document.pointerLockElement) document.exitPointerLock(); $('mTitle').textContent = title; $('mSub').textContent = sub || ''; const b = $('mBody'); b.textContent = ''; build(b); $('modal').hidden = false; G.modal = true; G.modalBuild = () => openModal(title, sub, build); }
+function openModal(title, sub, build) { if (document.pointerLockElement) document.exitPointerLock(); $('mTitle').textContent = title; G.modalTitle = title; $('mSub').textContent = sub || ''; const b = $('mBody'); b.textContent = ''; build(b); $('modal').hidden = false; G.modal = true; G.modalBuild = () => openModal(title, sub, build); }
 function closeModal() { $('modal').hidden = true; G.modal = false; G.minigame = null; G.modalBuild = null; }
 $('mClose').onclick = closeModal; $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal')) closeModal(); });
 function itemRow(name, desc, btnText, onClick, disabled, alt) { const b = el('button', { class: 'buy' + (alt ? ' alt' : ''), text: btnText, onclick: onClick }); if (disabled) b.disabled = true; return el('div', { class: 'item' }, el('div', { class: 't' }, el('b', { text: name }), el('small', { text: desc || '' })), b); }
@@ -738,7 +739,7 @@ function openPhone() {
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
+    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Bhasha', '#2f5fd0', 'अ', appLang], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
@@ -1442,6 +1443,18 @@ function drawMini() {
 
 // ================================================================ RADIO UI
 function radioLabel() { const b = $('musicBtn'); if (!A.Radio.playing) { b.textContent = 'Radio: off'; b.classList.remove('on'); return; } const st = A.STATIONS.find(x => x.id === A.Radio.st); b.textContent = (A.Radio.override === 'club' ? 'CLUB' : st.freq) + ' · ' + A.nowPlaying(); b.classList.add('on'); }
+function pickLang(id) { // Haryanvi keeps the Haryanvi station; Hindi and English players get Bollywood
+  I18N.setLang(id).then(() => { A.preferStation(id === 'har' ? 'har' : 'bol'); radioLabel(); renderLangPick(); if (G.started) renderMissions(); });
+}
+function renderLangPick() {
+  const box = $('langPick'); if (!box) return; box.textContent = '';
+  for (const l of I18N.LANGS) box.append(el('button', { type: 'button', class: 'lang' + (I18N.LANG === l.id ? ' on' : ''), 'aria-pressed': String(I18N.LANG === l.id), onclick: () => pickLang(l.id) }, el('b', { text: l.name }), el('small', { text: l.sub })));
+}
+function appLang() {
+  openModal('Bhasha', 'Game ki bhasha chuno', b => {
+    for (const l of I18N.LANGS) { const on = I18N.LANG === l.id; const r = itemRow(l.name, l.sub, on ? 'Chalu' : 'Chuno', () => { pickLang(l.id); setTimeout(appLang, 80); }, on); r.querySelector('.t').setAttribute('data-notr', ''); b.append(r); }
+  });
+}
 function appRadio() {
   openModal('Gurugram Radio', 'Asli gaane, live · M: on/off · R: next station', b => {
     const cur = A.STATIONS.find(s => s.id === A.Radio.st);
@@ -1455,7 +1468,7 @@ function appRadio() {
       const chans = A.channelList(); const ci = A.Radio.ci[A.Radio.override === 'club' ? 'pun' : A.Radio.st];
       b.append(el('h3', { text: 'Live channels' }), el('p', { text: chans.length ? 'Yeh asli radio stations hain jo internet pe live chalte hain, isliye beech mein RJ ya ad bhi aa sakta hai. Gaana pasand nahi? ⏭ dabao.' : 'Channels load ho rahe hain… (internet chahiye)' }));
       chans.slice(0, 12).forEach((c, i) => { const on = A.Radio.playing && i === ci; b.append(itemRow(c.name, on ? 'Chal raha hai' : 'Live', on ? 'Playing' : 'Play', () => { A.playChannel(i); setTimeout(appRadio, 50); }, on)); });
-      if (!chans.length) A.loadStations().then(() => { if (!$('modal').hidden && $('mTitle').textContent === 'Gurugram Radio') appRadio(); });
+      if (!chans.length) A.loadStations().then(() => { if (!$('modal').hidden && G.modalTitle === 'Gurugram Radio') appRadio(); });
     }
     b.append(el('h3', { text: 'Meri Playlist: your Haryanvi & Punjabi songs' }), el('p', { text: 'Apne phone ya computer se gaane add karo (MP3, M4A, OGG, WAV). Yeh is browser mein save rehte hain.' }));
     const inp = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.aac,.ogg,.wav,.opus,.flac', id: 'songIn', multiple: '', style: 'display:none' }); inp.onchange = async () => { await A.addSongs([...inp.files]); inp.value = ''; appRadio(); };
@@ -2172,6 +2185,7 @@ function showStartPick() {
   const last = lsGet('gl_start') || 'ambience';
   for (const [id, name, sub] of STARTS) box.append(el('button', { type: 'button', class: 'splace' + (id === 'ambience' ? ' rec' : '') + (id === last ? ' on' : ''), onclick: () => joinGame(id) }, el('b', { text: name }), el('span', { text: sub })));
 }
+renderLangPick();
 const savedName = lsGet('gl_name'); if (!savedName) { $('nameIn').value = pick(['Bunty', 'Monty', 'Rocky', 'Sunny', 'Lucky', 'Bittu', 'Golu', 'Pinky', 'Sweety', 'Neetu']) + ' ' + pick(['Yadav', 'Chaudhary', 'Dahiya', 'Sangwan', 'Malik', 'Hooda', 'Rao', 'Phogat']); $('loginNote').textContent = 'Naam badalna ho to badal le. Agle step mein apna avatar banao!'; } if (savedName) { $('nameIn').value = savedName; $('loginNote').textContent = 'Wapas aa gaya ' + savedName + '! Tera progress saved se.'; }
 if (savedName && lsGet('gl_lookset')) { $('playBtn').textContent = 'Chalo, Khelo!'; $('playBtn').after(el('button', { type: 'button', class: 'buy alt', id: 'avBtn', text: 'Avatar badlo', onclick: () => { saveName(); showCreator(); } })); } else $('playBtn').textContent = 'Aage: apna avatar banao →';
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn').click(); });
@@ -2180,7 +2194,7 @@ $('playBtn').onclick = () => { saveName(); A.initAudio(); if (lsGet('gl_lookset'
 function joinGame(startId) { if (G.viewOff) { camera.clearViewOffset(); G.viewOff = false; }
   lsSet('gl_start', startId); G.startId = startId; lsSet('gl_color', AVD.color); L.loanVeh = AVD.ride; saveLocal();
   $('startpick').hidden = true; $('creator').hidden = true; if (PREVIEW) PREVIEW.visible = false; G.creating = false; DAY.fixed = false;
-  $('login').hidden = false; $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); A.restoreRadio(); radioLabel();
+  $('login').hidden = false; $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); { const rs = lsGet('gl_radio'); if (I18N.LANG !== 'har' && (!rs || rs.st === 'har')) A.preferStation('bol'); } // Hindi / English players join to Bollywood A.restoreRadio(); radioLabel();
   const hello = () => ({ token: lsGet('gl_token'), name: lsGet('gl_name'), color: lsGet('gl_color') });
   const goSolo = reason => {
     if (G.started || net.local) return; G.soloReason = reason || ''; net.connectLocal(hello);

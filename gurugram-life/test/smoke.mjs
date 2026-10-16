@@ -78,6 +78,10 @@ try {
   check(wa2.daily === null, 'daily reward only once per day');
   const health = await (await fetch(`http://localhost:${PORT}/healthz`)).json(); check(health.ok && health.players === 2, 'health endpoint');
   const page = await (await fetch(`http://localhost:${PORT}/`)).text(); check(page.includes('Gurugram Life') && !/\bTau\b/.test(page), 'page served, no "Tau" anywhere');
+  for (const L of ['hi', 'en']) { // language packs: served, every pair keeps its {} holes, no "Tau"
+    const r = await fetch(`http://localhost:${PORT}/js/lang/${L}.js`); const pairs = (await import(`../public/js/lang/${L}.js`)).default; const holes = s => (s.match(/\{\d*\}/g) || []).length;
+    check(r.ok && pairs.length > 1000 && pairs.every(([a, b]) => holes(a) === holes(b)) && !pairs.some(([, b]) => /\bTau\b|ताऊ/.test(b)), `${L} language pack served and well-formed`);
+  }
   const three = await fetch(`http://localhost:${PORT}/vendor/three/three.module.js`); check(three.ok, 'three.js served from /vendor');
   a2.ws.close(); b.ws.close();
 } catch (e) { console.error(e); failures++; }
