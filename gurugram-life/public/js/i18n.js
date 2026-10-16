@@ -1,10 +1,11 @@
 // Language: the game is written in Haryanvi; Hindi and English players get it translated on the fly.
+// Hindi is written in Roman letters (Hinglish), the same way the Haryanvi is.
 // Every piece of text that reaches the screen (DOM text, a few attributes, canvas text) is looked up in
 // a dictionary of the game's own strings, so the game code and the server keep speaking Haryanvi.
 // Dictionary entries may contain {} holes for names and numbers; a translation can reorder them as {1} {2}.
 export const LANGS = [
   { id: 'har', name: 'Haryanvi', sub: 'Desi swag · Haryanvi radio' },
-  { id: 'hi', name: 'हिंदी', sub: 'हिंदी में खेलो · Bollywood radio' },
+  { id: 'hi', name: 'Hindi', sub: 'Hindi mein khelo · Bollywood radio' },
   { id: 'en', name: 'English', sub: 'Play in English · Bollywood radio' },
 ];
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
@@ -112,7 +113,7 @@ export async function setLang(id, remember = true) {
     let pairs = null; if (id !== 'har') { try { pairs = await loadDict(id); } catch (e) { console.warn('Gurugram Life: could not load language', id, e); id = 'har'; } }
     if (no !== switchNo) return; // a newer switch won
     LANG = id; if (pairs) compile(pairs); else { EXACT = null; cache = new Map(); }
-    document.documentElement.lang = id === 'en' ? 'en' : id === 'hi' ? 'hi' : 'hi-IN';
+    document.documentElement.lang = id === 'en' ? 'en' : 'hi-Latn'; // Hindi and Haryanvi are both written in Roman letters
     if (id !== 'har') watch(); if (document.body) retranslate();
   })();
 }

@@ -57,7 +57,7 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **City-wide events** (every few minutes, same for everyone): baraat, Iffco Chowk mahajam, monsoon flood with surge pay, Holi colours, Diwali fireworks, IPL screening at Cyber Hub.
 
-**Language**: the login screen (and Menu → Bhasha) lets players pick Haryanvi, Hindi (Devanagari) or English. The game is written in Haryanvi; for Hindi and English every piece of text on screen is translated as it appears, using the language packs in `public/js/lang/`. Names of people, places and shops stay as they are. Hindi and English players join with the Bollywood station on.
+**Language**: the login screen (and Menu → Bhasha) lets players pick Haryanvi, Hindi or English. Hindi is written in Roman letters (Hinglish), like the Haryanvi. The game is written in Haryanvi; for Hindi and English every piece of text on screen is translated as it appears, using the language packs in `public/js/lang/`. Names of people, places and shops stay as they are. Hindi and English players join with the Bollywood station on.
 
 **Radio**: real Haryanvi, Punjabi and Bollywood songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
 
