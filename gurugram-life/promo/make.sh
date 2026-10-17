@@ -2,7 +2,7 @@
 # Compose a day's deliverables: DAY=2026-10-17 N=1 ./make.sh   (needs days/$DAY/video.mp4 from cap.cjs)
 set -e; cd "$(dirname "$0")/days/$DAY"; K=..; OUT=out; mkdir -p $OUT
 python3 ../../mix.py $DAY
-ffmpeg -loglevel error -y -ss 0.9 -i video.mp4 -frames:v 1 -q:v 2 bg.jpg
+[ -f bg.jpg ] || ffmpeg -loglevel error -y -ss 0.9 -i video.mp4 -frames:v 1 -q:v 2 bg.jpg   # prefer the clean frame from THUMB=
 DAY=$DAY node ../../cards.cjs
 ET=$(python3 -c "import json;print(json.load(open('sound.json')).get('end',4.0))"); F=$(python3 -c "print(int($ET*30))")
 ffmpeg -loglevel error -y -loop 1 -t $ET -framerate 30 -i end.png -vf "format=yuv420p,scale=1080:1920,zoompan=z='1+0.0008*on':d=$F:s=1080x1920:fps=30" -frames:v $F -c:v libx264 -preset medium -crf 16 end.mp4

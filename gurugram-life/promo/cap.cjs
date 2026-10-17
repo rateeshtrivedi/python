@@ -1,6 +1,6 @@
 // Daily reel capture: the real game in a vertical 1080x1920 window, scripted scenes from days/<DAY>/scenes.js,
 // virtual clock (every frame exactly 1/30 s), HUD hidden, POV text drawn on top. Needs the game server on :3120.
-// usage: DAY=2026-10-17 [LOWRES=1] [ONLY=1,3] [OUT=file.mp4] node cap.cjs
+// usage: DAY=2026-10-17 [LOWRES=1] [ONLY=1,3] [OUT=file.mp4] [THUMB=scene:frame] node cap.cjs
 const { chromium } = require('/opt/node-tools/node_modules/playwright'); const fs = require('fs'); const path = require('path'); const { spawn } = require('child_process');
 const KIT = __dirname, GAME = process.env.GAME || '/home/user/python/gurugram-life'; const DIR = path.join(KIT, 'days', process.env.DAY);
 const seed = JSON.parse(fs.readFileSync(path.join(KIT, 'seed.json'), 'utf8')); const SC = JSON.parse(fs.readFileSync(path.join(DIR, 'scenes.json'), 'utf8'));
@@ -26,7 +26,10 @@ const extra = `\nwindow.__g = { G, keys, DAY, WX, setWeather, mount, dismount, s
   for (let i = 0; i < SC.length; i++) {
     if (ONLY && !ONLY.includes(i + 1)) continue; const s = SC[i]; const n = Math.round(s.dur * 30);
     await p.evaluate(i => window.__R.setup(i), i); for (let k = 0; k < Math.round((s.pre || 0.6) * 30); k++) await p.evaluate(i => { window.__R.tick(i, -1); window.__step(1000 / 30); }, i);
-    for (let f = 0; f < n; f++) { await p.evaluate(([i, f]) => { window.__R.tick(i, f / 30); window.__step(1000 / 30); }, [i, f]); await shot(); }
+    const TH = process.env.THUMB ? process.env.THUMB.split(':').map(Number) : null; // THUMB=scene:frame saves a clean frame (no text) as bg.jpg for the thumbnail
+    for (let f = 0; f < n; f++) { await p.evaluate(([i, f]) => { window.__R.tick(i, f / 30); window.__step(1000 / 30); }, [i, f]);
+      if (TH && TH[0] === i + 1 && TH[1] === f) { await p.evaluate(() => { document.getElementById('reelOv').style.display = 'none'; }); await p.screenshot({ path: path.join(DIR, 'bg.jpg'), type: 'jpeg', quality: 92 }); await p.evaluate(() => { document.getElementById('reelOv').style.display = ''; }); }
+      await shot(); }
     console.log('scene', i + 1, 'done', n, 'frames', JSON.stringify(await p.evaluate(() => window.__R.info())));
   }
   ff.stdin.end(); await new Promise(r => ff.on('close', r)); console.log(errs.length ? 'page errors:\n' + [...new Set(errs)].slice(0, 8).join('\n') : 'no page errors'); await b.close();

@@ -1,13 +1,14 @@
 // Day 1 · POV: Day 1 of your 'corporate job' in Gurugram (timestamps format)
 window.__SCENES = h => { const { g, G, K, S } = h; return [
-  // 0 hook: pulling a driver out of his car
+  // 0 hook: fighting the driver of the car he wants (no mounting, so the camera stays on the fight)
   { setup() { h.reset(); h.weather(0, 0); g.DAY.t = 0.36; h.traffic(true);
       const c = g.CARS.filter(c => c.type !== 'bus' && c.type !== 'truck' && c.mesh.visible).sort((a, b) => Math.hypot(a.mesh.position.x - G.x, a.mesh.position.z - G.z) - Math.hypot(b.mesh.position.x - G.x, b.mesh.position.z - G.z))[0];
       S.c = c; c.held = true; const p = g.carAt(c); G.x = p.x + p.fz * 3.4; G.z = p.z - p.fx * 3.4; G.r = G.yaw = Math.atan2(p.x - G.x, p.z - G.z);
-      g.startJack({ c }); S.n = g.FIGHTERS[g.FIGHTERS.length - 1]; S.n.hp = 18; S.n.x = G.x + Math.sin(G.r) * 1.4; S.n.z = G.z + Math.cos(G.r) * 1.4; S.n.cd = 9; S.p = 0; },
-    tick(h, t) { G.hp = 100; const n = S.n; if (n && n.state !== 'ko') { n.cd = 9; G.r = G.yaw = Math.atan2(n.x - G.x, n.z - G.z); }
-      if (t > 0.35 && S.p < 1) { S.p = 1; g.punch(); } if (t > 0.95 && S.p < 2) { S.p = 2; g.punch(); } if (t > 1.5 && S.p < 3) { S.p = 3; g.punch(); }
-      const fx = Math.sin(G.r), fz = Math.cos(G.r); const mx = n ? (G.x + n.x) / 2 : G.x, mz = n ? (G.z + n.z) / 2 : G.z; h.camAt(mx + fz * 5.2 - fx * 1.2, 1.9, mz - fx * 5.2 - fz * 1.2, mx, 1.1, mz, 1); } },
+      g.startJack({ c }); S.n = g.FIGHTERS[g.FIGHTERS.length - 1]; S.n.jack = null; S.n.hp = 30; S.n.x = G.x + Math.sin(G.r) * 1.4; S.n.z = G.z + Math.cos(G.r) * 1.4; S.n.cd = 9; S.p = 0;
+      const fx = Math.sin(G.r), fz = Math.cos(G.r), mx = G.x + fx * 0.7, mz = G.z + fz * 0.7; S.cam = [mx + fz * 6.2 - fx * 1.5, 1.7, mz - fx * 6.2 - fz * 1.5, mx, 1.25, mz]; },
+    tick(h, t) { G.hp = 100; const n = S.n; if (n && n.state !== 'ko') { n.cd = 9; n.x = G.x + Math.sin(G.r) * 1.3; n.z = G.z + Math.cos(G.r) * 1.3; }
+      for (const [k, at] of [[1, 0.3], [2, 0.8], [3, 1.3], [4, 1.75]]) if (t > at && S.p < k) { S.p = k; g.punch(); }
+      h.camAt(...S.cam, 1); } },
   // 1 8:00 AM: cab cancelled, cars fly past
   { setup() { h.reset(); h.weather(0, 0); g.DAY.t = 0.34; h.traffic(true); G.x = -213.5; G.z = -120; G.r = G.yaw = -Math.PI / 2; },
     tick(h, t) { h.camAt(G.x - 17, 1.5, G.z + 3, G.x, 1.4, G.z, 1); } },
