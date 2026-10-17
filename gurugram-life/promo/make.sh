@@ -10,6 +10,7 @@ for A in music sfx; do
   ffmpeg -loglevel error -y -i video.mp4 -i end.mp4 -i audio_$A.wav -filter_complex "[0:v]setsar=1[a];[1:v]setsar=1[b];[a][b]concat=n=2:v=1:a=0,format=yuv420p[v]" -map "[v]" -map 2:a -c:v libx264 -preset slow -crf 20 -profile:v high -c:a aac -b:a 160k -ar 44100 -movflags +faststart -shortest final_$A.mp4
 done
 P=gurugram-day$N; cp final_music.mp4 $OUT/$P-REEL.mp4; cp final_sfx.mp4 $OUT/$P-REEL-nomusic.mp4; cp final_music.mp4 $OUT/$P-SHORT.mp4; cp final_sfx.mp4 $OUT/$P-SHORT-nomusic.mp4
+for V in REEL SHORT; do ffmpeg -loglevel error -y -i final_sfx.mp4 -f lavfi -i anullsrc=r=44100:cl=mono -map 0:v -map 1:a -c:v copy -c:a aac -b:a 64k -shortest $OUT/$P-$V-silent.mp4; done   # the user adds the song in the app
 cp thumb.png $OUT/$P-thumbnail-9x16.png; [ -f thumb_wide.png ] && cp thumb_wide.png $OUT/$P-thumbnail-16x9.png
 cp youtube.txt $OUT/$P-youtube.txt; cp instagram.txt $OUT/$P-instagram.txt
 ffmpeg -loglevel error -y -i final_music.mp4 -vf "fps=1/2.6,scale=216:384,tile=9x1" -frames:v 1 sheet_final.jpg; ls -la $OUT
