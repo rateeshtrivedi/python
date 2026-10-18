@@ -1,7 +1,7 @@
 // Plain HTML pages for search engines and people who want to read before playing: /about, /how-to-play, /places,
 // plus robots.txt, sitemap.xml and a 404 page. The game itself is a 3D canvas, so these pages carry the words
 // Google ranks. Everything here is visible text (no hidden keyword blocks); keep it true to the game.
-export const SITE = (process.env.SITE_URL || 'https://www.gurugramlife.com').replace(/\/+$/, '');
+export const SITE = (process.env.SITE_URL || 'https://gurugramlife.com').replace(/\/+$/, ''); // the address the domain host serves (www redirects here)
 const UPDATED = new Date().toISOString().slice(0, 10); // deploy date: pages change only when the code does
 
 const PLACES = [
