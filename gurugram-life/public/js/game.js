@@ -7,6 +7,7 @@ import * as I18N from './i18n.js';
 import * as HU from './humans.js';
 import * as RL from './realism.js';
 import * as DG from './dogs.js';
+import { VOICES } from './voices.js';
 
 // ================================================================ UTIL
 const $ = id => document.getElementById(id);
@@ -731,7 +732,7 @@ function updateBadla() {
   if (BADLA && !FIGHTERS.includes(BADLA)) BADLA = null;
   if (!BADLA) { const lv = Math.min(P.level, 10); BADLA = makeFighter(a.enemy + ' · badla', a.x, a.z, 100 + 10 * lv, 6 + (lv >> 1), 0x151515); BADLA.badla = a; FIGHTERS.push(BADLA); }
   const n = BADLA, d = Math.hypot(G.x - n.x, G.z - n.z);
-  if (n.state === 'wander' && d < 12 && !G.inside && !G.veh && G.hp > 0) { n.state = 'aggro'; if (!n.taunted) { n.taunted = true; say(n, 'Haan maine peeta ' + a.friend + ' ne! Ke karega?', 3); bigText('BADLA!', a.enemy + ' mil gaya. Dhobi pachhad maar!', 1.6); } }
+  if (n.state === 'wander' && d < 12 && !G.inside && !G.veh && G.hp > 0) { n.state = 'aggro'; if (!n.taunted) { n.taunted = true; say(n, 'Haan maine peeta! Ke karega?', 3); bigText('BADLA!', a.enemy + ' mil gaya. Dhobi pachhad maar!', 1.6); } }
 }
 
 // ================================================================ SERVER CALLS
@@ -932,7 +933,7 @@ function endJob() { G.job = null; jobBeacon.visible = false; $('job').hidden = t
 function renderJob() { const j = G.job; if (!j) { $('job').hidden = true; return; } $('job').hidden = false; const t = jobTarget(); const p = hereXZ(); const d = Math.hypot(t.x - p.x, t.z - p.z); const surge = G.ev?.type === 'flood' && j.type !== 'quest' ? 2 : 1; $('job').textContent = ''; $('job').append(el('b', { text: (j.type === 'ride' ? 'Chalo ride · ' : j.type === 'quest' ? 'Ramphal ji ka kaam · ' : 'Jhatpat order · ') + fmt(j.pay * (j.car ? 1.4 : 1) * surge) }), el('div', { text: jobText() }), el('div', { class: 'dist', text: Math.round(d) + ' m' })); }
 async function updateJob() {
   const j = G.job; if (!j || G.inside || j.busy) return; const t = jobTarget(); if (Math.hypot(t.x - G.x, t.z - G.z) >= 8) return;
-  if (j.stage === 'pickup') { if (j.type === 'ride' && !G.veh) return; j.stage = 'drop'; j.t0 = now(); j.car = G.veh && D.VEH[G.veh].kind === 4; jobBeacon.position.set(j.to.x, 0, j.to.z); A.sfx('ok'); if (j.type === 'ride') { toast(j.who + ' baith gaye. "' + pick(RIDE_CHAT) + '"'); say(player, 'Ram Ram ' + j.who.split(' ')[0] + '!', 3); } else toast('Order le liya! Garam garam pahuncha.'); return; }
+  if (j.stage === 'pickup') { if (j.type === 'ride' && !G.veh) return; j.stage = 'drop'; j.t0 = now(); j.car = G.veh && D.VEH[G.veh].kind === 4; jobBeacon.position.set(j.to.x, 0, j.to.z); A.sfx('ok'); if (j.type === 'ride') { toast(j.who + ' baith gaye. "' + pick(RIDE_CHAT) + '"'); say(player, 'Ram Ram!', 3); } else toast('Order le liya! Garam garam pahuncha.'); return; }
   j.busy = true; const took = now() - j.t0; const surge = G.ev?.type === 'flood' && j.type !== 'quest' ? 2 : 1; let pay = j.pay * (j.car ? 1.4 : 1) * surge; const tip = took < j.par ? Math.round(pay * 0.25) : 0; const stars = took < j.par ? 5 : took < j.par * 1.6 ? 4 : 3;
   const reason = j.type === 'ride' ? 'ride' : j.type === 'quest' ? 'quest' : 'delivery';
   const r = await earn(reason, pay + tip, (j.type === 'ride' ? 'Ride' : j.type === 'quest' ? 'Ramphal ji khush' : 'Delivery') + ' · ' + stars + ' star' + (tip ? ' + tip' : ''));
@@ -976,7 +977,7 @@ function fadeTo(text, ms, cb) { const f = $('fade'); f.textContent = text; f.cla
 function resolve(o, r) {
   const list = COL[G.inside || 'out']; let hit = false;
   for (const c of list) { if (o.x + r > c.x0 && o.x - r < c.x1 && o.z + r > c.z0 && o.z - r < c.z1) { const a = o.x + r - c.x0, b = c.x1 - (o.x - r), cc = o.z + r - c.z0, d = c.z1 - (o.z - r); const m = Math.min(a, b, cc, d); if (m === a) o.x -= a; else if (m === b) o.x += b; else if (m === cc) o.z -= cc; else o.z += d; hit = true; } }
-  if (!G.inside) { o.x = clamp(o.x, -445, 445); o.z = clamp(o.z, -445, 445); for (const c of COWS) { const dx = o.x - c.x, dz = o.z - c.z, dd = Math.hypot(dx, dz), rr = r + 1.3; if (dd < rr && dd > 0.01) { o.x = c.x + dx / dd * rr; o.z = c.z + dz / dd * rr; hit = true; if (G.veh && Math.abs(G.vs) > 8 && !c.mooT) { c.mooT = 2; A.sfx('moo'); say(c, 'Mooo! (Chaudhary ki gaay se!)', 2); } } } }
+  if (!G.inside) { o.x = clamp(o.x, -445, 445); o.z = clamp(o.z, -445, 445); for (const c of COWS) { const dx = o.x - c.x, dz = o.z - c.z, dd = Math.hypot(dx, dz), rr = r + 1.3; if (dd < rr && dd > 0.01) { o.x = c.x + dx / dd * rr; o.z = c.z + dz / dd * rr; hit = true; if (G.veh && Math.abs(G.vs) > 8 && !c.mooT) { c.mooT = 2; A.sfx('moo'); } } } }
   return hit;
 }
 
@@ -1138,7 +1139,7 @@ function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shir
 function npcKO(n) {
   if (n.donBoss) { n.state = 'ko'; n.t = 8; A.sfx('ko'); say(n, 'Bas kar... maan gaya tujhe!', 3); ev('npc_ko'); net.send('donko', { ch: n.donCh }); for (const h of DONF) if (h !== n && h.state !== 'ko') { h.state = 'ko'; h.t = 6; say(h, 'Bhaago!', 1.5); } bigText('CHAPTER ' + (n.donCh + 1) + ' POORA!', D.DON[n.donCh].boss + ' dhobi pachhad', 1.8); return; }
   if (n.fromPed) { n.state = 'ko'; n.t = 4; A.sfx('ko'); say(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }
-  if (n.badla) { n.state = 'ko'; n.t = 6; A.sfx('ko'); ev('badla'); ev('npc_ko'); say(n, pick(['Maaf kar de! ' + n.badla.friend + ' te bhi maafi maang lunga!', 'Galti ho gayi bhai...']), 3); bigText('BADLA POORA!', n.badla.friend + ' ka badla le liya', 1.8); return; }
+  if (n.badla) { n.state = 'ko'; n.t = 6; A.sfx('ko'); ev('badla'); ev('npc_ko'); say(n, pick(['Maaf kar de! Usse bhi maafi maang lunga!', 'Galti ho gayi bhai...']), 3); bigText('BADLA POORA!', n.badla.friend + ' ka badla le liya', 1.8); return; }
   if (n.jack) { n.state = 'ko'; n.t = 3; A.sfx('ko'); say(n, pick(['Le ja... le ja gaadi!', 'Police ko bataunga!', 'Mummy...!']), 2.5); ev('npc_ko'); return takeJacked(n.jack); }
   if (n.story) { n.state = 'ko'; n.t = 99; A.sfx('ko'); say(n, 'Maaf kar de bhai! Galti ho gayi!', 2.5); ev('npc_ko'); earn('loot', 150, 'Monu ne haar maani'); return storyKO(); }
   n.state = 'ko'; n.t = n.pehl ? 6 : 22; A.sfx('ko'); say(n, n.pehl ? 'Haar gaya... tu asli pehlwan se!' : pick(['Maaf kar de bhai!', 'Galti ho gayi!', 'Ab na karunga!']), 2.5);
@@ -1306,7 +1307,17 @@ function updateAmbient(dt) {
   if (G.inside === 'club') { const t = now(); CLUB.tiles.forEach((tl, i) => { const h = ((i * 0.13 + t * 0.6) % 1); tl.material.color.setHSL(h, 1, 0.25 + 0.25 * (Math.sin(t * 8 + i) > 0.6 ? 1 : 0)); }); CLUB.ball.rotation.y += dt; CLUB.lasers.forEach((l, i) => { l.rotation.y = t * (0.5 + i * 0.1) + i; }); CLUB.dancers.forEach(c => animChar(c, dt, 3)); }
 }
 const BUBBLES = [];
-function say(obj, text, secs) { const m = obj.mesh || obj; if (obj._bub) { disposeSprite(obj._bub.s); BUBBLES.splice(BUBBLES.indexOf(obj._bub), 1); } const s = labelSprite(text, { fs: 36, scale: 0.62, bg: 'rgba(255,244,216,.95)', fg: '#1b1410', border: '#d7331f' }); const sc = m.scale.x || 1; s.position.y = 3.6 / sc; s.scale.multiplyScalar(1 / sc); m.add(s); const b = { s, t: secs || 3, o: obj }; obj._bub = b; BUBBLES.push(b); }
+// NPCs speak their lines out loud (recorded voices, panned and fading with distance) instead of showing a bubble.
+// Lines without a recording (player chat) still appear as a speech bubble.
+const VOX_P = new THREE.Vector3(), VOX_R = new THREE.Vector3();
+function say(obj, text, secs) { const v = VOICES[text]; if (v) return speak(obj, text, secs, v); bubble(obj, text, secs); }
+function speak(obj, text, secs, v) {
+  const m = obj.mesh || obj; m.getWorldPosition(VOX_P); const d = VOX_P.distanceTo(camera.position); if (d > 45) return; // too far to hear
+  const u = m.userData || {}, g0 = (u.dress && u.dress.g) || u.voiceG || 'm', g = v[1].includes(g0) ? g0 : v[1][0];
+  VOX_R.set(1, 0, 0).applyQuaternion(camera.quaternion); const pan = VOX_P.sub(camera.position).normalize().dot(VOX_R);
+  A.voice('/audio/v/' + v[0] + '_' + g + '.mp3', obj, Math.min(1, 9 / Math.max(9, d)), pan).then(ok => { if (!ok) bubble(obj, text, secs); });
+}
+function bubble(obj, text, secs) { const m = obj.mesh || obj; if (obj._bub) { disposeSprite(obj._bub.s); BUBBLES.splice(BUBBLES.indexOf(obj._bub), 1); } const s = labelSprite(text, { fs: 36, scale: 0.62, bg: 'rgba(255,244,216,.95)', fg: '#1b1410', border: '#d7331f' }); const sc = m.scale.x || 1; s.position.y = 3.6 / sc; s.scale.multiplyScalar(1 / sc); m.add(s); const b = { s, t: secs || 3, o: obj }; obj._bub = b; BUBBLES.push(b); }
 function updateBubbles(dt) { for (let i = BUBBLES.length - 1; i >= 0; i--) { const b = BUBBLES[i]; b.t -= dt; if (b.t <= 0) { disposeSprite(b.s); b.o._bub = null; BUBBLES.splice(i, 1); } } }
 
 // ================================================================ PARTICLES (gulal, fireworks, notes, bottle)
@@ -2011,7 +2022,7 @@ function buildRaceSpots() {
     for (const ry of [0, Math.PI]) sign(arch, 'RACE ' + (i + 1) + ' · ' + R.name, 'vs ' + R.rival, '#d7331f', '#fff4d8', 17, 2.6, 0, 9.4, ry ? -0.05 : 0.05, ry);
     const car = makeVehicle(R.veh, R.color); const p = pathAt(R, -10); car.position.set(p.x, 0.05, p.z); car.rotation.y = h; scene.add(car);
     const lab = labelSprite(R.rival + ' · Race?', { fs: 30, scale: 0.6, bg: 'rgba(215,51,31,.92)', fg: '#fff4d8' }); lab.position.y = 4.4; car.add(lab);
-    const spot = { R, i, car, lab, x: x0, z: z0, h, home: { x: p.x, z: p.z, h }, tauntT: 0 }; RACE_SPOTS.push(spot);
+    if (R.rival === 'Pinky Yadav') car.userData.voiceG = 'f'; const spot = { R, i, car, lab, x: x0, z: z0, h, home: { x: p.x, z: p.z, h }, tauntT: 0 }; RACE_SPOTS.push(spot);
     ZONES.push({ zone: 'out', x: x0, z: z0, r: 16, label: () => G.race ? null : raceUnlocked(i) ? 'Race lagao: ' + R.name + ' vs ' + R.rival : 'Locked: pehle ' + D.RACES[i - 1].rival + ' ko hara', act: () => raceUnlocked(i) ? startRace(R.id) : toast('Pehle ' + D.RACES[i - 1].name + ' jeet', 'bad') });
   });
 }
@@ -2119,7 +2130,7 @@ function cleanupRace() {
   document.body.classList.remove('racing'); const s = r.spot; s.car.position.set(s.home.x, 0.05, s.home.z); s.car.rotation.y = s.home.h; s.lab.visible = true;
 }
 function quitRace() { if (!G.race) return; cleanupRace(); toast('Race chhod di'); }
-function updateRaceSpots(dt) { if (G.race || G.inside) return; for (const s of RACE_SPOTS) { s.tauntT -= dt; if (s.tauntT < 0 && Math.hypot(s.x - G.x, s.z - G.z) < 30) { s.tauntT = 14; say(s.car, raceUnlocked(s.i) ? pick(s.R.taunt) : 'Pehle ' + D.RACES[s.i - 1].rival + ' ko hara, fir aaiyo', 3); } } }
+function updateRaceSpots(dt) { if (G.race || G.inside) return; for (const s of RACE_SPOTS) { s.tauntT -= dt; if (s.tauntT < 0 && Math.hypot(s.x - G.x, s.z - G.z) < 30) { s.tauntT = 14; (raceUnlocked(s.i) ? say(s.car, pick(s.R.taunt), 3) : (say(s.car, 'Pehle baaki racers ko hara, fir aaiyo', 3), toast('Pehle ' + D.RACES[s.i - 1].rival + ' ko hara, fir yeh race khulegi'))); } } }
 function appRaces() {
   net.req('races', {}).then(res => openModal('Street Races', 'Har rival ko hara, agla unlock. Rematch ek tap pe.', b => {
     D.RACES.forEach((R, i) => {
@@ -2295,7 +2306,7 @@ window.addEventListener('pointermove', e => { if (dragPrev != null) { previewYaw
 function showStartPick() {
   $('login').hidden = true; $('creator').hidden = true; $('startpick').hidden = false; G.creating = !!PREVIEW; const box = $('splaces'); box.textContent = '';
   const last = lsGet('gl_start') || 'ambience';
-  for (const [id, name, sub] of STARTS) box.append(el('button', { type: 'button', class: 'splace' + (id === 'ambience' ? ' rec' : '') + (id === last ? ' on' : ''), onclick: () => joinGame(id) }, el('b', { text: name }), el('span', { text: sub })));
+  for (const [id, name, sub] of STARTS) box.append(el('button', { type: 'button', class: 'splace' + (id === 'ambience' ? ' rec' : '') + (id === last ? ' on' : ''), onclick: e => joinWhenReady(id, e.currentTarget) }, el('b', { text: name }), el('span', { text: sub })));
 }
 renderLangPick();
 const savedName = lsGet('gl_name'); if (!savedName) { $('nameIn').value = pick(['Bunty', 'Monty', 'Rocky', 'Sunny', 'Lucky', 'Bittu', 'Golu', 'Pinky', 'Sweety', 'Neetu']) + ' ' + pick(['Yadav', 'Chaudhary', 'Dahiya', 'Sangwan', 'Malik', 'Hooda', 'Rao', 'Phogat']); $('loginNote').textContent = 'Naam badalna ho to badal le. Agle step mein apna avatar banao!'; } if (savedName) { $('nameIn').value = savedName; $('loginNote').textContent = 'Wapas aa gaya ' + savedName + '! Tera progress saved se.'; }
@@ -2303,10 +2314,16 @@ if (savedName && lsGet('gl_lookset')) { $('playBtn').textContent = 'Chalo, Khelo
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn').click(); });
 function saveName() { let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); }
 $('playBtn').onclick = () => { saveName(); A.initAudio(); if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
+// wait (up to 25 s) for the realistic people before entering, so nobody shows up as a block figure first
+async function joinWhenReady(id, btn) {
+  if (HUMANS_P && !HU.HUMANS.ready) { document.querySelectorAll('.splace').forEach(b => b.disabled = true); const sp = btn && btn.querySelector('span'); if (sp) sp.textContent = 'Gurugram ke log aa rahe hain… (pehli baar thoda time lagta hai)';
+    await Promise.race([HUMANS_P, new Promise(r => setTimeout(r, 25000))]); }
+  joinGame(id);
+}
 function joinGame(startId) { if (G.viewOff) { camera.clearViewOffset(); G.viewOff = false; }
   lsSet('gl_start', startId); G.startId = startId; lsSet('gl_color', AVD.color); L.loanVeh = AVD.ride; saveLocal();
   $('startpick').hidden = true; $('creator').hidden = true; if (PREVIEW) PREVIEW.visible = false; G.creating = false; DAY.fixed = false;
-  $('login').hidden = false; $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); { const rs = lsGet('gl_radio'); if (I18N.LANG !== 'har' && (!rs || rs.st === 'har')) A.preferStation('bol'); } // Hindi / English players join to Bollywood A.restoreRadio(); radioLabel();
+  $('login').hidden = false; $('playBtn').disabled = true; $('playBtn').textContent = 'Connecting…'; A.initAudio(); { const rs = lsGet('gl_radio'); if (I18N.LANG !== 'har' && (!rs || rs.st === 'har')) A.preferStation('bol'); } A.restoreRadio(); radioLabel(); // Hindi / English players join to Bollywood
   const hello = () => ({ token: lsGet('gl_token'), name: lsGet('gl_name'), color: lsGet('gl_color') });
   const goSolo = reason => {
     if (G.started || net.local) return; G.soloReason = reason || ''; net.connectLocal(hello);
@@ -2368,6 +2385,6 @@ function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildCity
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
 DG.loadDogs('/models/dog.glb').then(() => { if (!DOGS.length) spawnDogs(); }).catch(e => console.warn('Gurugram Life: street dogs not loaded', e)); // 160 KB
-if (!/[?&]simple\b/.test(location.search)) HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~2.7 MB, cached after the first visit
+const HUMANS_P = /[?&]simple\b/.test(location.search) ? null : HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~2.7 MB, cached after the first visit
 window.addEventListener('pagehide', saveLocal);
 
