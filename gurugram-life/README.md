@@ -65,6 +65,8 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **Controls**: click once for mouse-look (if the browser refuses mouse lock, drag to look and click to punch); W A S D, Space jump (handbrake in a car), Shift run (NOS in a car), left-click or Q punch, E action, F car, Tab menu, M 3D map. Phones: joystick, Jump/NOS, Punch, Gaadi, a contextual Action button and one Menu button.
 
+**Phone layout**: on touch screens the HUD shrinks so the city stays visible: a small stats card (name, level, money, health and food bars; tap it for the full panel), a small map with the place name under it, no top chips (Online, Radio and Help are in Menu), one notification at a time (they queue and the plain ones drop first if many arrive), one line of chat, no news feed, and smaller see-through controls. Upright phones get a wider camera so buildings and people at the sides stay in view, and name tags and speech bubbles are smaller. Phones held sideways move messages to the free space at the top.
+
 **Fighting**: punches auto-aim at whoever is closest in front of the camera (or right next to you) and turn you to face them: street chhore, any passer-by (they square up and fight back), people in crowds (they fall), (AI) players (they stop and hit back) and real players.
 
 **City**: shop rows with local signboards along every block, a skyline ring, ~170 instanced pedestrians plus crowds near doors, more traffic, potholes, waterlogging and garbage piles, a police thana. Cars knock people down and crash into traffic. The 3D map (M) flies over the city with pins for work, food, police, shopping, party, races, cars, hospital and metro; tap a pin to set GPS.

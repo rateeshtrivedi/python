@@ -82,6 +82,7 @@ function sign(parent, text, sub, bg, fg, w, h, x, y, z, ry) {
   const ch = 128, cw = Math.min(1024, Math.round(ch * w / h)); const t = new THREE.CanvasTexture(signCanvas(text, sub, bg, fg, cw, ch)); t.anisotropy = 4;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t })); m.position.set(x, y, z); m.rotation.y = ry || 0; parent.add(m); return m;
 }
+const NARROW = () => Math.min(innerWidth, innerHeight) < 520; // a phone: name tags and speech bubbles get smaller
 function labelSprite(text, opts) {
   opts = opts || {}; const fs = opts.fs || 44; const c = document.createElement('canvas'); const x = c.getContext('2d');
   x.font = `800 ${fs}px "Baloo 2", "Mukta", sans-serif`; const tw = Math.ceil(x.measureText(text).width);
@@ -90,7 +91,7 @@ function labelSprite(text, opts) {
   if (opts.border) { x.strokeStyle = opts.border; x.lineWidth = 4; x.stroke(); }
   x.fillStyle = opts.fg || '#fff4d8'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, c.width / 2, c.height / 2 + 2);
   const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false })); const sc = opts.scale || 0.7; s.scale.set(sc * c.width / c.height, sc, 1); return s;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false })); const sc = (opts.scale || 0.7) * ((opts.scale || 0.7) <= 0.7 && NARROW() ? 0.72 : 1); s.scale.set(sc * c.width / c.height, sc, 1); return s;
 }
 function disposeSprite(s) { if (!s) return; if (s.parent) s.parent.remove(s); s.material.map.dispose(); s.material.dispose(); }
 function texFrom(draw, w, h, rx, ry) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4; return t; }
@@ -579,7 +580,18 @@ function buildInteriors() {
 
 // ================================================================ HUD
 // At most two short toasts at a time, never the same text twice
-function toast(msg, cls) { const box = $('toasts'); for (const c of box.children) if (c.dataset.src === msg) return; const t = el('div', { class: 'toast' + (cls ? ' ' + cls : ''), text: msg }); t.dataset.src = msg; box.prepend(t); while (box.children.length > 2) box.lastChild.remove(); setTimeout(() => t.remove(), 3200); }
+// Notifications queue up and show one at a time on phones (two on bigger screens), so they never cover the view.
+// If they pile up the plain ones are dropped first and the rest show a little faster.
+const TQ = [];
+function toast(msg, cls) {
+  if (!msg) return; const box = $('toasts'); for (const c of box.children) if (c.dataset.src === msg) return; if (TQ.some(q => q.msg === msg)) return;
+  TQ.push({ msg, cls }); while (TQ.length > 3) { const i = TQ.findIndex(q => !q.cls); TQ.splice(i >= 0 ? i : 0, 1); } pumpToasts();
+}
+function pumpToasts() {
+  const box = $('toasts'); const phone = document.body.classList.contains('touch'); if (!TQ.length || box.querySelectorAll('.toast:not(.out)').length >= (phone ? 1 : 2)) return;
+  const { msg, cls } = TQ.shift(); const t = el('div', { class: 'toast' + (cls ? ' ' + cls : ''), text: msg }); t.dataset.src = msg; box.prepend(t);
+  const life = (phone ? 2300 : 3000) * (TQ.length ? 0.7 : 1); setTimeout(() => { t.classList.add('out'); setTimeout(() => { t.remove(); pumpToasts(); }, 220); }, life);
+}
 A.hooks.toast = toast; A.hooks.label = radioLabel;
 // City news: quiet for the first 20 s and during races, at most three lines
 function feed(text, kind) { if (G.race || G.story || now() - (G.startedAt || 0) < 20) return; const d = el('div', { class: kind || '', text }); $('feed').prepend(d); while ($('feed').children.length > 3) $('feed').lastChild.remove(); setTimeout(() => d.remove(), 10500); }
@@ -968,6 +980,7 @@ window.addEventListener('touchstart', () => document.body.classList.add('touch')
 window.addEventListener('keydown', e => { if (/^(Key[WASD]|Arrow(Up|Down|Left|Right))$/.test(e.code) && !(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) document.body.classList.remove('touch'); });
 if (matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches) document.body.classList.add('touch');
 const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.started) fn(); });
+$('stat').addEventListener('click', e => { if (document.body.classList.contains('touch') && !e.target.closest('button')) $('stat').classList.toggle('open'); }); // phones: tap the small stats card for the full panel
 tap('bAct', doAction); tap('bPunch', punch); tap('bVeh', toggleVehicle); tap('bMenu', openPhone);
 $('bRun').addEventListener('pointerdown', e => { e.preventDefault(); if (G.veh) { nosHeld = true; return; } G.jumpReq = true; }); // Jump on foot, hold for NOS in a car
 for (const ev2 of ['pointerup', 'pointercancel', 'pointerleave']) $('bRun').addEventListener(ev2, () => { nosHeld = false; });
@@ -2039,8 +2052,9 @@ function driveThrills(dt, ix, iy) {
   if (G.nosOn) { smokeT -= dt; if (smokeT < 0) { smokeT = 0.04; burst(G.x - Math.sin(G.r) * 2.6, 0.7, G.z - Math.cos(G.r) * 2.6, pick([0x33bbff, 0xffffff, 0xff8a00]), 2, { speed: 1, up: 0.2, grav: 0, life: 0.3 }); } }
   if (V.kind === 2) $('speedo').classList.add('bike'); else $('speedo').classList.remove('bike');
 }
+function baseFov() { const a = innerWidth / innerHeight; return a >= 1 ? 62 : Math.min(84, 62 + (1 - a) * 42); } // tall screens: open the view up so buildings and people at the sides stay visible
 function speedCamera(dt) {
-  const sp = G.veh ? Math.abs(G.vs) : 0; const want = 62 + clamp(sp - 12, 0, 30) * 0.32 + (G.nosOn ? 12 : 0);
+  const sp = G.veh ? Math.abs(G.vs) : 0; const want = baseFov() + clamp(sp - 12, 0, 30) * 0.32 + (G.nosOn ? 12 : 0);
   if (Math.abs(camera.fov - want) > 0.05) { camera.fov += (want - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
   if (G.nosOn) { camera.position.x += rnd(-0.08, 0.08); camera.position.y += rnd(-0.06, 0.06); }
   const sfx2 = (G.nosOn ? 0.85 : clamp((sp - 26) / 14, 0, 0.35)).toFixed(2); if (G.sfxOp !== sfx2) { G.sfxOp = sfx2; $('speedfx').style.opacity = sfx2; }

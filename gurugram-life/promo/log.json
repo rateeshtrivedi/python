@@ -1,0 +1,28 @@
+{
+ "made": [
+  {
+   "date": "2026-10-16",
+   "what": "Mummy ki nazar se (Hindi female VO)",
+   "scenes": "skyline, flood drive, cow, Sharma Uncle fight, Neon Nights dance, boat police chase",
+   "beat": "dhol (music.py 100/62/17)",
+   "song": null
+  },
+  {
+   "date": "earlier",
+   "what": "Brochure vs Reality, 5 rules, Haryanvi reel",
+   "scenes": "flood, cow, Iffco jam, Sharma Uncle, boat chase, Neon Nights, Golf Course NOS",
+   "beat": "dhol",
+   "song": null
+  },
+  {
+   "date": "2026-10-17",
+   "day": 1,
+   "pov": "POV: Day 1 of your 'corporate job' in Gurugram",
+   "format": "timestamps 8 AM to 11 PM",
+   "scenes": "driver fight hook, roadside cab cancelled, police chase commute, TechNova office, dhaba, baraat jam, fireworks",
+   "beat": "filmy seed 17",
+   "song": "Apna Time Aayega (Gully Boy)",
+   "backup": "Tauba Tauba (Bad Newz)"
+  }
+ ]
+}

@@ -1,0 +1,9 @@
+[
+ {"sc": 0, "dur": 2.4, "pre": 0.6, "pov": "POV: Day 1 of your 'corporate job' in Gurugram 💼", "cap": "how did we get here? 👇", "capAt": 0.8},
+ {"sc": 1, "dur": 2.5, "pre": 0.6, "time": "8:00 AM", "cap": "Cab cancelled 4 times 🙃"},
+ {"sc": 2, "dur": 2.7, "pre": 0.8, "time": "8:31 AM", "cap": "\"Borrowed\" a car. Police joined the commute 🚓"},
+ {"sc": 3, "dur": 2.5, "pre": 1.4, "inside": true, "time": "9:45 AM", "cap": "Finally reached TechNova Towers 🏢"},
+ {"sc": 4, "dur": 2.5, "pre": 1.4, "inside": true, "time": "1:00 PM", "cap": "\"Quick\" lunch: 3 parathas, 2 lassi 🍛"},
+ {"sc": 5, "dur": 2.7, "pre": 1.6, "time": "7:30 PM", "cap": "Stuck behind a baraat for 45 min 🥁"},
+ {"sc": 6, "dur": 2.8, "pre": 0.8, "time": "11:00 PM", "cap": "Fireworks. It's not even Diwali 🎆", "filter": "saturate(1.25) contrast(1.06)"}
+]
