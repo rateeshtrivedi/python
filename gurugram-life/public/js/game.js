@@ -4,6 +4,7 @@ import * as D from '../shared/data.js';
 import { net } from './net.js';
 import * as A from './audio.js';
 import * as I18N from './i18n.js';
+import * as HU from './humans.js';
 
 // ================================================================ UTIL
 const $ = id => document.getElementById(id);
@@ -134,8 +135,40 @@ function makeChar(shirt, o) {
   mk(0.06, 0.06, 0.02, mat(0x111111), -0.11, 2.36, 0.31); mk(0.06, 0.06, 0.02, mat(0x111111), 0.11, 2.36, 0.31);
   const hatG = new THREE.Group(); g.add(hatG); const blingG = new THREE.Group(); g.add(blingG); const hairG = new THREE.Group(); g.add(hairG); const bodyG = new THREE.Group(); g.add(bodyG);
   const blingL = new THREE.Group(); shL.add(blingL); const blingR = new THREE.Group(); shR.add(blingR);
-  g.userData = { hipL, hipR, shL, shR, torso, armL, armR, hatG, blingG, blingL, blingR, hair, head, legL, legR, handL, handR, hairG, bodyG, walk: 0, punchT: 0, danceT: 0 };
+  g.userData = { hipL, hipR, shL, shR, torso, armL, armR, hatG, blingG, blingL, blingR, hair, head, legL, legR, handL, handR, hairG, bodyG, walk: 0, punchT: 0, danceT: 0, dress: randomDress(shirt, o) };
+  HCHARS.push(g); if (HU.HUMANS.ready) humanize(g);
   return g;
+}
+// ---- realistic bodies (humans.js). Every character keeps its box figure for far away / before the models load;
+// near the camera it shows the real body instead (see updateHumans for the distance and count limits).
+const HCHARS = [];
+function randomDress(shirt, o) { const f = o.g ? o.g === 'f' : Math.random() < 0.22; return { g: f ? 'f' : 'm', skin: o.skin || pick(SKINS.slice(1)), hair: irnd(0, f ? 3 : 2), hairColor: pick([0x1a1410, 0x1a1410, 0x2b1d14, 0x4a2c17]), top: f ? irnd(0, 2) : pick([0, 0, 1, 2]), shirt, pants: o.pants || pick(PANTS_C), pantsStyle: 0, beard: f ? 0 : pick([0, 0, 'moonchh', 'full']) }; }
+function humanize(g) {
+  const u = g.userData; if (u.human || !HU.HUMANS.ready) return; const h = HU.makeHuman(u.dress.g); u.human = h;
+  if (!u.blockG) { u.blockG = new THREE.Group(); for (const c of [...g.children]) if (c !== u.hatG && c !== u.blingG) u.blockG.add(c); g.add(u.blockG); }
+  h.hatA.add(u.hatG); h.chestA.add(u.blingG); h.wristL.add(u.blingL); h.wristR.add(u.blingR); // accessories follow the real body
+  g.add(h.root); HU.dressHuman(h, u.dress); humanHair(u); if (u.sit) HU.play(h, 'sit', 0); h.mixer.update(0.01); setHumanVis(u, false);
+}
+function unhumanize(g) { const u = g.userData, h = u.human; if (!h) return; g.remove(h.root); g.add(u.hatG); g.add(u.blingG); u.shL.add(u.blingL); u.shR.add(u.blingR); u.blockG.visible = true; u.human = null; }
+function humanHair(u) { const hide = u.dress.g !== 'f' && ['pagdi', 'safa', 'cap', 'sehra'].includes(u.hatType); HU.setHairVisible(u.human, !hide); }
+function setHumanVis(u, on) { if (u.human.root.visible === on && u.blockG.visible === !on) return; u.human.root.visible = on; u.blockG.visible = !on; }
+let HFRAME = 0; const hFrustum = new THREE.Frustum(), hMat = new THREE.Matrix4(), hV = new THREE.Vector3(), hSph = new THREE.Sphere(new THREE.Vector3(), 2.2);
+function visibleChain(o) { for (let p = o; p; p = p.parent) { if (!p.visible) return false; if (p === scene) return true; } return false; }
+function updateHumans(dt) { // which characters show their real body: nearest ones in view, a few on phones
+  if (!HU.HUMANS.ready) return; HFRAME++;
+  const phone = document.body.classList.contains('touch') || Math.min(innerWidth, innerHeight) < 520, R = phone ? 40 : 62, cap = Math.max(1, Math.round((phone ? 9 : 22) * (PERF.hk || 1)));
+  hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat); const cand = [];
+  for (let i = HCHARS.length - 1; i >= 0; i--) {
+    const g = HCHARS[i], u = g.userData;
+    if (!g.parent) { if ((u.gone = (u.gone || 0) + 1) > 600) { HCHARS.splice(i, 1); unhumanize(g); } continue; } u.gone = 0;
+    if (!u.human) humanize(g);
+    if (!visibleChain(g)) { setHumanVis(u, false); continue; }
+    g.getWorldPosition(hV); const d = hV.distanceTo(camera.position); hSph.center.copy(hV).setY(hV.y + 1.2);
+    if (g === player || g === PREVIEW) u.hd = -1; else if (d > R || !hFrustum.intersectsSphere(hSph)) { setHumanVis(u, false); continue; } else u.hd = d;
+    cand.push(g);
+  }
+  cand.sort((a, b) => a.userData.hd - b.userData.hd);
+  cand.forEach((g, i) => { const u = g.userData, on = i < cap; setHumanVis(u, on); if (on && u.animF !== HFRAME - 1 && u.animF !== HFRAME) u.human.mixer.update(dt); }); // idle breathing for people nobody animates
 }
 const GOLD = 0xe8b923;
 // Avatar: body type, skin, hair, clothes style. Shared by the creator preview, your player and everyone else.
@@ -150,6 +183,7 @@ const AV = {
 const defaultBody = () => ({ g: 'm', skin: 2, hair: 0, hc: 0, top: 0, pants: 0, acc: 1 });
 function applyBody(ch, b, shirt) {
   const u = ch.userData; const f = !!b && b.g === 'f';
+  dressFrom(ch, b, shirt);
   while (u.hairG.children.length) u.hairG.remove(u.hairG.children[0]); while (u.bodyG.children.length) u.bodyG.remove(u.bodyG.children[0]);
   if (!b) { u.hair.visible = true; u.torso.scale.set(0.9, 1.0, 0.5); u.shL.position.x = -0.6; u.shR.position.x = 0.6; return; } // passers-by keep their random looks
   const sk = mat(SKINS[b.skin] || SKINS[2]); u.head.material = sk; u.handL.material = sk; u.handR.material = sk;
@@ -175,10 +209,16 @@ function applyBody(ch, b, shirt) {
   if (!f && acc === 1) bx(Bd, 0.3, 0.06, 0.06, 0, 0, 2.24, 0.32, { mat: hm }); if (!f && acc === 2) { bx(Bd, 0.42, 0.24, 0.12, 0, 0, 2.14, 0.24, { mat: hm }); bx(Bd, 0.3, 0.06, 0.06, 0, 0, 2.24, 0.32, { mat: hm }); }
   if (f && acc === 1) bx(Bd, 0.05, 0.05, 0.02, 0xd7331f, 0, 2.47, 0.33); if (f && acc === 2) for (const x of [-1, 1]) sph(Bd, 0.06, GOLD, x * 0.34, 2.2, 0, glow(GOLD));
 }
+function dressFrom(ch, b, shirt) { // the realistic body follows the same avatar choices as the box figure
+  const u = ch.userData, d = u.dress; const prevG = d.g;
+  if (b) Object.assign(d, { g: b.g === 'f' ? 'f' : 'm', skin: SKINS[b.skin] || SKINS[2], hair: b.hair | 0, hairColor: HAIRC[b.hc] || HAIRC[0], top: b.top | 0, pants: PANTS_C[b.pants] || PANTS_C[0], pantsStyle: (b.pants | 0) === 1 ? 1 : 0, beard: b.g === 'f' ? 0 : [0, 'moonchh', 'full'][b.acc | 0] || 0 });
+  if (shirt != null) d.shirt = shirt;
+  if (u.human && prevG !== d.g) { unhumanize(ch); humanize(ch); } else if (u.human) { HU.dressHuman(u.human, d); humanHair(u); }
+}
 function setLook(ch, look) {
   const u = ch.userData; const shirt = look.tint != null ? look.tint : look.shirt; const m = mat(shirt); u.torso.material = m; u.armL.material = m; u.armR.material = m;
   for (const grp of [u.hatG, u.blingG, u.blingL, u.blingR]) while (grp.children.length) grp.remove(grp.children[0]);
-  u.hair.visible = true; const hat = look.hat; applyBody(ch, look.body, look.shirt); u.hairG.visible = !(look.body && look.body.g !== 'f' && (hat === 'pagdi' || hat === 'safa' || hat === 'cap'));
+  u.hair.visible = true; const hat = look.hat; u.hatType = hat; applyBody(ch, look.body, look.tint != null ? look.tint : look.shirt); u.hairG.visible = !(look.body && look.body.g !== 'f' && (hat === 'pagdi' || hat === 'safa' || hat === 'cap'));
   if (hat === 'cap') { cyl(u.hatG, 0.36, 0.2, 0x1d4f91, 0, 2.58, 0); bx(u.hatG, 0.5, 0.05, 0.4, 0x1d4f91, 0, 2.5, 0.3); }
   else if (hat === 'pagdi') { u.hair.visible = false; cyl(u.hatG, 0.4, 0.36, 0xf28c1b, 0, 2.58, 0); sph(u.hatG, 0.18, 0xf6c026, 0, 2.78, 0.05); }
   else if (hat === 'safa') { u.hair.visible = false; cyl(u.hatG, 0.42, 0.4, 0xd7331f, 0, 2.6, 0); bx(u.hatG, 0.16, 0.9, 0.06, 0xd7331f, 0.1, 2.15, -0.36); }
@@ -195,10 +235,11 @@ function setLook(ch, look) {
 }
 function animChar(ch, dt, mode, speedMul) {
   const u = ch.userData; // mode: 0 idle, 1 walk, 3 dance
+  u.sit = false; const h = u.human; if (h && h.root.visible) humanAnim(u, h, dt, mode, speedMul);
   if (mode === 3) {
     u.danceT += dt * 8; const s = Math.sin(u.danceT);
     u.shL.rotation.x = -2.6 + s * 0.4; u.shR.rotation.x = -2.6 - s * 0.4; u.shL.rotation.z = -0.3; u.shR.rotation.z = 0.3;
-    u.hipL.rotation.x = Math.max(0, s) * 0.8; u.hipR.rotation.x = Math.max(0, -s) * 0.8; ch.children[2].position.y = 1.5 + Math.abs(s) * 0.08; return;
+    u.hipL.rotation.x = Math.max(0, s) * 0.8; u.hipR.rotation.x = Math.max(0, -s) * 0.8; u.torso.position.y = 1.5 + Math.abs(s) * 0.08; return;
   }
   u.shL.rotation.z = 0; u.shR.rotation.z = 0;
   if (mode === 1) u.walk += dt * 9 * (speedMul || 1); else u.walk *= 0.85;
@@ -206,7 +247,13 @@ function animChar(ch, dt, mode, speedMul) {
   u.hipL.rotation.x = s; u.hipR.rotation.x = -s; u.shL.rotation.x = -s * 0.8;
   if (u.punchT > 0) { u.punchT -= dt; u.shR.rotation.x = -1.6; } else u.shR.rotation.x = s * 0.8;
 }
-function sitChar(ch) { const u = ch.userData; u.hipL.rotation.x = -1.3; u.hipR.rotation.x = -1.3; u.shL.rotation.x = -0.9; u.shR.rotation.x = -0.9; u.shL.rotation.z = 0; u.shR.rotation.z = 0; }
+function humanAnim(u, h, dt, mode, speedMul) {
+  if (u.punchT > 0 && !h.punching) { h.punching = 0.42; HU.play(h, (h.alt = !h.alt) ? 'jab' : 'cross', 0.06, 1.7); }
+  if (h.punching) { h.punching -= dt; if (h.punching <= 0) h.punching = 0; }
+  if (!h.punching) { const k = mode === 3 ? 'dance' : mode === 1 ? (speedMul > 1.4 ? 'run' : speedMul > 1.15 ? 'jog' : 'walk') : 'idle'; HU.play(h, k, 0.22, k === 'walk' ? Math.min(1.5, 1.05 * (speedMul || 1)) : 1); }
+  h.mixer.update(dt); u.animF = HFRAME;
+}
+function sitChar(ch) { const u = ch.userData; u.sit = true; if (u.human && u.human.cur !== 'sit') { HU.play(u.human, 'sit', 0.15); u.human.mixer.update(0.02); } u.hipL.rotation.x = -1.3; u.hipR.rotation.x = -1.3; u.shL.rotation.x = -0.9; u.shR.rotation.x = -0.9; u.shL.rotation.z = 0; u.shR.rotation.z = 0; }
 
 function plateMesh(text) { const t = new THREE.CanvasTexture(signCanvas(text, null, '#ffffff', '#111111', 256, 64)); return new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), new THREE.MeshBasicMaterial({ map: t })); }
 function makeVehicle(type, colorOverride, mods, plate) {
@@ -1729,7 +1776,7 @@ function buildCityFill() {
   for (let k = 0; k < N; k++) {
     const d = pick(DIST); const p = { cx: d[0] * 150, cz: d[1] * 150, t: Math.random(), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.3, 2.3), L: rnd(65.4, 67.4), still: k > 120, x: 0, z: 0, r: 0, knock: 0, kv: 0 };
     if (p.still) { const Z = pick(ZONES.filter(z2 => z2.zone === 'out')); const a = rnd(0, Math.PI * 2), rr = rnd(4.5, 8); p.x = Z.x + Math.cos(a) * rr; p.z = Z.z + Math.sin(a) * rr; p.r = Math.atan2(Z.x - p.x, Z.z - p.z) + rnd(-1, 1); }
-    torso.setColorAt(k, col.setHex(pick(D.SHIRTS))); head.setColorAt(k, col.setHex(pick([0xc68863, 0xb57650, 0xd9a07a, 0x9c6644]))); CROWD.push(p);
+    const sh = pick(D.SHIRTS); p.dress = randomDress(sh, {}); torso.setColorAt(k, col.setHex(sh)); head.setColorAt(k, col.setHex(p.dress.skin)); CROWD.push(p);
   }
   torso.instanceColor.needsUpdate = true; head.instanceColor.needsUpdate = true; CROWD.meshes = [legs, torso, head];
 }
@@ -1742,12 +1789,30 @@ function updateCrowd(dt) {
     if (carHit && !p.knock && Math.abs(p.x - G.x) < 2.2 && Math.abs(p.z - G.z) < 2.2 && Math.hypot(p.x - G.x, p.z - G.z) < carHit) knockPerson(p);
     if (!p.knock && p.still && p.placed) return; p.placed = true; // a standing group never moves unless someone runs into it
     if (!p.knock && (fr + k) % 6 && Math.abs(p.x - cx) + Math.abs(p.z - cz) > 170) return; // far away: refresh every 6th frame only
-    let fall = 0, lift = 0; if (p.knock) { p.knock -= dt; const age = 7 - p.knock; if (age < 0.9) { p.x += p.kx * dt; p.z += p.kz * dt; lift = Math.sin(age / 0.9 * Math.PI) * 2.2; fall = Math.min(1, age / 0.6); } else fall = 1; if (p.knock <= 0) { p.knock = 0; p.placed = false; if (p.still) p.r += 1; } }
-    const bob = p.still || p.knock ? 0 : Math.abs(Math.sin(t * 8 * p.sp + k)) * 0.08; e.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); q.setFromEuler(e);
-    const put = (im, oy, sx, sy, sz) => { off.set(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx, sy, sz); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
+    let fall = 0, lift = 0; p.fall = 0; p.lift = 0; if (p.knock) { p.knock -= dt; const age = 7 - p.knock; if (age < 0.9) { p.x += p.kx * dt; p.z += p.kz * dt; lift = Math.sin(age / 0.9 * Math.PI) * 2.2; fall = Math.min(1, age / 0.6); } else fall = 1; if (p.knock <= 0) { p.knock = 0; p.placed = false; if (p.still) p.r += 1; } }
+    p.fall = fall; p.lift = lift; const bob = p.still || p.knock ? 0 : Math.abs(Math.sin(t * 8 * p.sp + k)) * 0.08; e.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); q.setFromEuler(e); const hid = p.slot ? 0 : 1; // a realistic stand-in is showing this one
+    const put = (im, oy, sx, sy, sz) => { off.set(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx * hid, sy * hid, sz * hid); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
     put(legs, 0.5, 0.62, 1.0, 0.34); put(torso, 1.45, 0.86, 0.95, 0.46); put(head, 2.2, 0.32, 0.36, 0.32);
   });
   for (const im of CROWD.meshes) im.instanceMatrix.needsUpdate = true;
+  crowdHumans(dt);
+}
+// The crowd is one instanced box figure for speed. A small pool of realistic people stands in for the crowd members
+// nearest the camera (their box copy is hidden), so the people you actually look at are real.
+const CPOOL = [];
+function crowdHumans(dt) {
+  if (!HU.HUMANS.ready) return; const phone = document.body.classList.contains('touch') || Math.min(innerWidth, innerHeight) < 520;
+  if (!CPOOL.length) { const nM = phone ? 4 : 10, nF = phone ? 2 : 5; for (let i = 0; i < nM + nF; i++) { const g = i < nM ? 'm' : 'f', h = HU.makeHuman(g); h.root.visible = false; scene.add(h.root); CPOOL.push({ h, g, p: null }); } }
+  const release = s => { s.p.slot = null; s.p.placed = false; s.p = null; s.h.root.visible = false; };
+  if (G.inside || G.map) { for (const s of CPOOL) if (s.p) release(s); return; }
+  const R = phone ? 34 : 55, cx = camera.position.x, cz = camera.position.z; hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat);
+  const want = []; for (const p of CROWD) { const d = Math.hypot(p.x - cx, p.z - cz); if (d > R) continue; hSph.center.set(p.x, 1.2, p.z); if (!hFrustum.intersectsSphere(hSph)) continue; want.push([d, p]); }
+  want.sort((a, b) => a[0] - b[0]); const keep = new Set();
+  for (const g of ['m', 'f']) { const free = Math.floor(CPOOL.filter(s => s.g === g).length * (PERF.hk || 1)); want.filter(w => w[1].dress.g === g).slice(0, free).forEach(w => keep.add(w[1])); }
+  for (const s of CPOOL) if (s.p && !keep.has(s.p)) release(s);
+  for (const p of keep) if (!p.slot) { const s = CPOOL.find(x => !x.p && x.g === p.dress.g); if (!s) continue; s.p = p; p.slot = s; p.placed = false; HU.dressHuman(s.h, p.dress); }
+  for (const s of CPOOL) { if (!s.p) continue; const p = s.p, h = s.h; h.root.visible = true; const fall = p.fall || 0; h.root.position.set(p.x, (p.lift || 0) + (fall ? 0.25 : 0), p.z); h.root.rotation.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); // standing groups never set fall/lift
+    HU.play(h, p.still && !p.knock ? 'idle' : 'walk', 0.25, p.still ? 1 : Math.min(1.5, p.sp / 1.7)); h.mixer.update(dt); }
 }
 function knockPerson(p) { const sp = Math.max(6, Math.abs(G.vs)); p.knock = 7; p.kx = Math.sin(G.r) * sp * 0.5; p.kz = Math.cos(G.r) * sp * 0.5; G.vs *= 0.82; A.sfx('punch', 0.8); A.sfx('crash', 0.4); if (Math.random() < 0.6) toast(pick(['Oye! Andha se ke?', 'Bhai dekh ke chala!', 'Arre maar diya re!', 'Police bulaunga!']), 'bad'); G.hitPeople = (G.hitPeople || 0) + 1; if (G.hitPeople % 5 === 0 && !G.chase && !G.race && !G.story) { startChase({ near: true, secs: 25 }); toast('Logon ko thok raha hai? Police aa gayi!', 'bad'); } }
 // road hazards: potholes jolt the car, waterlogging slows everything, garbage blocks walkers unless they jump
@@ -2239,6 +2304,8 @@ function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel r
   PERF.acc += frameMs; PERF.n++; if (PERF.n < 120) return; const avg = PERF.acc / PERF.n; PERF.acc = PERF.n = 0; const max = Math.min(window.devicePixelRatio || 1, 1.5);
   let pr = PERF.pr; if (avg > 26 && pr > 0.85) pr = Math.max(0.85, +(pr - 0.25).toFixed(2)); else if (avg < 15 && pr < max) pr = Math.min(max, +(pr + 0.25).toFixed(2));
   if (pr !== PERF.pr) { PERF.pr = pr; renderer.setPixelRatio(pr); resize(); }
+  // still slow at the lowest resolution: show fewer realistic people (the rest keep their simple figure); back up when fast
+  if (avg > 30 && PERF.pr <= 0.85) PERF.hk = Math.max(0.15, (PERF.hk || 1) - 0.25); else if (avg < 17) PERF.hk = Math.min(1, (PERF.hk || 1) + 0.25);
 }
 function loop(t) {
   requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
@@ -2258,7 +2325,7 @@ function loop(t) {
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
-  renderer.render(scene, camera);
+  updateHumans(dt); renderer.render(scene, camera);
 }
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
@@ -2266,5 +2333,6 @@ ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); 
 function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
+if (!/[?&]simple\b/.test(location.search)) HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~2.7 MB, cached after the first visit
 window.addEventListener('pagehide', saveLocal);
 
