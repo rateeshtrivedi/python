@@ -25,6 +25,8 @@ const hex = c => '#' + c.toString(16).padStart(6, '0');
 
 // ================================================================ TEXT DATA (realistic local names, no real brands)
 const TAUNTS = ['Ram Ram bhai!', 'Ke haal sai bhai?', 'Ae lattu, ke dekhe se?', 'Chaudhar na jhaad mere aage!', 'Bawli boonch!', 'Tere jaise ghane dekhe sain', 'Kanpatti baja dunga, bhaag ja!', 'Hatt ghanchakkar!', 'Maare jaange tere!', 'Aaja, do-do haath ho jaan', 'Ghana shana mat ban', 'Bade bhai ne bula lunga!', 'Gaadi side mein laga, chhore!', 'Yo sheher mera se!'];
+// what a street fighter keeps shouting while the fight is on (all recorded, see voices.js)
+const ANGRY_LINES = ['Aaja, aaja!', 'Bas itna hi dum se?', 'Maar dunga tujhe!', 'Tu to gaya aaj!', 'Ek aur aa jaa!', 'Hosh mein aa ja, chhore!', 'Teri aisi ki taisi!', 'Chhodunga nahi tujhe!', 'Dekh ke maar, andhe!', 'Haath to chala, darpok!', 'Abhi bataata hoon tujhe kaun se main!', 'Ke dekhe se lattu?', 'Mere te panga?', 'Ruk tu, batata hoon', 'Ab dekh tu!'];
 const NPC_LINES = ['Ram Ram!', 'Aaj to garmi ghani se', 'Bhai metro kit se?', 'Gaadi side mein laga!', 'Ke bolya?', 'Chai pi le bhai', 'Iffco Chowk pe jam lag rya', 'Rent fir badh gaya', 'Kati jaa rya se?', 'Oye hoye, ke swag se!', 'AQI 400 se, mask laga le'];
 const CHHORA_LINES = ['Ke dekhe se lattu?', 'Aaja, haath dekh mere', 'Teri to... rehn de!', 'Dalal ka chhora se main!', 'Bhaag ja, warna kut jaega', 'Chaudhar na jhaad'];
 const PASSENGERS = ['Sharma ji', 'Pinky didi', 'Rahul from Cyber City', 'Ramphal Ahlawat', 'Neha ma\'am', 'Bunty', 'Chaudhary saab', 'Ankit bhai', 'Sunita aunty', 'Monu', 'Dimple', 'Jassi paaji'];
@@ -1021,6 +1023,7 @@ const joyEnd = e => { if (e.pointerId !== joyId) return; joyId = null; joyX = jo
 function joyMove(e) { const r = joy.getBoundingClientRect(); let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); const m = Math.hypot(dx, dy), R = r.width / 2 - 20; if (m > R) { dx *= R / m; dy *= R / m; } knob.style.transform = `translate(${dx}px,${dy}px)`; joyX = dx / R; joyY = -dy / R; }
 // touch layout follows the last input: a tap switches to joystick + buttons, moving with W A S D / arrows (outside text boxes) switches back to the keyboard help, so touchscreen laptops keep the controls help
 window.addEventListener('touchstart', () => document.body.classList.add('touch'), { passive: true });
+for (const t of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(t, () => { if (!A.audioRunning() || A.Radio.blocked) A.unlock(); }, { capture: true, passive: true });
 window.addEventListener('keydown', e => { if (/^(Key[WASD]|Arrow(Up|Down|Left|Right))$/.test(e.code) && !(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) document.body.classList.remove('touch'); });
 if (matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches) document.body.classList.add('touch');
 const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.started) fn(); });
@@ -1085,6 +1088,13 @@ function updatePlayer(dt) {
     if (moving) { G.movedAcc = (G.movedAcc || 0) + Math.hypot(G.x - ox, G.z - oz); if (G.movedAcc > 12) tutEvent('moved'); }
   }
   G.moving = moving;
+}
+// soft footsteps while walking or running (every ~1.3 m), splashy in the rain or in water
+let stepAcc = 0, stepX = null, stepZ = null;
+function footsteps() {
+  if (G.veh || G.frozen || G.dance || G.map || !G.started) { stepX = null; return; } if (stepX === null) { stepX = G.x; stepZ = G.z; return; }
+  const d = Math.hypot(G.x - stepX, G.z - stepZ); stepX = G.x; stepZ = G.z; if (d > 2 || d < 0.004 || player.position.y > groundY(G.x, G.z) + 0.25) return;
+  stepAcc += d; if (stepAcc > 1.3) { stepAcc = 0; A.sfx(WX.wl > 0.3 || inFlood(G.x, G.z) ? 'stepwet' : 'step', 0.9 + Math.random() * 0.3); }
 }
 function groundY(x, z) { return blockOf(x, z) ? 0.2 : 0; }
 const camTarget = new THREE.Vector3(), camWant = new THREE.Vector3();
@@ -1185,7 +1195,7 @@ function updateFighters(dt) {
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false;
     if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
     if (n.pehl && n.state === 'idle') { n.r += dt * 0.3; if (Math.random() < 0.002 && d < 20) say(n, 'Hai koi maa ka laal? Dangal karega?', 2); }
-    else if (n.state === 'aggro' && !G.inside && !G.veh && G.hp > 0 && (n.pehl ? Math.hypot(G.x - AKHARA.x, G.z - AKHARA.z) < 12 : n.story || d < 30)) { n.r = Math.atan2(dx, dz); if (d > 1.6) { const sp = n.pehl ? 4 : 5; n.x += dx / d * sp * dt; n.z += dz / d * sp * dt; moving = true; } else if (n.cd <= 0) { n.cd = n.pehl ? 1.0 : 1.2; m.userData.punchT = 0.25; takeHit(n.dmg, n.name); } }
+    else if (n.state === 'aggro' && !G.inside && !G.veh && G.hp > 0 && (n.pehl ? Math.hypot(G.x - AKHARA.x, G.z - AKHARA.z) < 12 : n.story || d < 30)) { n.r = Math.atan2(dx, dz); if ((n.talkT = (n.talkT === undefined ? rnd(0.8, 2) : n.talkT) - dt) <= 0 && d < 14) { n.talkT = rnd(3, 5); say(n, pick(ANGRY_LINES), 2); } if (d > 1.6) { const sp = n.pehl ? 4 : 5; n.x += dx / d * sp * dt; n.z += dz / d * sp * dt; moving = true; } else if (n.cd <= 0) { n.cd = n.pehl ? 1.0 : 1.2; m.userData.punchT = 0.25; takeHit(n.dmg, n.name); if (Math.random() < 0.3) { n.talkT = rnd(2.5, 4); say(n, 'Le! Aur khayega?', 2); } } }
     else {
       if (n.state === 'aggro') { n.state = n.pehl ? 'idle' : 'wander'; if (n.pehl && AKHARA.fight) { AKHARA.fight = false; toast('Akhara chhod diya! Dangal haara.', 'bad'); n.x = AKHARA.x; n.z = AKHARA.z; } }
       if (!n.pehl) { const tdx = n.tx - n.x, tdz = n.tz - n.z, td = Math.hypot(tdx, tdz); if (td < 1) { n.tx = n.hx + rnd(-30, 30); n.tz = n.hz + rnd(-25, 25); } else { n.x += tdx / td * 2.2 * dt; n.z += tdz / td * 2.2 * dt; n.r = Math.atan2(tdx, tdz); moving = true; } if (d < 7 && !G.inside && Math.random() < dt * 0.25) say(n, pick(CHHORA_LINES), 2.5); }
@@ -1556,6 +1566,7 @@ function appRadio() {
     ctr.append(el('button', { type: 'button', text: '⏮', 'aria-label': 'Previous', onclick: () => { A.skipTrack(-1); setTimeout(appRadio, 50); } }), el('button', { type: 'button', text: A.Radio.playing ? '⏸' : '▶', 'aria-label': A.Radio.playing ? 'Pause' : 'Play', onclick: () => { A.toggleMusic(); setTimeout(appRadio, 50); } }), el('button', { type: 'button', text: '⏭', 'aria-label': 'Next', onclick: () => { A.skipTrack(1); setTimeout(appRadio, 50); } })); b.append(ctr);
     const vol = el('input', { type: 'range', min: '0', max: '1', step: '0.05', id: 'vol', style: 'width:100%' }); vol.value = A.Music.vol; vol.oninput = () => A.setVolume(+vol.value); b.append(el('label', { for: 'vol', text: 'Volume', style: 'font-weight:700' }), vol);
     b.append(itemRow('GTA style: radio sirf gaadi mein', A.Radio.carOnly ? 'Paidal chalo to sheher ki awaaz, gaadi mein baitho to radio' : 'Radio hamesha chalega, paidal bhi', A.Radio.carOnly ? 'On' : 'Off', () => { A.setCarOnly(!A.Radio.carOnly); setTimeout(appRadio, 50); }));
+    b.append(itemRow('Awaaz test karo', A.audioRunning() ? 'Awaaz chalu hai. Test dabao: ek aadmi bolega aur horn bajega' : 'Awaaz band lag rahi hai: test dabao, aur phone ka volume / silent switch check karo', 'Test', () => { A.unlock(); setTimeout(() => { A.voice('/audio/v/np1_m.mp3', 'test', 1, 0); A.sfx('horn', 1); }, 120); setTimeout(appRadio, 600); }));
     b.append(itemRow('Sheher ki awaaz', A.citySoundsOn() ? 'Horn, auto, kauve, koyal, sabzi wale, mandir ki ghanti' : 'Band hai', A.citySoundsOn() ? 'On' : 'Off', () => { A.setCitySounds(!A.citySoundsOn()); setTimeout(appRadio, 50); }));
     b.append(el('h3', { text: 'Stations' }));
     for (const s of A.STATIONS) { const on = A.Radio.playing && A.Radio.st === s.id; const dis = s.id === 'mine' && !A.Radio.list.length; b.append(itemRow(s.name, s.sub + (dis ? ' · add songs below first' : ''), on ? 'On air' : 'Tune in', () => { A.setStation(s.id); setTimeout(appRadio, 50); }, on || dis)); }
@@ -2316,6 +2327,7 @@ function saveName() { let n = D.cleanText($('nameIn').value, 16); if (n.length <
 $('playBtn').onclick = () => { saveName(); A.initAudio(); if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
 // wait (up to 25 s) for the realistic people before entering, so nobody shows up as a block figure first
 async function joinWhenReady(id, btn) {
+  A.unlock(); // inside the tap, so phones allow sound from the start
   if (HUMANS_P && !HU.HUMANS.ready) { document.querySelectorAll('.splace').forEach(b => b.disabled = true); const sp = btn && btn.querySelector('span'); if (sp) sp.textContent = 'Gurugram ke log aa rahe hain… (pehli baar thoda time lagta hai)';
     await Promise.race([HUMANS_P, new Promise(r => setTimeout(r, 25000))]); }
   joinGame(id);
@@ -2361,7 +2373,7 @@ function loop(t) {
   requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
   updateDay(dt); updateWeather(dt);
   if (G.started) {
-    updatePlayer(dt); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
+    updatePlayer(dt); footsteps(); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
     hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 15) toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); saveLocal(); }
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
     hudT += dt; if (hudT > 0.25) { hudT = 0; A.setCity(cityMix()); updateHUD(); renderSapna(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }

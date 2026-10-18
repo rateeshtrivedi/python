@@ -1,0 +1,38 @@
+{
+ "made": [
+  {
+   "date": "2026-10-16",
+   "what": "Mummy ki nazar se (Hindi female VO)",
+   "scenes": "skyline, flood drive, cow, Sharma Uncle fight, Neon Nights dance, boat police chase",
+   "beat": "dhol (music.py 100/62/17)",
+   "song": null
+  },
+  {
+   "date": "earlier",
+   "what": "Brochure vs Reality, 5 rules, Haryanvi reel",
+   "scenes": "flood, cow, Iffco jam, Sharma Uncle, boat chase, Neon Nights, Golf Course NOS",
+   "beat": "dhol",
+   "song": null
+  },
+  {
+   "date": "2026-10-17",
+   "day": 1,
+   "pov": "POV: Day 1 of your 'corporate job' in Gurugram",
+   "format": "timestamps 8 AM to 11 PM",
+   "scenes": "driver fight hook, roadside cab cancelled, police chase commute, TechNova office, dhaba, baraat jam, fireworks",
+   "beat": "filmy seed 17",
+   "song": "Apna Time Aayega (Gully Boy)",
+   "backup": "Tauba Tauba (Bad Newz)"
+  },
+  {
+   "date": "2026-10-18",
+   "day": 2,
+   "pov": "POV: You planned a 'chill Sunday' in Gurugram",
+   "format": "PLAN vs REALITY",
+   "scenes": "Holi at sunset hook, cow traffic on village road, Galleria Market, akhara dangal vs pehlwan, chaupal elders roast, Holi on Sohna Road",
+   "beat": "item seed 18 (plus the game's recorded pehlwan and street voices)",
+   "song": "Kala Chashma (Baar Baar Dekho)",
+   "backup": "Gallan Goodiyaan (Dil Dhadakne Do)"
+  }
+ ]
+}
