@@ -124,7 +124,7 @@ for (const [p, render] of Object.entries(PAGES)) app.get([p, p + '/'], (req, res
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(robots()));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(sitemap()));
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).
-app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', file.includes(path.sep + 'models' + path.sep) ? 'public, max-age=604800' : file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
+app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', (file.includes(path.sep + 'models' + path.sep) || file.includes(path.sep + 'audio' + path.sep)) ? 'public, max-age=604800' : file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
 app.use((req, res) => { res.status(404).type('html').send(notFound(req)); });
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8 * 1024 });

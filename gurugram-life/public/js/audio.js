@@ -1,4 +1,5 @@
-// Sound: live Haryanvi, Punjabi, Bollywood and English internet radio (real songs), the player's own song files, and SFX.
+// Sound: live Haryanvi, Punjabi, Bollywood and English internet radio (real songs) that plays in vehicles like GTA, with an RJ
+// and spoof ads between songs; the player's own song files; city sounds on foot; situation music (fight, chase, bhangra); SFX.
 export const hooks = { toast: () => {}, label: () => {} };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
@@ -12,7 +13,7 @@ export const STATIONS = [
   { id: 'eng', name: 'English Hits Live', freq: 'LIVE', sub: 'Angrezi top hits, pop aur dance, live' },
   { id: 'mine', name: 'Meri Playlist', freq: 'MP3', sub: 'Your own Haryanvi & Punjabi songs' },
 ];
-export const Radio = { st: 'har', playing: false, audio: null, live: null, list: [], idx: 0, src: null, override: null, chans: { har: [], pun: [], bol: [], eng: [] }, ci: { har: 0, pun: 0, bol: 0, eng: 0 }, loading: null, fails: 0 };
+export const Radio = { carOnly: lsGet('gl_caronly') !== false, street: false, foot: false, st: 'har', playing: false, audio: null, live: null, list: [], idx: 0, src: null, override: null, chans: { har: [], pun: [], bol: [], eng: [] }, ci: { har: 0, pun: 0, bol: 0, eng: 0 }, loading: null, fails: 0 };
 let NOISE = null;
 export function initAudio() {
   if (Music.ctx) return; const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
@@ -58,9 +59,9 @@ function liveAudio() {
   return a;
 }
 async function playLive() {
-  const st = liveSt(); hooks.label(); await loadStations(); if (!Radio.playing || liveSt() !== st) return;
+  const st = liveSt(); hooks.label(); if (Radio.street) return; await loadStations(); if (!Radio.playing || Radio.street || liveSt() !== st) return;
   const L = Radio.chans[st]; if (!L.length) { Radio.playing = false; hooks.label(); hooks.toast('Live radio nahi mila. Radio mein apne gaane add kar sakte ho.', 'bad'); return; }
-  const ch = L[Radio.ci[st] % L.length]; const a = liveAudio(); a.src = ch.url; a.volume = Music.vol;
+  const ch = L[Radio.ci[st] % L.length]; const a = liveAudio(); a.src = ch.url; a.volume = radioVol();
   clearTimeout(Radio.stallT); Radio.stallT = setTimeout(() => { if (a.paused || a.readyState < 3) a.dispatchEvent(new Event('error')); }, 12000);
   const p = a.play(); if (p && p.catch) p.catch(e => { if (e && e.name === 'NotAllowedError') { Radio.playing = false; hooks.label(); } else if (e && e.name !== 'AbortError') a.dispatchEvent(new Event('error')); });
   lsSet('gl_chan', { har: (Radio.chans.har[Radio.ci.har] || {}).url, pun: (Radio.chans.pun[Radio.ci.pun] || {}).url, bol: (Radio.chans.bol[Radio.ci.bol] || {}).url, eng: (Radio.chans.eng[Radio.ci.eng] || {}).url });
@@ -72,7 +73,7 @@ export function playChannel(i) { const st = liveSt(); Radio.ci[st] = i; Radio.fa
 export function liveLoading() { const st = liveSt(); return st !== 'mine' && Radio.playing && Radio.live && (Radio.live.paused || Radio.live.readyState < 3); }
 function activeSt() { return Radio.override || Radio.st; }
 export function nowPlaying() { const s = liveSt(); if (s === 'mine') return (Radio.list[Radio.idx] || {}).name || ''; const L = Radio.chans[s]; return L.length ? L[Radio.ci[s] % L.length].name : 'Tuning…'; }
-export function radioOn() { initAudio(); if (Radio.st === 'mine' && !Radio.list.length) Radio.st = 'har'; Radio.playing = true; if (liveSt() === 'mine') { stopLive(); playMine(); } else { stopMine(); playLive(); } hooks.label(); lsSet('gl_radio', { on: true, st: Radio.st }); }
+export function radioOn() { initAudio(); if (Radio.st === 'mine' && !Radio.list.length) Radio.st = 'har'; Radio.playing = true; if (Radio.street) { hooks.label(); lsSet('gl_radio', { on: true, st: Radio.st }); return; } if (liveSt() === 'mine') { stopLive(); playMine(); } else { stopMine(); playLive(); } hooks.label(); lsSet('gl_radio', { on: true, st: Radio.st }); }
 export function radioOff() { Radio.playing = false; stopLive(); stopMine(); hooks.label(); lsSet('gl_radio', { on: false, st: Radio.st }); }
 export function toggleMusic() { if (Radio.playing) radioOff(); else radioOn(); }
 export function setStation(id) { if (id === 'mine' && !Radio.list.length) { hooks.toast('Pehle apne gaane add kar (Radio → Meri Playlist)'); return; } stopLive(); stopMine(); Radio.st = id; Radio.fails = 0; radioOn(); }
@@ -80,18 +81,18 @@ export function setStation(id) { if (id === 'mine' && !Radio.list.length) { hook
 export function preferStation(id) { if (!STATIONS.some(s => s.id === id) || Radio.st === id) return; if (Radio.playing && !Radio.override) setStation(id); else { Radio.st = id; const rs = lsGet('gl_radio'); lsSet('gl_radio', { on: rs ? rs.on !== false : true, st: id }); } }
 export function nextStation() { const ids = STATIONS.map(s => s.id).filter(id => id !== 'mine' || Radio.list.length); const i = ids.indexOf(Radio.st); setStation(ids[(i + 1) % ids.length]); }
 // The club plays Punjabi live while you are inside, then hands back to your station.
-export function setOverride(st) { if (Radio.override === st) return; const before = liveSt(); Radio.override = st; if (!Radio.playing || liveSt() === before) return; stopLive(); stopMine(); if (liveSt() === 'mine') playMine(); else playLive(); hooks.label(); }
+export function setOverride(st) { if (Radio.override === st) return; const before = liveSt(); Radio.override = st; if (Radio.street !== streetMute()) return setOnFoot(Radio.foot); if (!Radio.playing || liveSt() === before) return; stopLive(); stopMine(); if (liveSt() === 'mine') playMine(); else playLive(); hooks.label(); }
 export function skipTrack(d) { nextChannel(d); }
 function mineAudio() { if (!Radio.audio) { const a = new Audio(); a.preload = 'auto'; a.addEventListener('ended', () => mineNext(1)); a.addEventListener('error', () => { if (Radio.playing && liveSt() === 'mine' && a.getAttribute('src')) playDecoded(); }); Radio.audio = a; } return Radio.audio; }
-export function playMine() { const s = Radio.list[Radio.idx]; if (!s) return; stopMine(); const a = mineAudio(); if (!s.url) s.url = URL.createObjectURL(s.blob); a.src = s.url; a.volume = Music.vol; const p = a.play(); if (p && p.catch) p.catch(e => { if (e && e.name !== 'AbortError') playDecoded(); }); hooks.label(); }
+export function playMine() { const s = Radio.list[Radio.idx]; if (!s || Radio.street) return; stopMine(); const a = mineAudio(); if (!s.url) s.url = URL.createObjectURL(s.blob); a.src = s.url; a.volume = radioVol(); const p = a.play(); if (p && p.catch) p.catch(e => { if (e && e.name !== 'AbortError') playDecoded(); }); hooks.label(); }
 async function playDecoded() {
   const s = Radio.list[Radio.idx]; if (!s || s.decoding) return; s.decoding = true; if (Radio.audio) { Radio.audio.pause(); Radio.audio.removeAttribute('src'); } initAudio();
-  try { const buf = await Music.ctx.decodeAudioData(await s.blob.arrayBuffer()); if (!Radio.playing || liveSt() !== 'mine' || Radio.list[Radio.idx] !== s) return; const src = Music.ctx.createBufferSource(); src.buffer = buf; const g = Music.ctx.createGain(); g.gain.value = Music.vol; src.connect(g); g.connect(Music.ctx.destination); Radio.srcGain = g; src.onended = () => { if (Radio.src === src) { Radio.src = null; mineNext(1); } }; src.start(); Radio.src = src; }
+  try { const buf = await Music.ctx.decodeAudioData(await s.blob.arrayBuffer()); if (!Radio.playing || Radio.street || liveSt() !== 'mine' || Radio.list[Radio.idx] !== s) return; const src = Music.ctx.createBufferSource(); src.buffer = buf; const g = Music.ctx.createGain(); g.gain.value = Music.vol; src.connect(g); g.connect(Music.ctx.destination); Radio.srcGain = g; src.onended = () => { if (Radio.src === src) { Radio.src = null; mineNext(1); } }; src.start(); Radio.src = src; }
   catch { hooks.toast('Yeh file nahi chal rahi: ' + s.name, 'bad'); } finally { s.decoding = false; }
 }
 function stopMine() { if (Radio.audio) Radio.audio.pause(); if (Radio.src) { const s = Radio.src; Radio.src = null; try { s.stop(); } catch {} } }
 export function mineNext(d) { if (!Radio.list.length) return; Radio.idx = (Radio.idx + d + Radio.list.length) % Radio.list.length; if (Radio.playing && liveSt() === 'mine') playMine(); hooks.label(); }
-export function setVolume(v) { Music.vol = v; if (Radio.audio) Radio.audio.volume = v; if (Radio.live) Radio.live.volume = v; if (Radio.srcGain) Radio.srcGain.gain.value = v; lsSet('gl_vol', v); }
+export function setVolume(v) { Music.vol = v; if (Radio.audio) Radio.audio.volume = radioVol(); if (Radio.live) Radio.live.volume = radioVol(); if (Radio.srcGain) Radio.srcGain.gain.value = v; lsSet('gl_vol', v); }
 export function restoreRadio() { const v = lsGet('gl_vol'); setVolume(typeof v === 'number' && lsGet('gl_vol_v') === 2 ? clamp(v, 0, 1) : 0.22); lsSet('gl_vol_v', 2); const rs = lsGet('gl_radio'); if (rs && STATIONS.some(x => x.id === rs.st)) Radio.st = rs.st; if (!rs || rs.on !== false) radioOn(); else initAudio(); }
 // song files persist in this browser's IndexedDB
 function idb() { return new Promise((res, rej) => { try { const r = indexedDB.open('gl_radio', 1); r.onupgradeneeded = () => r.result.createObjectStore('songs', { keyPath: 'id' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
@@ -153,20 +154,28 @@ function taiko(t, dest, v = 1) { const o = osc('sine', 120, t, 0.45, 0.9 * v, de
 function stab(t, midi, dest, v = 1) { const c = Music.ctx; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(1800, t); lp.frequency.exponentialRampToValueAtTime(300, t + 0.25); lp.connect(dest); for (const k of [0, 7, 12]) osc('sawtooth', mtof(midi + k), t, 0.28, 0.07 * v, lp); }
 const THEMES = {
   fight: { step: 60 / 142 / 4, len: 32, play(s, t, d) { const b = s % 16; if ([0, 3, 6, 8, 10, 14].includes(b)) taiko(t, d, b === 0 ? 1 : 0.75); if (b === 4 || b === 12) clap(t, d, 1.1); if (b % 2 === 0) noise(t, 0.03, 0.06, 9000, 1, 'highpass', d); const riff = [40, 0, 0, 40, 0, 0, 43, 0, 45, 0, 46, 0, 45, 0, 43, 0]; const n = riff[b]; if (n) { const o = osc('sawtooth', mtof(n - 12), t, 0.16, 0.12, d); o.frequency.setValueAtTime(mtof(n - 12), t); } if (s % 32 === 0) stab(t, 52, d); } },
+  // police chase: a pulsing bass that is always there, drums from mid intensity, siren-like stabs and fills when they're on your bumper
+  chase: { step: 60 / 150 / 4, len: 64, play(s, t, d) { const k = Theme.int, b = s % 16, bar = Math.floor(s / 16) % 4, root = [40, 36, 38, 35][bar];
+    if (b % 2 === 0) { const o = osc('sawtooth', mtof(root - 12), t, 0.09, 0.09 + 0.05 * k, d); o.frequency.setValueAtTime(mtof(root - 12 + (b % 8 === 6 ? 12 : 0)), t); }
+    noise(t, 0.025, b % 4 === 2 ? 0.07 : 0.035, 9000, 1, 'highpass', d);
+    if (k > 0.35) { if (b === 0 || b === 8 || (k > 0.7 && b === 11)) taiko(t, d, 0.6 + 0.4 * k); if (b === 4 || b === 12) clap(t, d, 0.8 + 0.4 * k); }
+    if (k > 0.65) { if (b % 8 === 0) { const o = osc('square', mtof(root + 24), t, 0.22, 0.035, d); o.frequency.linearRampToValueAtTime(mtof(root + 31), t + 0.2); } if (bar === 3 && b >= 12) taiko(t, d, 0.5); }
+    if (s % 64 === 0) stab(t, root + 12, d, 0.6 + 0.4 * k); } },
   bhangra: { step: 60 / 104 / 3, len: 24, play(s, t, d) { const k = s % 12, pos = k % 3, beat = Math.floor(k / 3); if (pos === 0) dholBass(t, d, beat % 2 === 0 ? 0.95 : 0.7); if (pos === 2) dholBass(t, d, 0.5); if (pos === 1 || (pos === 2 && beat === 3)) dholTilli(t, d, pos === 1 ? 1 : 0.7); if (pos === 0 && (beat === 1 || beat === 3)) { chimta(t, d); clap(t, d, 0.7); } if (s % 24 === 21) dholTilli(t + 0.07, d, 0.8); } },
 };
-const Theme = { cur: null, timer: null, step: 0, next: 0, gain: null };
-export function setTheme(id) {
-  if (Theme.cur === id) return; Theme.cur = id; if (!Music.ctx) return; const c = Music.ctx;
+const Theme = { cur: null, timer: null, step: 0, next: 0, gain: null, int: 0.5 };
+export function setTheme(id, k) {
+  if (k !== undefined) Theme.int += (k - Theme.int) * 0.08; // intensity eases toward the target (called every frame)
+  if (Theme.cur === id) return; Theme.cur = id; if (id && k !== undefined) Theme.int = Math.min(k, 0.4); if (!Music.ctx) return; const c = Music.ctx;
   if (!Theme.gain) { Theme.gain = c.createGain(); Theme.gain.gain.value = 0; Theme.gain.connect(c.destination); }
   const g = Theme.gain.gain; g.cancelScheduledValues(c.currentTime);
   if (id) {
-    g.setTargetAtTime(clamp(Music.vol * 1.6, 0.18, 0.55), c.currentTime, 0.25); Theme.step = 0; Theme.next = c.currentTime + 0.05;
+    g.setTargetAtTime(clamp(Music.vol * 1.6, 0.18, 0.55) * (id === 'chase' ? 0.8 : 1), c.currentTime, 0.25); Theme.step = 0; Theme.next = c.currentTime + 0.05;
     if (!Theme.timer) Theme.timer = setInterval(() => { const T = THEMES[Theme.cur]; if (!T) return; while (Theme.next < c.currentTime + 0.12) { T.play(Theme.step, Theme.next, Theme.gain); Theme.next += T.step; Theme.step++; } }, 25);
-    for (const a of [Radio.live, Radio.audio]) if (a) a.volume = Music.vol * 0.25;
+    for (const a of [Radio.live, Radio.audio]) if (a) a.volume = radioVol();
   } else {
     g.setTargetAtTime(0, c.currentTime, 0.35); setTimeout(() => { if (!Theme.cur) { clearInterval(Theme.timer); Theme.timer = null; } }, 1500);
-    for (const a of [Radio.live, Radio.audio]) if (a) a.volume = Music.vol;
+    for (const a of [Radio.live, Radio.audio]) if (a) a.volume = radioVol();
   }
 }
 
@@ -183,3 +192,70 @@ export function setRain(level) {
   RainS.gain.gain.setTargetAtTime(clamp(level, 0, 1) * (radioOn ? 0.035 : 0.07), c.currentTime, 0.5);
 }
 export function thunder() { if (!Music.ctx) return; const t = Music.ctx.currentTime; noise(t, 1.6, 0.5, 120, 0.7, 'lowpass', Music.sfx); noise(t + 0.15, 1.2, 0.35, 260, 0.8, 'lowpass', Music.sfx); }
+
+// ---- GTA-style radio: it plays in vehicles (and indoors); walking the streets you hear the city instead
+const radioVol = () => Music.vol * (Theme.cur ? 0.25 : 1) * (RJ.on ? 0.18 : 1);
+const streetMute = () => Radio.carOnly && Radio.foot && !Radio.override;
+export function setOnFoot(onFoot) {
+  Radio.foot = onFoot; const mute = streetMute(); if (mute === Radio.street) return; Radio.street = mute;
+  if (Radio.playing) { if (mute) { stopLive(); stopMine(); rjStop(); } else { if (liveSt() === 'mine') playMine(); else playLive(); if (Math.random() < 0.4) rjSoon(5); } } // sometimes the RJ greets you as you get in
+  hooks.label();
+}
+export function setCarOnly(on) { Radio.carOnly = on; lsSet('gl_caronly', on); setOnFoot(Radio.foot); }
+
+// ---- the RJ: station idents, spoof ads for the game's own businesses and a few jokes, talked over the song every few minutes
+const RJ = { on: false, el: null, next: performance.now() / 1000 + 75, recent: [], line: '' };
+const RJ_LINES = { desi: ['rj_id1', 'rj_id2', 'rj_id3', 'rj_id4', 'rj_wx', 'rj_sig'], ads: ['ad_motors', 'ad_sweets', 'ad_estate', 'ad_food', 'ad_gold', 'ad_police', 'ad_metro', 'ad_chaat', 'ad_ride'], eng: ['en_id1', 'en_id2', 'en_id3', 'en_ad1', 'en_ad2', 'en_ad3'] };
+export const rjLine = () => RJ.on ? RJ.line : '';
+export function rjSoon(sec) { RJ.next = Math.min(RJ.next, performance.now() / 1000 + sec); }
+function rjPick(st) { const pool = st === 'eng' ? RJ_LINES.eng : Math.random() < 0.45 ? RJ_LINES.desi : RJ_LINES.ads; const ok = pool.filter(k => !RJ.recent.includes(k)); const k = (ok.length ? ok : pool)[Math.floor(Math.random() * (ok.length || pool.length))]; RJ.recent = [k, ...RJ.recent].slice(0, 8); return k; }
+function rjStop() { if (RJ.el) { RJ.el.pause(); RJ.el = null; } if (RJ.on) { RJ.on = false; for (const a of [Radio.live, Radio.audio]) if (a) a.volume = radioVol(); hooks.label(); } }
+function rjTick() {
+  const t = performance.now() / 1000, st = liveSt(), a = Radio.live;
+  if (RJ.on || t < RJ.next || !Radio.playing || Radio.street || Theme.cur || st === 'mine' || Radio.override || !a || a.paused || a.readyState < 3) return;
+  const k = rjPick(st), el = new Audio('/audio/' + k + '.mp3'); RJ.el = el; RJ.on = true; RJ.line = k.includes('ad') ? 'Ad break' : 'RJ on air'; a.volume = radioVol(); hooks.label();
+  el.volume = clamp(Music.vol * 2.4, 0.3, 1); const done = () => { if (RJ.el !== el) return; RJ.el = null; RJ.next = performance.now() / 1000 + 200 + Math.random() * 160; rjStop(); };
+  el.addEventListener('ended', done); el.addEventListener('error', done); const p = el.play(); if (p && p.catch) p.catch(done);
+}
+setInterval(rjTick, 1000);
+
+// ---- city sounds on foot: traffic rumble and horns near roads, autos passing, crows, koels, sparrows and crickets, crowd murmur
+// and vendors calling in markets, bells near temples. Everything but the vendors' voices is synthesised.
+const City = { bus: null, rumble: null, murmur: null, crick: null, last: 0, on: lsGet('gl_city') !== false, mix: null, recentV: [] };
+const VENDORS = ['v_sabzi', 'v_bhutte', 'v_chai', 'v_kabadi', 'v_golgappe', 'v_kele', 'v_side'];
+export const citySoundsOn = () => City.on;
+export function setCitySounds(on) { City.on = on; lsSet('gl_city', on); }
+function loopNoise(c, color) { const len = c.sampleRate * 3, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0); let last = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = color === 'brown' ? (last + 0.02 * w) / 1.02 : w; d[i] = color === 'brown' ? last * 3.5 : w; } const s = c.createBufferSource(); s.buffer = buf; s.loop = true; s.start(); return s; }
+function cityInit() {
+  const c = Music.ctx; City.bus = c.createGain(); City.bus.gain.value = 0; City.bus.connect(c.destination);
+  const chain = (src, nodes) => { let n = src; for (const x of nodes) { n.connect(x); n = x; } const g = c.createGain(); g.gain.value = 0; n.connect(g); g.connect(City.bus); return g; };
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380; City.rumble = chain(loopNoise(c, 'brown'), [lp]);
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.7; City.murmur = chain(loopNoise(c, 'white'), [bp]);
+  const co = c.createOscillator(); co.frequency.value = 4400; const am = c.createGain(); am.gain.value = 0; const lfo = c.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 28; const lg = c.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain); co.connect(am); co.start(); lfo.start(); City.crick = chain(am, []);
+}
+function panned(v) { const c = Music.ctx, p = c.createStereoPanner ? c.createStereoPanner() : c.createGain(); if (p.pan) p.pan.value = Math.random() * 1.6 - 0.8; const g = c.createGain(); g.gain.value = v; g.connect(p); p.connect(City.bus); return g; }
+const C_EV = {
+  horn(t) { const d = panned(0.25 + Math.random() * 0.4), r = Math.random(); if (r < 0.15) sfx('pressure', 0.4); else if (r < 0.5) { for (let i = 0; i < (Math.random() < 0.5 ? 1 : 2); i++) { osc('square', 980, t + i * 0.16, 0.1, 0.05, d); osc('square', 1180, t + i * 0.16, 0.1, 0.04, d); } } else { const f = 380 + Math.random() * 140; osc('square', f, t, 0.3 + Math.random() * 0.4, 0.06, d); osc('square', f * 1.26, t, 0.3, 0.05, d); } },
+  auto(t) { const d = panned(0.5), g = Music.ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 1.2); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8); g.connect(d); for (let i = 0; i < 60; i++) noise(t + i * 0.045, 0.03, 0.18, 220, 1.5, 'bandpass', g); },
+  crow(t) { const d = panned(0.3 + Math.random() * 0.3); for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) { const c = Music.ctx, f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 2.5; f.connect(d); const o = osc('sawtooth', 640, t + i * 0.42, 0.26, 0.2, f, 0.02); o.frequency.exponentialRampToValueAtTime(480, t + i * 0.42 + 0.25); } },
+  koel(t) { const d = panned(0.2); for (let i = 0; i < 3; i++) { const s = t + i * 0.9, o = osc('sine', 700 + i * 90, s, 0.5, 0.12, d, 0.08); o.frequency.exponentialRampToValueAtTime(1100 + i * 120, s + 0.4); } },
+  sparrow(t) { const d = panned(0.25); for (let i = 0; i < 3 + Math.floor(Math.random() * 4); i++) { const o = osc('sine', 3600 + Math.random() * 1500, t + i * 0.09, 0.05, 0.05, d); o.frequency.exponentialRampToValueAtTime(2800, t + i * 0.09 + 0.05); } },
+  bell(t) { const d = panned(0.3); for (const [m, a] of [[1, 0.12], [2.76, 0.06], [5.4, 0.03], [8.93, 0.015]]) osc('sine', 520 * m, t, 2.6 / Math.sqrt(m), a, d, 0.003); },
+  vendor() { const ok = VENDORS.filter(k => !City.recentV.includes(k)); const k = ok[Math.floor(Math.random() * ok.length)]; City.recentV = [k, ...City.recentV].slice(0, 4); const el = new Audio('/audio/' + k + '.mp3'); el.volume = 0.25 + Math.random() * 0.3; try { const src = Music.ctx.createMediaElementSource(el); src.connect(panned(1)); } catch {} el.play().catch(() => {}); },
+};
+// mix = { out, veh, traffic, nature, market, temple, night } (0..1), from the game a few times a second
+export function setCity(m) {
+  if (!Music.ctx) return; if (!City.bus) cityInit(); const c = Music.ctx, t = c.currentTime, on = City.on && m.out;
+  City.bus.gain.setTargetAtTime(on ? (Theme.cur ? 0.5 : 1) * (m.veh ? 0.55 : 1) : 0, t, 0.6);
+  City.rumble.gain.setTargetAtTime(0.09 * m.traffic, t, 0.8); City.crick.gain.setTargetAtTime(0.01 * m.night * (0.4 + m.nature), t, 1);
+  City.murmur.gain.setTargetAtTime(0.03 * m.market * (0.6 + Math.random() * 0.6) * (1 - 0.6 * m.night), t, 0.3);
+  const dt = Math.min(1, c.currentTime - (City.last || c.currentTime)); City.last = c.currentTime; if (!on || !dt) return;
+  const roll = (rate, ev) => { if (Math.random() < rate * dt) C_EV[ev](t + Math.random() * 0.2); }, day = 1 - m.night;
+  roll(0.45 * m.traffic * (0.5 + 0.5 * day), 'horn'); roll(0.05 * m.traffic, 'auto'); roll((0.1 * m.nature + 0.03 * m.market) * day, 'crow'); roll(0.025 * m.nature * day, 'koel');
+  roll(0.25 * m.nature * day, 'sparrow'); roll(0.07 * m.temple + 0.003, 'bell'); if (!m.veh) roll(0.05 * m.market * (0.3 + 0.7 * day), 'vendor');
+}
+
+// ---- stingers when a chase ends: you got away, or you got caught
+export function stinger(kind) { if (!Music.ctx) return; const t = Music.ctx.currentTime, d = Music.sfx;
+  if (kind === 'escape') [0, 4, 7, 12, 16].forEach((n, i) => osc('triangle', mtof(64 + n), t + i * 0.08, 0.6, 0.16, d));
+  else [12, 8, 5, 0].forEach((n, i) => osc('sawtooth', mtof(50 + n), t + i * 0.22, 0.4, 0.07, d)); }
