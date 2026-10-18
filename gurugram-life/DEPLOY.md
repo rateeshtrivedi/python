@@ -58,11 +58,11 @@ Load test (`node test/load.mjs 100 200 300`): with every player crowded into one
 
 The site is ready for search engines (titles, structured data, `/about`, `/how-to-play`, `/places`, `robots.txt`, `sitemap.xml`). Google still has to be told about it:
 
-1. **Both domains on Render.** In Render → `gurugram-life` → Settings → Custom Domains, make sure both `gurugramlife.com` and `www.gurugramlife.com` are added. The game sends the bare domain to `www` by itself.
+1. **Both domains on Render.** In Render → `gurugram-life` → Settings → Custom Domains, make sure both `gurugramlife.com` and `www.gurugramlife.com` are added (Render sends www to the bare domain).
 2. **Google Search Console.** Open search.google.com/search-console → **Add property** → **Domain** → `gurugramlife.com`. Google shows a TXT record; add it in Cloudflare → DNS → Records (type `TXT`, name `@`), then click **Verify**.
-   (Alternative: choose **URL prefix** `https://www.gurugramlife.com`, pick the **HTML tag** method, copy only the `content="..."` value into a Render environment variable `GOOGLE_SITE_VERIFICATION`, redeploy, then Verify.)
+   (Alternative: choose **URL prefix** `https://gurugramlife.com`, pick the **HTML tag** method, copy only the `content="..."` value into a Render environment variable `GOOGLE_SITE_VERIFICATION`, redeploy, then Verify.)
 3. **Submit the sitemap.** Search Console → **Sitemaps** → enter `sitemap.xml` → Submit.
-4. **Ask Google to crawl now.** Search Console → **URL inspection** → paste `https://www.gurugramlife.com/` → **Request indexing**. Repeat for `/about`, `/how-to-play` and `/places`.
+4. **Ask Google to crawl now.** Search Console → **URL inspection** → paste `https://gurugramlife.com/` → **Request indexing**. Repeat for `/about`, `/how-to-play` and `/places`.
 5. **Bing (also powers DuckDuckGo and Yahoo).** bing.com/webmasters → **Import from Google Search Console**.
 6. **Links from elsewhere** matter most for ranking: put `www.gurugramlife.com` in the Instagram bio, YouTube channel links and every video description, and share it in Gurugram/Gurgaon groups, Reddit (r/gurgaon, r/IndianGaming) and with local pages and bloggers.
 

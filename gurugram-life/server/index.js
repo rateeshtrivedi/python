@@ -55,12 +55,11 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   next();
 });
-// Search engines: one address for the site. The bare domain sends people to www (301); the onrender.com copy stays
-// playable but tells Google not to index it, so ranking isn't split between two addresses.
-const CANON_HOST = SITE.replace(/^https?:\/\//, '');
+// Search engines: the onrender.com copy stays playable but tells Google not to index it, so ranking isn't split.
+// No www/bare-domain redirect here: the domain host (Render / Cloudflare) already sends www to the bare domain,
+// and a second redirect the other way made an endless loop (ERR_TOO_MANY_REDIRECTS).
 app.use((req, res, next) => {
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
-  if (CANON_HOST.startsWith('www.') && host === CANON_HOST.slice(4) && req.method === 'GET') return res.redirect(301, SITE + req.originalUrl);
   if (/\.onrender\.com$/.test(host)) res.setHeader('X-Robots-Tag', 'noindex');
   next();
 });
