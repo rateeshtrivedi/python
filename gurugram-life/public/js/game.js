@@ -4,6 +4,8 @@ import * as D from '../shared/data.js';
 import { net } from './net.js';
 import * as A from './audio.js';
 import * as I18N from './i18n.js';
+import * as HU from './humans.js';
+import * as RL from './realism.js';
 
 // ================================================================ UTIL
 const $ = id => document.getElementById(id);
@@ -53,6 +55,7 @@ scene.fog = new THREE.Fog(0x9fc8e8, 160, 560);
 const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 640); // beyond the fog nothing is visible, so nothing is drawn
 const hemi = new THREE.HemisphereLight(0xfff1d6, 0x55603f, 0.95); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(120, 200, 80); scene.add(sun);
+RL.init(renderer, scene, sun, matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 520); // sky, sun shadows, reflections
 function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
 
@@ -97,25 +100,17 @@ function disposeSprite(s) { if (!s) return; if (s.parent) s.parent.remove(s); s.
 function texFrom(draw, w, h, rx, ry) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4; return t; }
 
 const FACADES = {}, BMATS = {}, NIGHT_MATS = [];
-function facadeBase(style) {
-  if (FACADES[style]) return FACADES[style];
-  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
-  const e = document.createElement('canvas'); e.width = e.height = 128; const y = e.getContext('2d');
-  const P2 = { glass: ['#2f5d7c', '#8fc6e8', '#1f3b52'], concrete: ['#d9cbb0', '#4a5b6b', '#b8a98d'], brick: ['#a4553a', '#3a3a44', '#7c3b28'], ochre: ['#d9a656', '#5a3a1e', '#b7843c'], white: ['#eeeeea', '#4b6a86', '#cfcfc8'], gold: ['#3b3226', '#e8c27a', '#2a241b'], pink: ['#e7b3a8', '#4c5d70', '#c99184'], dark: ['#1a1024', '#ff2bd6', '#2a1838'] }[style] || ['#ccc', '#555', '#aaa'];
-  x.fillStyle = P2[0]; x.fillRect(0, 0, 128, 128); y.fillStyle = '#000'; y.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const wx = i * 64 + 10, wy = j * 64 + 12; x.fillStyle = P2[1]; x.fillRect(wx, wy, 44, 40); x.fillStyle = P2[2]; x.fillRect(wx, wy + 40, 44, 4); if (Math.random() < 0.55 || style === 'dark') { y.fillStyle = style === 'dark' ? '#ff2bd6' : pick(['#ffd88a', '#ffe7b0', '#fff2cf', '#bfe3ff']); y.fillRect(wx, wy, 44, 40); } }
-  FACADES[style] = { c, e }; return FACADES[style];
-}
+function facadeBase(style) { return FACADES[style] || (FACADES[style] = RL.facade(style)); } // colour, night windows, glass reflection mask
 function facadeMat(style, rw, rh) {
   const key = style + '_' + rw + '_' + rh; if (BMATS[key]) return BMATS[key]; const f = facadeBase(style);
-  const t = new THREE.CanvasTexture(f.c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rw, rh);
-  const te = new THREE.CanvasTexture(f.e); te.wrapS = te.wrapT = THREE.RepeatWrapping; te.repeat.set(rw, rh);
-  const m = new THREE.MeshLambertMaterial({ map: t, emissive: 0xffffff, emissiveMap: te, emissiveIntensity: 0 }); NIGHT_MATS.push(m); BMATS[key] = m; return m;
+  const tx = c => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rw, rh); t.anisotropy = 8; return t; };
+  const glassy = ['glass', 'gold'].includes(style); // windows mirror the sky; curtain-wall towers most of all
+  const m = new THREE.MeshLambertMaterial({ map: tx(f.c), emissive: 0xffffff, emissiveMap: tx(f.e), emissiveIntensity: 0, specularMap: tx(f.s), envMap: RL.envMap(), combine: THREE.MixOperation, reflectivity: glassy ? 0.62 : 0.4 }); NIGHT_MATS.push(m); BMATS[key] = m; return m;
 }
 function building(parent, x, z, w, d, h, style, zone) {
   const mx = facadeMat(style, Math.max(1, Math.round(d / 7)), Math.max(1, Math.round(h / 4.5))), mz = facadeMat(style, Math.max(1, Math.round(w / 7)), Math.max(1, Math.round(h / 4.5))), top = mat(0x6d665c);
   const m = new THREE.Mesh(BOX, [mx, mx, top, top, mz, mz]); m.scale.set(w, h, d); m.position.set(x, h / 2, z); parent.add(m);
-  addCol(zone || 'out', x - w / 2, x + w / 2, z - d / 2, z + d / 2); if (h > 30) bx(parent, w * 0.3, 2.5, d * 0.3, 0x8a8a8a, x, h + 1.25, z); return m;
+  addCol(zone || 'out', x - w / 2, x + w / 2, z - d / 2, z + d / 2); if (h > 30) bx(parent, w * 0.3, 2.5, d * 0.3, 0x8a8a8a, x, h + 1.25, z); else if (h > 7 && !zone) cyl(parent, 0.8, 1.4, 0x1c1c1c, x + w * 0.3, h + 0.7, z - d * 0.3); return m; // black water tank on the roof
 }
 
 // ================================================================ CHARACTERS & VEHICLES
@@ -134,8 +129,40 @@ function makeChar(shirt, o) {
   mk(0.06, 0.06, 0.02, mat(0x111111), -0.11, 2.36, 0.31); mk(0.06, 0.06, 0.02, mat(0x111111), 0.11, 2.36, 0.31);
   const hatG = new THREE.Group(); g.add(hatG); const blingG = new THREE.Group(); g.add(blingG); const hairG = new THREE.Group(); g.add(hairG); const bodyG = new THREE.Group(); g.add(bodyG);
   const blingL = new THREE.Group(); shL.add(blingL); const blingR = new THREE.Group(); shR.add(blingR);
-  g.userData = { hipL, hipR, shL, shR, torso, armL, armR, hatG, blingG, blingL, blingR, hair, head, legL, legR, handL, handR, hairG, bodyG, walk: 0, punchT: 0, danceT: 0 };
+  g.userData = { hipL, hipR, shL, shR, torso, armL, armR, hatG, blingG, blingL, blingR, hair, head, legL, legR, handL, handR, hairG, bodyG, walk: 0, punchT: 0, danceT: 0, dress: randomDress(shirt, o) };
+  HCHARS.push(g); if (HU.HUMANS.ready) humanize(g);
   return g;
+}
+// ---- realistic bodies (humans.js). Every character keeps its box figure for far away / before the models load;
+// near the camera it shows the real body instead (see updateHumans for the distance and count limits).
+const HCHARS = [];
+function randomDress(shirt, o) { const f = o.g ? o.g === 'f' : Math.random() < 0.22; return { g: f ? 'f' : 'm', skin: o.skin || pick(SKINS.slice(1)), hair: irnd(0, f ? 3 : 2), hairColor: pick([0x1a1410, 0x1a1410, 0x2b1d14, 0x4a2c17]), top: f ? irnd(0, 2) : pick([0, 0, 1, 2]), shirt, pants: o.pants || pick(PANTS_C), pantsStyle: 0, beard: f ? 0 : pick([0, 0, 'moonchh', 'full']) }; }
+function humanize(g) {
+  const u = g.userData; if (u.human || !HU.HUMANS.ready) return; const h = HU.makeHuman(u.dress.g); u.human = h;
+  if (!u.blockG) { u.blockG = new THREE.Group(); for (const c of [...g.children]) if (c !== u.hatG && c !== u.blingG) u.blockG.add(c); g.add(u.blockG); }
+  h.hatA.add(u.hatG); h.chestA.add(u.blingG); h.wristL.add(u.blingL); h.wristR.add(u.blingR); // accessories follow the real body
+  g.add(h.root); HU.dressHuman(h, u.dress); humanHair(u); if (u.sit) HU.play(h, 'sit', 0); h.mixer.update(0.01); setHumanVis(u, false);
+}
+function unhumanize(g) { const u = g.userData, h = u.human; if (!h) return; g.remove(h.root); g.add(u.hatG); g.add(u.blingG); u.shL.add(u.blingL); u.shR.add(u.blingR); u.blockG.visible = true; u.human = null; }
+function humanHair(u) { const hide = u.dress.g !== 'f' && ['pagdi', 'safa', 'cap', 'sehra'].includes(u.hatType); HU.setHairVisible(u.human, !hide); }
+function setHumanVis(u, on) { if (u.human.root.visible === on && u.blockG.visible === !on) return; u.human.root.visible = on; u.blockG.visible = !on; }
+let HFRAME = 0; const hFrustum = new THREE.Frustum(), hMat = new THREE.Matrix4(), hV = new THREE.Vector3(), hSph = new THREE.Sphere(new THREE.Vector3(), 2.2);
+function visibleChain(o) { for (let p = o; p; p = p.parent) { if (!p.visible) return false; if (p === scene) return true; } return false; }
+function updateHumans(dt) { // which characters show their real body: nearest ones in view, a few on phones
+  if (!HU.HUMANS.ready) return; HFRAME++;
+  const phone = document.body.classList.contains('touch') || Math.min(innerWidth, innerHeight) < 520, R = phone ? 40 : 62, cap = Math.max(1, Math.round((phone ? 9 : 22) * (PERF.hk || 1)));
+  hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat); const cand = [];
+  for (let i = HCHARS.length - 1; i >= 0; i--) {
+    const g = HCHARS[i], u = g.userData;
+    if (!g.parent) { if ((u.gone = (u.gone || 0) + 1) > 600) { HCHARS.splice(i, 1); unhumanize(g); } continue; } u.gone = 0;
+    if (!u.human) humanize(g);
+    if (!visibleChain(g)) { setHumanVis(u, false); continue; }
+    g.getWorldPosition(hV); const d = hV.distanceTo(camera.position); hSph.center.copy(hV).setY(hV.y + 1.2);
+    if (g === player || g === PREVIEW) u.hd = -1; else if (d > R || !hFrustum.intersectsSphere(hSph)) { setHumanVis(u, false); continue; } else u.hd = d;
+    cand.push(g);
+  }
+  cand.sort((a, b) => a.userData.hd - b.userData.hd);
+  cand.forEach((g, i) => { const u = g.userData, on = i < cap; setHumanVis(u, on); if (on && u.animF !== HFRAME - 1 && u.animF !== HFRAME) u.human.mixer.update(dt); }); // idle breathing for people nobody animates
 }
 const GOLD = 0xe8b923;
 // Avatar: body type, skin, hair, clothes style. Shared by the creator preview, your player and everyone else.
@@ -150,6 +177,7 @@ const AV = {
 const defaultBody = () => ({ g: 'm', skin: 2, hair: 0, hc: 0, top: 0, pants: 0, acc: 1 });
 function applyBody(ch, b, shirt) {
   const u = ch.userData; const f = !!b && b.g === 'f';
+  dressFrom(ch, b, shirt);
   while (u.hairG.children.length) u.hairG.remove(u.hairG.children[0]); while (u.bodyG.children.length) u.bodyG.remove(u.bodyG.children[0]);
   if (!b) { u.hair.visible = true; u.torso.scale.set(0.9, 1.0, 0.5); u.shL.position.x = -0.6; u.shR.position.x = 0.6; return; } // passers-by keep their random looks
   const sk = mat(SKINS[b.skin] || SKINS[2]); u.head.material = sk; u.handL.material = sk; u.handR.material = sk;
@@ -175,10 +203,16 @@ function applyBody(ch, b, shirt) {
   if (!f && acc === 1) bx(Bd, 0.3, 0.06, 0.06, 0, 0, 2.24, 0.32, { mat: hm }); if (!f && acc === 2) { bx(Bd, 0.42, 0.24, 0.12, 0, 0, 2.14, 0.24, { mat: hm }); bx(Bd, 0.3, 0.06, 0.06, 0, 0, 2.24, 0.32, { mat: hm }); }
   if (f && acc === 1) bx(Bd, 0.05, 0.05, 0.02, 0xd7331f, 0, 2.47, 0.33); if (f && acc === 2) for (const x of [-1, 1]) sph(Bd, 0.06, GOLD, x * 0.34, 2.2, 0, glow(GOLD));
 }
+function dressFrom(ch, b, shirt) { // the realistic body follows the same avatar choices as the box figure
+  const u = ch.userData, d = u.dress; const prevG = d.g;
+  if (b) Object.assign(d, { g: b.g === 'f' ? 'f' : 'm', skin: SKINS[b.skin] || SKINS[2], hair: b.hair | 0, hairColor: HAIRC[b.hc] || HAIRC[0], top: b.top | 0, pants: PANTS_C[b.pants] || PANTS_C[0], pantsStyle: (b.pants | 0) === 1 ? 1 : 0, beard: b.g === 'f' ? 0 : [0, 'moonchh', 'full'][b.acc | 0] || 0 });
+  if (shirt != null) d.shirt = shirt;
+  if (u.human && prevG !== d.g) { unhumanize(ch); humanize(ch); } else if (u.human) { HU.dressHuman(u.human, d); humanHair(u); }
+}
 function setLook(ch, look) {
   const u = ch.userData; const shirt = look.tint != null ? look.tint : look.shirt; const m = mat(shirt); u.torso.material = m; u.armL.material = m; u.armR.material = m;
   for (const grp of [u.hatG, u.blingG, u.blingL, u.blingR]) while (grp.children.length) grp.remove(grp.children[0]);
-  u.hair.visible = true; const hat = look.hat; applyBody(ch, look.body, look.shirt); u.hairG.visible = !(look.body && look.body.g !== 'f' && (hat === 'pagdi' || hat === 'safa' || hat === 'cap'));
+  u.hair.visible = true; const hat = look.hat; u.hatType = hat; applyBody(ch, look.body, look.tint != null ? look.tint : look.shirt); u.hairG.visible = !(look.body && look.body.g !== 'f' && (hat === 'pagdi' || hat === 'safa' || hat === 'cap'));
   if (hat === 'cap') { cyl(u.hatG, 0.36, 0.2, 0x1d4f91, 0, 2.58, 0); bx(u.hatG, 0.5, 0.05, 0.4, 0x1d4f91, 0, 2.5, 0.3); }
   else if (hat === 'pagdi') { u.hair.visible = false; cyl(u.hatG, 0.4, 0.36, 0xf28c1b, 0, 2.58, 0); sph(u.hatG, 0.18, 0xf6c026, 0, 2.78, 0.05); }
   else if (hat === 'safa') { u.hair.visible = false; cyl(u.hatG, 0.42, 0.4, 0xd7331f, 0, 2.6, 0); bx(u.hatG, 0.16, 0.9, 0.06, 0xd7331f, 0.1, 2.15, -0.36); }
@@ -195,10 +229,11 @@ function setLook(ch, look) {
 }
 function animChar(ch, dt, mode, speedMul) {
   const u = ch.userData; // mode: 0 idle, 1 walk, 3 dance
+  u.sit = false; const h = u.human; if (h && h.root.visible) humanAnim(u, h, dt, mode, speedMul);
   if (mode === 3) {
     u.danceT += dt * 8; const s = Math.sin(u.danceT);
     u.shL.rotation.x = -2.6 + s * 0.4; u.shR.rotation.x = -2.6 - s * 0.4; u.shL.rotation.z = -0.3; u.shR.rotation.z = 0.3;
-    u.hipL.rotation.x = Math.max(0, s) * 0.8; u.hipR.rotation.x = Math.max(0, -s) * 0.8; ch.children[2].position.y = 1.5 + Math.abs(s) * 0.08; return;
+    u.hipL.rotation.x = Math.max(0, s) * 0.8; u.hipR.rotation.x = Math.max(0, -s) * 0.8; u.torso.position.y = 1.5 + Math.abs(s) * 0.08; return;
   }
   u.shL.rotation.z = 0; u.shR.rotation.z = 0;
   if (mode === 1) u.walk += dt * 9 * (speedMul || 1); else u.walk *= 0.85;
@@ -206,18 +241,24 @@ function animChar(ch, dt, mode, speedMul) {
   u.hipL.rotation.x = s; u.hipR.rotation.x = -s; u.shL.rotation.x = -s * 0.8;
   if (u.punchT > 0) { u.punchT -= dt; u.shR.rotation.x = -1.6; } else u.shR.rotation.x = s * 0.8;
 }
-function sitChar(ch) { const u = ch.userData; u.hipL.rotation.x = -1.3; u.hipR.rotation.x = -1.3; u.shL.rotation.x = -0.9; u.shR.rotation.x = -0.9; u.shL.rotation.z = 0; u.shR.rotation.z = 0; }
+function humanAnim(u, h, dt, mode, speedMul) {
+  if (u.punchT > 0 && !h.punching) { h.punching = 0.42; HU.play(h, (h.alt = !h.alt) ? 'jab' : 'cross', 0.06, 1.7); }
+  if (h.punching) { h.punching -= dt; if (h.punching <= 0) h.punching = 0; }
+  if (!h.punching) { const k = mode === 3 ? 'dance' : mode === 1 ? (speedMul > 1.4 ? 'run' : speedMul > 1.15 ? 'jog' : 'walk') : 'idle'; HU.play(h, k, 0.22, k === 'walk' ? Math.min(1.5, 1.05 * (speedMul || 1)) : 1); }
+  h.mixer.update(dt); u.animF = HFRAME;
+}
+function sitChar(ch) { const u = ch.userData; u.sit = true; if (u.human && u.human.cur !== 'sit') { HU.play(u.human, 'sit', 0.15); u.human.mixer.update(0.02); } u.hipL.rotation.x = -1.3; u.hipR.rotation.x = -1.3; u.shL.rotation.x = -0.9; u.shR.rotation.x = -0.9; u.shL.rotation.z = 0; u.shR.rotation.z = 0; }
 
 function plateMesh(text) { const t = new THREE.CanvasTexture(signCanvas(text, null, '#ffffff', '#111111', 256, 64)); return new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), new THREE.MeshBasicMaterial({ map: t })); }
 function makeVehicle(type, colorOverride, mods, plate) {
   const g = new THREE.Group(); const V = D.VEH[type]; const col = colorOverride || (V && V.color) || 0xcccccc; mods = mods || {};
   const tyre = mat(0x161616);
   const wheel = (x, y, z, r) => { const w = new THREE.Mesh(CYL, tyre); w.scale.set(r, 0.3, r); w.rotation.z = Math.PI / 2; w.position.set(x, y, z); g.add(w); return w; };
-  if (type === 'auto') { bx(g, 1.6, 1.0, 2.6, 0x2e9e4a, 0, 0.9, 0); bx(g, 1.7, 0.12, 2.7, 0x111111, 0, 2.05, 0.05); bx(g, 1.5, 0.5, 1.0, 0xf6c026, 0, 1.65, 1.1); for (const a of [[-0.75, -0.9], [0.75, -0.9], [-0.75, 1.4], [0.75, 1.4]]) bx(g, 0.08, 0.9, 0.08, 0x222222, a[0], 1.6, a[1]); wheel(0, 0.35, 1.25, 0.35); wheel(-0.75, 0.35, -0.9, 0.35); wheel(0.75, 0.35, -0.9, 0.35); g.userData.len = 2.8; g.userData.rad = 1.3; return g; }
-  if (type === 'bus') { bx(g, 2.6, 2.8, 10, 0x2563b8, 0, 1.9, 0); bx(g, 2.62, 0.9, 9.6, 0x9fd3f0, 0, 2.6, 0); bx(g, 2.62, 0.5, 10.02, 0xf5f5f5, 0, 1.2, 0); wheel(-1.2, 0.55, 3.5, 0.55); wheel(1.2, 0.55, 3.5, 0.55); wheel(-1.2, 0.55, -3.5, 0.55); wheel(1.2, 0.55, -3.5, 0.55); sign(g, 'GURUGRAM CITY BUS', null, '#f6c026', '#1b1410', 4, 0.6, 1.32, 1.4, 0, Math.PI / 2); g.userData.len = 10; g.userData.rad = 2.5; return g; }
-  if (type === 'truck') { bx(g, 2.4, 2.2, 2.2, 0xf28c1b, 0, 1.7, 3.2); bx(g, 2.42, 0.8, 0.1, 0x9fd3f0, 0, 2.2, 4.3); bx(g, 2.5, 2.8, 6.4, 0xd7331f, 0, 2.2, -1.2); sign(g, 'HORN OK PLEASE', 'Buri nazar wale tera muh kala', '#f6c026', '#d7331f', 2.4, 0.9, 0, 2.2, -4.42, Math.PI); sign(g, 'JAI HARYANA', 'Dalal Transport Co.', '#1a8a4a', '#fff4d8', 5, 1.2, 1.27, 2.3, -1.2, Math.PI / 2); sign(g, 'JAI HARYANA', 'Dalal Transport Co.', '#1a8a4a', '#fff4d8', 5, 1.2, -1.27, 2.3, -1.2, -Math.PI / 2); wheel(-1.15, 0.55, 3.0, 0.55); wheel(1.15, 0.55, 3.0, 0.55); wheel(-1.15, 0.55, -2.8, 0.55); wheel(1.15, 0.55, -2.8, 0.55); g.userData.len = 8; g.userData.rad = 2.2; return g; }
+  if (type === 'auto') { RL.auto(g); g.userData.len = 2.8; g.userData.rad = 1.3; return g; }
+  if (type === 'bus') { RL.bus(g); sign(g, 'GURUGRAM CITY BUS', null, '#f6c026', '#1b1410', 4, 0.6, 1.32, 1.4, 0, Math.PI / 2); sign(g, 'GURUGRAM CITY BUS', null, '#f6c026', '#1b1410', 4, 0.6, -1.32, 1.4, 0, -Math.PI / 2); g.userData.len = 10; g.userData.rad = 2.5; return g; }
+  if (type === 'truck') { RL.truck(g); sign(g, 'HORN OK PLEASE', 'Buri nazar wale tera muh kala', '#f6c026', '#d7331f', 2.4, 0.9, 0, 2.2, -4.42, Math.PI); sign(g, 'JAI HARYANA', 'Dalal Transport Co.', '#1a8a4a', '#fff4d8', 5, 1.2, 1.27, 2.4, -1.2, Math.PI / 2); sign(g, 'JAI HARYANA', 'Dalal Transport Co.', '#1a8a4a', '#fff4d8', 5, 1.2, -1.27, 2.4, -1.2, -Math.PI / 2); g.userData.len = 8; g.userData.rad = 2.2; return g; }
   if (type === 'tractor') { bx(g, 1.4, 1.0, 2.2, 0xd7331f, 0, 1.3, 0.6); bx(g, 1.2, 0.12, 1.2, 0x222222, 0, 2.6, -0.6); bx(g, 0.08, 1.2, 0.08, 0x222222, 0, 2.0, 0.2); wheel(-0.95, 0.9, -0.6, 0.9); wheel(0.95, 0.9, -0.6, 0.9); wheel(-0.7, 0.45, 1.4, 0.45); wheel(0.7, 0.45, 1.4, 0.45); g.userData.len = 3.5; g.userData.rad = 1.6; return g; }
-  if (type === 'police') { bx(g, 2.0, 1.3, 4.4, 0xf5f5f5, 0, 1.1, 0); bx(g, 1.9, 0.8, 2.4, 0x1c2a36, 0, 2.15, -0.3); bx(g, 2.02, 0.3, 4.42, 0x2563b8, 0, 1.1, 0); bx(g, 0.5, 0.2, 0.3, 0xd7331f, -0.3, 2.65, 0, { mat: glow(0xff2020) }); bx(g, 0.5, 0.2, 0.3, 0x2563b8, 0.3, 2.65, 0, { mat: glow(0x2060ff) }); for (const a of [[-1, 1.4], [1, 1.4], [-1, -1.4], [1, -1.4]]) wheel(a[0], 0.5, a[1], 0.5); g.userData.len = 4.4; g.userData.rad = 2; return g; }
+  if (type === 'police') { const c = RL.car(g, 0xf5f5f5, { big: false }); bx(g, c.Wd + 0.02, 0.22, c.Ln - 0.6, 0, 0, c.base + c.H * 0.55, 0, { mat: RL.paint(0x2563b8) }); bx(g, 0.5, 0.18, 0.3, 0, -0.3, c.top + 0.12, -0.2, { mat: glow(0xff2020) }); bx(g, 0.5, 0.18, 0.3, 0, 0.3, c.top + 0.12, -0.2, { mat: glow(0x2060ff) }); g.userData.len = 4.4; g.userData.rad = 2; return g; }
   if (type === 'naav' || type === 'policeboat') { const pol = type === 'policeboat'; const hc = pol ? 0xf5f5f5 : col; bx(g, 2.0, 0.7, 4.6, hc, 0, 0.45, 0); bx(g, 1.4, 0.5, 1.2, hc, 0, 0.4, 2.6).rotation.x = 0.35; bx(g, 1.7, 0.12, 4.2, 0x7a5230, 0, 0.82, -0.1); bx(g, 1.8, 0.25, 0.4, pol ? 0x2563b8 : 0x1a8a4a, 0, 0.9, -0.6); bx(g, 0.5, 0.9, 0.5, 0x2b2b2b, 0, 0.9, -2.5); bx(g, 0.15, 0.7, 0.15, 0x555555, 0, 0.2, -2.6);
     if (pol) { bx(g, 0.5, 0.2, 0.3, 0xd7331f, -0.3, 1.5, 0.8, { mat: glow(0xff2020) }); bx(g, 0.5, 0.2, 0.3, 0x2563b8, 0.3, 1.5, 0.8, { mat: glow(0x2060ff) }); sign(g, 'JAL POLICE', null, '#2563b8', '#ffffff', 3.2, 0.5, 1.01, 0.55, 0, Math.PI / 2); }
     else { bx(g, 0.05, 1.6, 0.05, 0x333333, 0.7, 1.6, 1.6); bx(g, 0.7, 0.45, 0.03, 0xf6c026, 0.37, 2.2, 1.6); sign(g, 'JUGAADU', null, '#1b1410', '#f6c026', 2.6, 0.45, 1.01, 0.55, 0, Math.PI / 2); }
@@ -231,17 +272,13 @@ function makeVehicle(type, colorOverride, mods, plate) {
     if (plate) { const p = plateMesh(plate); p.scale.set(0.5, 0.5, 0.5); p.position.set(0, 0.75, -0.86); p.rotation.y = Math.PI; g.add(p); }
     g.userData.len = 1.8; g.userData.rad = 0.9; g.userData.two = true; return g;
   }
-  const big = type === 'desert' || type === 'cruiser'; const Ln = big ? 4.8 : 4.0, Wd = big ? 2.1 : 1.8, H = big ? 1.3 : 1.0;
-  bx(g, Wd, H, Ln, col, 0, 0.35 + H / 2 + 0.15, 0);
-  bx(g, Wd - 0.15, 0.8, Ln * 0.5, mods.film ? 0x050505 : 0x1c2a36, 0, 0.5 + H + 0.4, -0.1); bx(g, Wd - 0.1, 0.08, Ln * 0.52, col, 0, 0.5 + H + 0.84, -0.1);
-  bx(g, Wd * 0.8, 0.18, 0.06, 0xfff3c0, 0, 0.45 + H * 0.6, Ln / 2 + 0.01, { mat: glow(0xfff3c0) }); bx(g, Wd * 0.8, 0.15, 0.06, 0xff3020, 0, 0.45 + H * 0.6, -Ln / 2 - 0.01, { mat: glow(0xff3020) });
-  const wr = big ? 0.55 : 0.42; wheel(-Wd / 2, wr, Ln * 0.32, wr); wheel(Wd / 2, wr, Ln * 0.32, wr); wheel(-Wd / 2, wr, -Ln * 0.32, wr); wheel(Wd / 2, wr, -Ln * 0.32, wr);
-  if (type === 'desert') { cyl(g, 0.5, 0.3, 0x111111, 0, 1.4, -Ln / 2 - 0.2).rotation.x = Math.PI / 2; }
-  if (type === 'cruiser') bx(g, Wd * 0.6, 0.06, 0.06, 0xd9b24a, 0, 0.5 + H * 0.85, Ln / 2 + 0.02);
+  const big = type === 'desert' || type === 'cruiser'; const C = RL.car(g, col, { big, film: mods.film }), Ln = C.Ln, Wd = C.Wd, H = C.H;
+  if (type === 'desert') { cyl(g, 0.5, 0.3, 0x111111, 0, 1.3, -Ln / 2 - 0.2).rotation.x = Math.PI / 2; } // spare wheel
+  if (type === 'cruiser') bx(g, Wd * 0.6, 0.06, 0.06, 0, 0, C.base + H * 0.8, Ln / 2 + 0.02, { mat: RL.chrome() });
   if (mods.bull) { bx(g, Wd * 0.9, 0.12, 0.12, 0x9a9a9a, 0, 0.6, Ln / 2 + 0.35); bx(g, Wd * 0.9, 0.12, 0.12, 0x9a9a9a, 0, 1.1, Ln / 2 + 0.35); for (const x of [-0.6, 0, 0.6]) bx(g, 0.1, 0.7, 0.1, 0x9a9a9a, x * Wd / 2, 0.85, Ln / 2 + 0.35); }
   if (mods.glow !== undefined && mods.glow !== false) { const gc = D.GLOW_COLORS[mods.glow | 0] || D.GLOW_COLORS[0]; const p = new THREE.Mesh(new THREE.PlaneGeometry(Wd + 0.6, Ln + 0.6), new THREE.MeshBasicMaterial({ color: gc, transparent: true, opacity: 0.55, depthWrite: false })); p.rotation.x = -Math.PI / 2; p.position.y = 0.06; g.add(p); }
-  if (mods.sticker !== undefined && mods.sticker !== false) sign(g, D.STICKERS[mods.sticker | 0] || 'DESI BOYZ', null, '#111111', '#f6c026', Wd * 0.7, 0.3, 0, 0.5 + H + 0.65, -Ln * 0.35 - 0.02, Math.PI);
-  if (plate) { const pf = plateMesh(plate); pf.position.set(0, 0.6, Ln / 2 + 0.03); g.add(pf); const pb = plateMesh(plate); pb.position.set(0, 0.6, -Ln / 2 - 0.03); pb.rotation.y = Math.PI; g.add(pb); }
+  if (mods.sticker !== undefined && mods.sticker !== false) sign(g, D.STICKERS[mods.sticker | 0] || 'DESI BOYZ', null, '#111111', '#f6c026', Wd * 0.7, 0.3, 0, C.base + H * 0.75, -Ln / 2 - 0.03, Math.PI);
+  if (plate) { const pf = plateMesh(plate); pf.position.set(0, C.base + 0.3, Ln / 2 + 0.09); g.add(pf); const pb = plateMesh(plate); pb.position.set(0, C.base + 0.3, -Ln / 2 - 0.09); pb.rotation.y = Math.PI; g.add(pb); }
   g.userData.len = Ln; g.userData.rad = big ? 2.0 : 1.7; return g;
 }
 
@@ -261,22 +298,27 @@ function cart(p, x, z) { const g = new THREE.Group(); g.position.set(x, 0, z); g
 function npcStatic(parent, x, z, ry, shirt, name, hat) { const c = makeChar(shirt || pick(D.SHIRTS)); c.position.set(x, 0, z); c.rotation.y = ry || 0; if (hat) setLook(c, { shirt: shirt || 0xffffff, hat }); parent.add(c); if (name) { const l = labelSprite(name, { fs: 34, scale: 0.5 }); l.position.set(x, 3.0, z); parent.add(l); } STATIC_NPCS.push(c); return c; }
 
 function buildGround() {
-  const g = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshLambertMaterial({ map: texFrom((x, w, h) => { x.fillStyle = '#8a8257'; x.fillRect(0, 0, w, h); for (let i = 0; i < 500; i++) { x.fillStyle = pick(['#7d7650', '#958c5e', '#6f7a48', '#a19566']); x.fillRect(Math.random() * w, Math.random() * h, 3, 3); } }, 128, 128, 80, 80) }));
+  const T = (c, rx, ry) => { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 8; return t; };
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), new THREE.MeshLambertMaterial({ map: T(RL.groundTex(), 180, 180) }));
   g.rotation.x = -Math.PI / 2; world.add(g);
-  const roadTex = texFrom((x, w, h) => { x.fillStyle = '#3b3b3d'; x.fillRect(0, 0, w, h); for (let i = 0; i < 300; i++) { x.fillStyle = pick(['#363638', '#424245', '#2f2f31']); x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } x.fillStyle = '#e9e2c8'; x.fillRect(w / 2 - 2, 0, 4, h * 0.55); x.fillStyle = '#d9d2b8'; x.fillRect(4, 0, 3, h); x.fillRect(w - 7, 0, 3, h); }, 64, 64, 1, 60);
-  const rm = new THREE.MeshLambertMaterial({ map: roadTex });
+  const rm = new THREE.MeshLambertMaterial({ map: T(RL.asphaltTex(), 1, 60) });
   for (const r of ROADS) { const a = new THREE.Mesh(new THREE.PlaneGeometry(14, 900), rm); a.rotation.x = -Math.PI / 2; a.position.set(r, 0.03, 0); world.add(a); const b = new THREE.Mesh(new THREE.PlaneGeometry(14, 900), rm); b.rotation.x = -Math.PI / 2; b.rotation.z = Math.PI / 2; b.position.set(0, 0.035, r); world.add(b); }
-  for (const x of ROADS) for (const z of ROADS) bx(world, 14, 0.02, 14, 0x3a3a3c, x, 0.045, z);
-  const side = new THREE.MeshLambertMaterial({ map: texFrom((x, w, h) => { x.fillStyle = '#b9b2a2'; x.fillRect(0, 0, w, h); x.strokeStyle = '#a39c8c'; x.lineWidth = 2; for (let i = 0; i <= w; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, h); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(w, i); x.stroke(); } }, 64, 64, 34, 34) });
-  const grass = new THREE.MeshLambertMaterial({ map: texFrom((x, w, h) => { x.fillStyle = '#4f8a3a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 400; i++) { x.fillStyle = pick(['#467e33', '#5a9844', '#3f7330']); x.fillRect(Math.random() * w, Math.random() * h, 2, 3); } }, 64, 64, 30, 30) });
-  for (const d of DIST) { const green = ['park', 'forest', 'village'].includes(d[3]); const m = new THREE.Mesh(BOX, green ? [side, side, grass, side, side, side] : side); m.scale.set(136, 0.2, 136); m.position.set(d[0] * 150, 0.1, d[1] * 150); world.add(m); }
+  const jm = new THREE.MeshLambertMaterial({ map: T(RL.plainAsphaltTex(), 1, 1) }); for (const x of ROADS) for (const z of ROADS) bx(world, 14, 0.02, 14, 0, x, 0.045, z, { mat: jm });
+  // zebra crossings on all four arms of every chowk
+  const zq = new THREE.Quaternion(), zm = new THREE.Matrix4(), zs = new THREE.Vector3(1, 1, 1), zp = new THREE.Vector3(), ze = new THREE.Euler(); const zebra = [];
+  for (const x of ROADS) for (const z of ROADS) for (const [dx, dz] of [[0, 9.5], [0, -9.5], [9.5, 0], [-9.5, 0]]) zebra.push([x + dx, z + dz, dx ? Math.PI / 2 : 0]);
+  const zi = new THREE.InstancedMesh(new THREE.PlaneGeometry(12, 3.2), new THREE.MeshLambertMaterial({ map: T(RL.zebraTex(), 1, 1), transparent: true, depthWrite: false }), zebra.length);
+  zebra.forEach((q, i) => { ze.set(-Math.PI / 2, 0, q[2]); zq.setFromEuler(ze); zp.set(q[0], 0.055, q[1]); zm.compose(zp, zq, zs); zi.setMatrixAt(i, zm); }); zi.frustumCulled = false; world.add(zi);
+  const side = new THREE.MeshLambertMaterial({ map: T(RL.paversTex(), 34, 34) }), kerb = new THREE.MeshLambertMaterial({ map: T(RL.kerbTex(), 68, 1) }); // painted black-and-yellow kerb stones
+  const grass = new THREE.MeshLambertMaterial({ map: T(RL.grassTex(), 14, 14) });
+  for (const d of DIST) { const green = ['park', 'forest', 'village'].includes(d[3]); const m = new THREE.Mesh(BOX, [kerb, kerb, green ? grass : side, side, kerb, kerb]); m.scale.set(136, 0.2, 136); m.position.set(d[0] * 150, 0.1, d[1] * 150); world.add(m); }
 }
 function buildInstances() {
-  const trunkG = new THREE.CylinderGeometry(0.25, 0.35, 3, 6), leafG = new THREE.SphereGeometry(2.2, 8, 6);
-  const tr = new THREE.InstancedMesh(trunkG, mat(0x6b4a2b), TREES.length), lf = new THREE.InstancedMesh(leafG, mat(0x2f7a35), TREES.length);
+  const trunkG = new THREE.CylinderGeometry(0.18, 0.38, 3, 7), leafG = RL.canopy();
+  const tr = new THREE.InstancedMesh(trunkG, mat(0x5a4632), TREES.length), lf = new THREE.InstancedMesh(leafG, new THREE.MeshLambertMaterial({ color: 0xffffff }), TREES.length); const lc = new THREE.Color();
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-  TREES.forEach((t, i) => { s.set(t[2], t[2], t[2]); p.set(t[0], 1.5 * t[2], t[1]); m.compose(p, q, s); tr.setMatrixAt(i, m); p.set(t[0], 4 * t[2], t[1]); s.set(t[2], t[2] * 0.9, t[2]); m.compose(p, q, s); lf.setMatrixAt(i, m); });
-  world.add(tr, lf);
+  const UP = new THREE.Vector3(0, 1, 0); TREES.forEach((t, i) => { q.setFromAxisAngle(UP, t[0] * 7.3 + t[1]); s.set(t[2], t[2], t[2]); p.set(t[0], 1.5 * t[2], t[1]); m.compose(p, q, s); tr.setMatrixAt(i, m); p.set(t[0], 4 * t[2], t[1]); s.set(t[2], t[2] * 0.9, t[2]); m.compose(p, q, s); lf.setMatrixAt(i, m); lf.setColorAt(i, lc.setHex(pick([0x2f7a35, 0x3b8a3a, 0x2a6b30, 0x4a8a3c, 0x356f2c]))); });
+  if (lf.instanceColor) lf.instanceColor.needsUpdate = true; world.add(tr, lf);
   const poleG = new THREE.CylinderGeometry(0.12, 0.15, 7, 6), headG = new THREE.BoxGeometry(1.4, 0.25, 0.5);
   const po = new THREE.InstancedMesh(poleG, mat(0x555a60), LAMPS.length); LAMP_MAT = new THREE.MeshLambertMaterial({ color: 0x777777, emissive: 0xffd27a, emissiveIntensity: 0 });
   const he = new THREE.InstancedMesh(headG, LAMP_MAT, LAMPS.length);
@@ -1198,7 +1240,7 @@ function checkBump() {
 
 // ================================================================ AMBIENT NPCs
 const PEDS = [], CARS = [], COWS = [], MALLNPC = [];
-function makeCow() { const g = new THREE.Group(); const w = mat(0xf2efe6); bx(g, 1.1, 1.0, 2.2, w, 0, 1.3, 0); bx(g, 0.6, 0.6, 0.8, w, 0, 1.7, 1.4); bx(g, 0.5, 0.15, 0.1, 0x7a6a4a, 0, 2.05, 1.3); for (const a of [[-0.4, -0.8], [0.4, -0.8], [-0.4, 0.8], [0.4, 0.8]]) bx(g, 0.2, 0.9, 0.2, w, a[0], 0.45, a[1]); bx(g, 0.4, 0.3, 0.05, 0x8b5a2b, 0.5, 1.4, 0.3); return g; }
+function makeCow() { const g = new THREE.Group(); RL.cow(g); return g; }
 function spawnAmbient() {
   for (let k = 0; k < 26; k++) { const d = pick(DIST); const c = makeChar(pick(D.SHIRTS)); if (Math.random() < 0.25) setLook(c, { shirt: c.userData.torso.material.color.getHex(), hat: pick(['pagdi', 'cap', 'none']) }); scene.add(c); PEDS.push({ mesh: c, cx: d[0] * 150, cz: d[1] * 150, t: rnd(0, 4), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.6, 2.4), talkT: rnd(5, 30) }); }
   for (let k = 0; k < 28; k++) { const along = Math.random() < 0.5 ? 'x' : 'z'; const r = pick(ROADS); const dir = Math.random() < 0.5 ? 1 : -1; const type = k < 11 ? 'auto' : k < 13 ? 'bus' : k < 15 ? 'truck' : pick(['chhotu', 'desert', 'cruiser', 'chhotu']); const v = makeVehicle(type, ['chhotu', 'desert', 'cruiser'].includes(type) ? pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0x151515, 0xf3b61f, 0xffffff]) : null); scene.add(v); CARS.push({ mesh: v, along, line: r + dir * 3.2, dir, p: rnd(-440, 440), sp: type === 'bus' || type === 'truck' ? 11 : rnd(12, 18), honkT: 0, type }); }
@@ -1418,13 +1460,15 @@ function makeCard(photo) {
 
 // ================================================================ DAY / NIGHT
 // DAY.t = fraction of the day in Gurugram (IST, UTC+5:30); DAY.fixed pins it for promo captures
-const DAY = { t: 0.3, fixed: false }; const tmpC = new THREE.Color();
+const DAY = { t: 0.3, fixed: false }; const tmpC = new THREE.Color(), HAZE = new THREE.Color(0xd2d3cc);
+const DAYV = { horizon: scene.fog.color, sunVec: new THREE.Vector3(0.5, 0.6, 0.4), day: 1, dusk: 0, night: 0, wet: 0, inside: false, map: false, t: 0, dt: 0 };
 function updateDay(dt) {
   if (!DAY.fixed) DAY.t = ((Date.now() + (G.timeOffset || 0) * 1000 + 5.5 * 3600e3) % 864e5) / 864e5; let t = DAY.t; if (G.ev?.type === 'diwali') t = 0.92;
   const sunH = Math.sin((t - 0.25) * Math.PI * 2); const day = clamp(sunH * 1.6 + 0.3, 0, 1); const dusk = clamp(1 - Math.abs(sunH) * 4, 0, 1); const night = 1 - day;
   if (G.inside) { const club = G.inside === 'club'; scene.background.copy(club ? SKY_CLUB : SKY_IN); scene.fog.color.copy(scene.background); hemi.intensity = club ? 0.6 : 1.05; sun.intensity = club ? 0.2 : 0.45; for (const m of NIGHT_MATS) m.emissiveIntensity = 0; return; }
-  tmpC.copy(SKY_NIGHT).lerp(SKY_DAY, day); tmpC.lerp(SKY_DUSK, dusk * 0.6); if (G.ev?.type === 'flood') tmpC.lerp(new THREE.Color(0x6b7680), 0.6); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
-  hemi.intensity = 0.35 + day * 0.65; sun.intensity = 0.1 + day * 0.7; sun.position.set(Math.cos((t - 0.25) * Math.PI * 2) * 200, Math.max(30, sunH * 200), 80);
+  tmpC.copy(SKY_NIGHT).lerp(SKY_DAY, day); tmpC.lerp(HAZE, day * 0.45); tmpC.lerp(SKY_DUSK, dusk * 0.6); if (G.ev?.type === 'flood') tmpC.lerp(new THREE.Color(0x6b7680), 0.6); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
+  // strong sun and softer fill: sunlit sides bright, shadows and shaded sides cooler; warm light at sunrise and sunset
+  hemi.intensity = 0.3 + day * 0.45; sun.intensity = 0.08 + day * 0.72; sun.color.setRGB(1, 1 - dusk * 0.25, 1 - dusk * 0.45); DAYV.sunVec.set(Math.cos((t - 0.25) * Math.PI * 2), Math.max(0.15, sunH), 0.4).normalize(); sun.position.copy(DAYV.sunVec).multiplyScalar(200); DAYV.day = day; DAYV.dusk = dusk; DAYV.night = night;
   const ni = clamp(Math.max(night * 1.2 - 0.1, WX.wl * 0.8), 0, 1); for (const m of NIGHT_MATS) m.emissiveIntensity = ni * 0.9; if (LAMP_MAT) LAMP_MAT.emissiveIntensity = ni;
   weatherSky();
 }
@@ -1701,7 +1745,7 @@ function buildCityFill() {
   }
   for (let i = TREES.length - 1; i >= 0; i--) if (colHit(TREES[i][0] - 0.5, TREES[i][0] + 0.5, TREES[i][1] - 0.5, TREES[i][1] + 0.5)) TREES.splice(i, 1);
   const inst = (geo, material, n) => { const im = new THREE.InstancedMesh(geo, material, n); world.add(im); return im; };
-  const body = inst(BOX, new THREE.MeshLambertMaterial({ color: 0xffffff }), shops.length), shut = inst(BOX, mat(0x4a4f55), shops.length), awn = inst(BOX, new THREE.MeshLambertMaterial({ color: 0xffffff }), shops.length), win = inst(BOX, mat(0x2b3a4a), shops.length);
+  const body = inst(BOX, new THREE.MeshLambertMaterial({ color: 0xffffff, map: new THREE.CanvasTexture(RL.shopWallTex()) }), shops.length), shut = inst(BOX, mat(0x4a4f55), shops.length), awn = inst(BOX, new THREE.MeshLambertMaterial({ color: 0xffffff }), shops.length), win = inst(BOX, RL.glass(), shops.length);
   const place = (im, i, x, y, z, ry, sx, sy, sz) => { q.setFromAxisAngle(up, ry); ps.set(x, y, z); sc.set(sx, sy, sz); m4.compose(ps, q, sc); im.setMatrixAt(i, m4); };
   const signGeo = SHOP_NAMES.map(() => ({ p: [], uv: [], ix: [] }));
   shops.forEach((s, i) => {
@@ -1729,7 +1773,7 @@ function buildCityFill() {
   for (let k = 0; k < N; k++) {
     const d = pick(DIST); const p = { cx: d[0] * 150, cz: d[1] * 150, t: Math.random(), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.3, 2.3), L: rnd(65.4, 67.4), still: k > 120, x: 0, z: 0, r: 0, knock: 0, kv: 0 };
     if (p.still) { const Z = pick(ZONES.filter(z2 => z2.zone === 'out')); const a = rnd(0, Math.PI * 2), rr = rnd(4.5, 8); p.x = Z.x + Math.cos(a) * rr; p.z = Z.z + Math.sin(a) * rr; p.r = Math.atan2(Z.x - p.x, Z.z - p.z) + rnd(-1, 1); }
-    torso.setColorAt(k, col.setHex(pick(D.SHIRTS))); head.setColorAt(k, col.setHex(pick([0xc68863, 0xb57650, 0xd9a07a, 0x9c6644]))); CROWD.push(p);
+    const sh = pick(D.SHIRTS); p.dress = randomDress(sh, {}); torso.setColorAt(k, col.setHex(sh)); head.setColorAt(k, col.setHex(p.dress.skin)); CROWD.push(p);
   }
   torso.instanceColor.needsUpdate = true; head.instanceColor.needsUpdate = true; CROWD.meshes = [legs, torso, head];
 }
@@ -1742,12 +1786,30 @@ function updateCrowd(dt) {
     if (carHit && !p.knock && Math.abs(p.x - G.x) < 2.2 && Math.abs(p.z - G.z) < 2.2 && Math.hypot(p.x - G.x, p.z - G.z) < carHit) knockPerson(p);
     if (!p.knock && p.still && p.placed) return; p.placed = true; // a standing group never moves unless someone runs into it
     if (!p.knock && (fr + k) % 6 && Math.abs(p.x - cx) + Math.abs(p.z - cz) > 170) return; // far away: refresh every 6th frame only
-    let fall = 0, lift = 0; if (p.knock) { p.knock -= dt; const age = 7 - p.knock; if (age < 0.9) { p.x += p.kx * dt; p.z += p.kz * dt; lift = Math.sin(age / 0.9 * Math.PI) * 2.2; fall = Math.min(1, age / 0.6); } else fall = 1; if (p.knock <= 0) { p.knock = 0; p.placed = false; if (p.still) p.r += 1; } }
-    const bob = p.still || p.knock ? 0 : Math.abs(Math.sin(t * 8 * p.sp + k)) * 0.08; e.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); q.setFromEuler(e);
-    const put = (im, oy, sx, sy, sz) => { off.set(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx, sy, sz); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
+    let fall = 0, lift = 0; p.fall = 0; p.lift = 0; if (p.knock) { p.knock -= dt; const age = 7 - p.knock; if (age < 0.9) { p.x += p.kx * dt; p.z += p.kz * dt; lift = Math.sin(age / 0.9 * Math.PI) * 2.2; fall = Math.min(1, age / 0.6); } else fall = 1; if (p.knock <= 0) { p.knock = 0; p.placed = false; if (p.still) p.r += 1; } }
+    p.fall = fall; p.lift = lift; const bob = p.still || p.knock ? 0 : Math.abs(Math.sin(t * 8 * p.sp + k)) * 0.08; e.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); q.setFromEuler(e); const hid = p.slot ? 0 : 1; // a realistic stand-in is showing this one
+    const put = (im, oy, sx, sy, sz) => { off.set(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx * hid, sy * hid, sz * hid); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
     put(legs, 0.5, 0.62, 1.0, 0.34); put(torso, 1.45, 0.86, 0.95, 0.46); put(head, 2.2, 0.32, 0.36, 0.32);
   });
   for (const im of CROWD.meshes) im.instanceMatrix.needsUpdate = true;
+  crowdHumans(dt);
+}
+// The crowd is one instanced box figure for speed. A small pool of realistic people stands in for the crowd members
+// nearest the camera (their box copy is hidden), so the people you actually look at are real.
+const CPOOL = [];
+function crowdHumans(dt) {
+  if (!HU.HUMANS.ready) return; const phone = document.body.classList.contains('touch') || Math.min(innerWidth, innerHeight) < 520;
+  if (!CPOOL.length) { const nM = phone ? 4 : 10, nF = phone ? 2 : 5; for (let i = 0; i < nM + nF; i++) { const g = i < nM ? 'm' : 'f', h = HU.makeHuman(g); h.root.visible = false; scene.add(h.root); CPOOL.push({ h, g, p: null }); } }
+  const release = s => { s.p.slot = null; s.p.placed = false; s.p = null; s.h.root.visible = false; };
+  if (G.inside || G.map) { for (const s of CPOOL) if (s.p) release(s); return; }
+  const R = phone ? 34 : 55, cx = camera.position.x, cz = camera.position.z; hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat);
+  const want = []; for (const p of CROWD) { const d = Math.hypot(p.x - cx, p.z - cz); if (d > R) continue; hSph.center.set(p.x, 1.2, p.z); if (!hFrustum.intersectsSphere(hSph)) continue; want.push([d, p]); }
+  want.sort((a, b) => a[0] - b[0]); const keep = new Set();
+  for (const g of ['m', 'f']) { const free = Math.floor(CPOOL.filter(s => s.g === g).length * (PERF.hk || 1)); want.filter(w => w[1].dress.g === g).slice(0, free).forEach(w => keep.add(w[1])); }
+  for (const s of CPOOL) if (s.p && !keep.has(s.p)) release(s);
+  for (const p of keep) if (!p.slot) { const s = CPOOL.find(x => !x.p && x.g === p.dress.g); if (!s) continue; s.p = p; p.slot = s; p.placed = false; HU.dressHuman(s.h, p.dress); }
+  for (const s of CPOOL) { if (!s.p) continue; const p = s.p, h = s.h; h.root.visible = true; const fall = p.fall || 0; h.root.position.set(p.x, (p.lift || 0) + (fall ? 0.25 : 0), p.z); h.root.rotation.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); // standing groups never set fall/lift
+    HU.play(h, p.still && !p.knock ? 'idle' : 'walk', 0.25, p.still ? 1 : Math.min(1.5, p.sp / 1.7)); h.mixer.update(dt); }
 }
 function knockPerson(p) { const sp = Math.max(6, Math.abs(G.vs)); p.knock = 7; p.kx = Math.sin(G.r) * sp * 0.5; p.kz = Math.cos(G.r) * sp * 0.5; G.vs *= 0.82; A.sfx('punch', 0.8); A.sfx('crash', 0.4); if (Math.random() < 0.6) toast(pick(['Oye! Andha se ke?', 'Bhai dekh ke chala!', 'Arre maar diya re!', 'Police bulaunga!']), 'bad'); G.hitPeople = (G.hitPeople || 0) + 1; if (G.hitPeople % 5 === 0 && !G.chase && !G.race && !G.story) { startChase({ near: true, secs: 25 }); toast('Logon ko thok raha hai? Police aa gayi!', 'bad'); } }
 // road hazards: potholes jolt the car, waterlogging slows everything, garbage blocks walkers unless they jump
@@ -2233,12 +2295,14 @@ function startGame(daily) {
   else { toast('Ram Ram, ' + P.name + '! Wapas aa gaya.'); if (daily && daily.streak > 1) setTimeout(() => toast('Day ' + daily.streak + ' streak: +' + fmt(daily.amt) + ' wallet mein', 'money'), 9000); }
 }
 
-let last = performance.now(), hungerT = 0, regenT = 0, hudT = 0;
+let last = performance.now(), hungerT = 0, regenT = 0, hudT = 0, shT = 99;
 const PERF = { acc: 0, n: 0, pr: Math.min(window.devicePixelRatio || 1, 1.5) };
 function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel ratio a step (1.5 → 1.25 → 1 → 0.85), fast again → step back up
-  PERF.acc += frameMs; PERF.n++; if (PERF.n < 120) return; const avg = PERF.acc / PERF.n; PERF.acc = PERF.n = 0; const max = Math.min(window.devicePixelRatio || 1, 1.5);
+  PERF.acc += frameMs; PERF.n++; if (PERF.n < 120 && PERF.acc < 2000) return; /* every ~2 s, sooner on a very slow device */ const avg = PERF.acc / PERF.n; PERF.acc = PERF.n = 0; const max = Math.min(window.devicePixelRatio || 1, 1.5);
   let pr = PERF.pr; if (avg > 26 && pr > 0.85) pr = Math.max(0.85, +(pr - 0.25).toFixed(2)); else if (avg < 15 && pr < max) pr = Math.min(max, +(pr + 0.25).toFixed(2));
   if (pr !== PERF.pr) { PERF.pr = pr; renderer.setPixelRatio(pr); resize(); }
+  // still slow at the lowest resolution: drop sun shadows first, then show fewer realistic people (the rest keep their simple figure); back up when fast
+  if (avg > 30 && PERF.pr <= 0.85) { if (!RL.Q.lowShadow) RL.Q.lowShadow = true; else PERF.hk = Math.max(0.15, (PERF.hk || 1) - 0.25); } else if (avg < 17) { if ((PERF.hk || 1) < 1) PERF.hk = Math.min(1, (PERF.hk || 1) + 0.25); else if (avg < 14) RL.Q.lowShadow = false; }
 }
 function loop(t) {
   requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
@@ -2258,7 +2322,8 @@ function loop(t) {
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
-  renderer.render(scene, camera);
+  updateHumans(dt); if ((shT += dt) > 2) { shT = 0; RL.shadowize(scene); }
+  Object.assign(DAYV, { wet: WX.wl, inside: !!G.inside, map: !!G.map, t: t / 1000, dt }); RL.frame(camera, G.started ? G.x : camera.position.x, G.started ? G.z : camera.position.z, DAYV); renderer.render(scene, camera);
 }
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
@@ -2266,5 +2331,6 @@ ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); 
 function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
+if (!/[?&]simple\b/.test(location.search)) HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~2.7 MB, cached after the first visit
 window.addEventListener('pagehide', saveLocal);
 

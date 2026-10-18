@@ -103,6 +103,7 @@ app.get('/admin', (req, res) => {
 <div class=w><table><tr><th>#</th><th>Name</th><th>Level</th><th>Money</th><th>Visits</th><th>Minutes</th><th>Joined</th><th>Last seen</th></tr>${rows || '<tr><td colspan=8>Abhi koi nahi</td></tr>'}</table></div>`);
 });
 app.use('/vendor/three', express.static(path.join(ROOT, 'node_modules/three/build'), { maxAge: '7d', immutable: true }));
+app.use('/vendor/three-jsm', express.static(path.join(ROOT, 'node_modules/three/examples/jsm'), { maxAge: '7d', immutable: true })); // GLTFLoader, SkeletonUtils for the people
 // The page needs absolute links for share previews (WhatsApp, Instagram, X): fill in this site's address.
 // PUBLIC_URL (e.g. https://gurugramlife.com) pins it; otherwise it comes from the request's host.
 const INDEX_HTML = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
@@ -123,7 +124,7 @@ for (const [p, render] of Object.entries(PAGES)) app.get([p, p + '/'], (req, res
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(robots()));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(sitemap()));
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).
-app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
+app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', file.includes(path.sep + 'models' + path.sep) ? 'public, max-age=604800' : file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
 app.use((req, res) => { res.status(404).type('html').send(notFound(req)); });
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8 * 1024 });
