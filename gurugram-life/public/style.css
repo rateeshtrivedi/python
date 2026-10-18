@@ -356,3 +356,5 @@ body.touch #controls .cbtn.gold{background:var(--sarson)}
   body.touch #bigtxt{top:14%}
 }
 body.touch #stat.open{z-index:8}body.touch #hud:has(#stat.open) #mchip,body.touch #hud:has(#stat.open) #job{display:none!important}
+
+.seolinks{text-align:center;font:700 13px var(--body);color:#7a4a1b}.seolinks a{color:#7a4a1b}

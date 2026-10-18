@@ -53,3 +53,17 @@ Use Cloudflare Registrar (sells .com at cost, and you need Cloudflare for step 3
 | `PUBLIC_URL` | (from the request) | Your site address, e.g. `https://yourdomain.com`, used in share previews |
 
 Load test (`node test/load.mjs 100 200 300`): with every player crowded into one spot, each player downloads about 17 KB/s whatever the crowd size, and the server uses roughly 15% of a CPU core at 100 players, 37% at 200 and 67% at 300. These numbers come from the test machine; Render's half-core Starter plan is why `render.yaml` caps live players at 200.
+
+## 5. Get found on Google (30 minutes, then days to weeks)
+
+The site is ready for search engines (titles, structured data, `/about`, `/how-to-play`, `/places`, `robots.txt`, `sitemap.xml`). Google still has to be told about it:
+
+1. **Both domains on Render.** In Render → `gurugram-life` → Settings → Custom Domains, make sure both `gurugramlife.com` and `www.gurugramlife.com` are added. The game sends the bare domain to `www` by itself.
+2. **Google Search Console.** Open search.google.com/search-console → **Add property** → **Domain** → `gurugramlife.com`. Google shows a TXT record; add it in Cloudflare → DNS → Records (type `TXT`, name `@`), then click **Verify**.
+   (Alternative: choose **URL prefix** `https://www.gurugramlife.com`, pick the **HTML tag** method, copy only the `content="..."` value into a Render environment variable `GOOGLE_SITE_VERIFICATION`, redeploy, then Verify.)
+3. **Submit the sitemap.** Search Console → **Sitemaps** → enter `sitemap.xml` → Submit.
+4. **Ask Google to crawl now.** Search Console → **URL inspection** → paste `https://www.gurugramlife.com/` → **Request indexing**. Repeat for `/about`, `/how-to-play` and `/places`.
+5. **Bing (also powers DuckDuckGo and Yahoo).** bing.com/webmasters → **Import from Google Search Console**.
+6. **Links from elsewhere** matter most for ranking: put `www.gurugramlife.com` in the Instagram bio, YouTube channel links and every video description, and share it in Gurugram/Gurgaon groups, Reddit (r/gurgaon, r/IndianGaming) and with local pages and bloggers.
+
+What to expect: searches for the name ("gurugram life", "gurugram life game", "gurgaon life game") can show the site within days to a few weeks of indexing. Broad words alone ("gurugram", "gurgaon") are dominated by Wikipedia, government and news sites and need many links and visits over months.

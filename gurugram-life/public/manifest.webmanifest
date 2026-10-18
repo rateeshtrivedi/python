@@ -1,7 +1,7 @@
 {
   "name": "Gurugram Life",
   "short_name": "Gurugram Life",
-  "description": "3D multiplayer Gurugram: kamao, party karo, show off karo, lado.",
+  "description": "Free 3D multiplayer life game set in Gurugram (Gurgaon): earn, race, party and fight in your browser.",
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "any",
