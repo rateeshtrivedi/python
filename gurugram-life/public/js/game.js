@@ -6,6 +6,7 @@ import * as A from './audio.js';
 import * as I18N from './i18n.js';
 import * as HU from './humans.js';
 import * as RL from './realism.js';
+import * as DG from './dogs.js';
 
 // ================================================================ UTIL
 const $ = id => document.getElementById(id);
@@ -1240,6 +1241,30 @@ function checkBump() {
 
 // ================================================================ AMBIENT NPCs
 const PEDS = [], CARS = [], COWS = [], MALLNPC = [];
+// street dogs patrol a stretch of footpath around a block: walk, stop to sniff, bark at the player up close, bolt from speeding
+// vehicles or a running player. p = position along the block edge (-60..60), side = which edge of the block
+function spawnDogs() {
+  const phone = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 520;
+  for (let k = 0; k < (phone ? 8 : 14); k++) { const dd = pick(DIST.filter(q => q[3] !== 'forest')), d = DG.makeDog(); scene.add(d.mesh); DG.play(d, 'Walk');
+    DOGS.push(Object.assign(d, { cx: dd[0] * 150, cz: dd[1] * 150, side: irnd(0, 3), p: rnd(-58, 58), dir: Math.random() < 0.5 ? 1 : -1, st: 'walk', t: rnd(3, 9), barkT: 0 })); }
+}
+const DOGS = [];
+function updateDogs(dt) {
+  const out = !G.inside, cx = camera.position.x, cz = camera.position.z, fast = G.veh ? Math.abs(G.vs) > 5 : keys.ShiftLeft || keys.ShiftRight || runBtn;
+  for (const d of DOGS) {
+    const off = 66.5, x0 = d.side < 2 ? d.cx + d.p : d.cx + (d.side === 2 ? off : -off), z0 = d.side < 2 ? d.cz + (d.side === 0 ? off : -off) : d.cz + d.p;
+    const near = Math.abs(x0 - cx) + Math.abs(z0 - cz); d.mesh.visible = out && near < 120; if (!d.mesh.visible) continue;
+    const dp = Math.hypot(x0 - G.x, z0 - G.z); d.t -= dt; d.barkT -= dt;
+    if (dp < (G.veh ? 7 : 4) && fast && d.st !== 'run') { d.st = 'run'; d.t = 2.5; const ax = d.side < 2 ? x0 - G.x : z0 - G.z; d.dir = ax >= 0 ? 1 : -1; A.sfx('yelp'); }
+    else if (d.t <= 0) { if (d.st === 'walk') { d.st = 'sniff'; d.t = rnd(3, 7); } else { d.st = 'walk'; d.t = rnd(5, 12); if (Math.random() < 0.4) d.dir *= -1; } }
+    if (!G.veh && dp < 5 && d.st !== 'run' && d.barkT <= 0) { d.barkT = rnd(5, 10); if (Math.random() < 0.55) { A.sfx('bark'); d.st = 'sniff'; d.t = 2.5; d.look = true; } }
+    const sp = d.st === 'run' ? 7 : d.st === 'walk' ? 1.3 : 0; d.p += d.dir * sp * dt; if (Math.abs(d.p) > 60) { d.p = Math.sign(d.p) * 60; d.dir *= -1; if (d.st === 'run') d.st = 'walk'; }
+    const x = d.side < 2 ? d.cx + d.p : x0, z = d.side < 2 ? z0 : d.cz + d.p; d.mesh.position.set(x, 0.2, z);
+    const yaw = d.side < 2 ? (d.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (d.dir > 0 ? 0 : Math.PI);
+    d.mesh.rotation.y = angLerp(d.mesh.rotation.y, d.st === 'sniff' && d.look && dp < 8 ? Math.atan2(G.x - x, G.z - z) : yaw, Math.min(1, dt * 6)); if (dp >= 8) d.look = false;
+    DG.play(d, d.st === 'run' ? 'Run' : d.st === 'walk' ? 'Walk' : 'Survey', d.st === 'walk' ? 0.8 : 1); if (near < 70) d.mixer.update(dt);
+  }
+}
 function makeCow() { const g = new THREE.Group(); RL.cow(g); return g; }
 function spawnAmbient() {
   for (let k = 0; k < 26; k++) { const d = pick(DIST); const c = makeChar(pick(D.SHIRTS)); if (Math.random() < 0.25) setLook(c, { shirt: c.userData.torso.material.color.getHex(), hat: pick(['pagdi', 'cap', 'none']) }); scene.add(c); PEDS.push({ mesh: c, cx: d[0] * 150, cz: d[1] * 150, t: rnd(0, 4), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.6, 2.4), talkT: rnd(5, 30) }); }
@@ -2329,7 +2354,7 @@ function loop(t) {
       const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
     } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
+  if (G.started) musicDirector(); updateAmbient(dt); updateDogs(dt); updateCrowd(dt); updateFighters(dt); updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
@@ -2342,6 +2367,7 @@ ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); 
 function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
+DG.loadDogs('/models/dog.glb').then(() => { if (!DOGS.length) spawnDogs(); }).catch(e => console.warn('Gurugram Life: street dogs not loaded', e)); // 160 KB
 if (!/[?&]simple\b/.test(location.search)) HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~2.7 MB, cached after the first visit
 window.addEventListener('pagehide', saveLocal);
 

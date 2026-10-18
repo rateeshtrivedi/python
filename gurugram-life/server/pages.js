@@ -86,6 +86,7 @@ export const PAGES = {
 <h2>English, Hindi or Haryanvi</h2><p>Pick your language on the first screen. Hindi is written in Roman letters (Hinglish), the way people chat. Hindi and English players start with Bollywood radio, Haryanvi players with Haryanvi songs.</p>
 <p><i>Gurugram Life ek free 3D game hai jo asli Gurugram (Gurgaon) mein set hai. Phone ya laptop ke browser mein kholo aur khelo: paise kamao, gaadi lo, race karo, party karo aur Gali ke Don se lado.</i></p>
 <h2>Questions</h2>${FAQ.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}
+<h2>Credits</h2><p>People: Quaternius Universal Base Characters and Universal Animation Library (CC0). Street dogs: the Khronos "Fox" glTF sample, model by PixelMannen (CC0), rigging and animation by tomkranis, glTF conversion by @AsoboStudio and @scurest (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>), recoloured for the game. Radio songs come from live internet radio stations.</p>
 <a class="play" href="/">Start playing Gurugram Life →</a>`,
     ld: [crumbs('/about', 'About'), { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }] }),
 
