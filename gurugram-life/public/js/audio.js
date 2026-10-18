@@ -63,7 +63,7 @@ async function playLive() {
   const L = Radio.chans[st]; if (!L.length) { Radio.playing = false; hooks.label(); hooks.toast('Live radio nahi mila. Radio mein apne gaane add kar sakte ho.', 'bad'); return; }
   const ch = L[Radio.ci[st] % L.length]; const a = liveAudio(); a.src = ch.url; a.volume = radioVol();
   clearTimeout(Radio.stallT); Radio.stallT = setTimeout(() => { if (a.paused || a.readyState < 3) a.dispatchEvent(new Event('error')); }, 12000);
-  const p = a.play(); if (p && p.catch) p.catch(e => { if (e && e.name === 'NotAllowedError') { Radio.playing = false; hooks.label(); } else if (e && e.name !== 'AbortError') a.dispatchEvent(new Event('error')); });
+  const p = a.play(); if (p && p.catch) p.catch(e => { if (e && e.name === 'NotAllowedError') { Radio.blocked = true; clearTimeout(Radio.stallT); hooks.label(); } else if (e && e.name !== 'AbortError') a.dispatchEvent(new Event('error')); });
   lsSet('gl_chan', { har: (Radio.chans.har[Radio.ci.har] || {}).url, pun: (Radio.chans.pun[Radio.ci.pun] || {}).url, bol: (Radio.chans.bol[Radio.ci.bol] || {}).url, eng: (Radio.chans.eng[Radio.ci.eng] || {}).url });
 }
 function stopLive() { clearTimeout(Radio.stallT); if (Radio.live) { Radio.live.pause(); Radio.live.removeAttribute('src'); Radio.live.load(); } }
@@ -118,7 +118,9 @@ export async function removeSong(id) {
 export function sfx(k, vol = 1) {
   if (!Music.ctx) return; const t = Music.ctx.currentTime, d = Music.sfx; const v = clamp(vol, 0, 1.5);
   if (k === 'cash') { osc('triangle', 1320, t, 0.12, 0.25 * v, d); osc('triangle', 1980, t + 0.08, 0.2, 0.25 * v, d); }
-  else if (k === 'punch') { noise(t, 0.12, 0.6 * v, 400, 1, 'lowpass', d); osc('sine', 120, t, 0.12, 0.5 * v, d); }
+  else if (k === 'punch') { noise(t, 0.1, 0.3 * v, 320, 1, 'lowpass', d); osc('sine', 95, t, 0.12, 0.28 * v, d); } // a low, soft thud
+  else if (k === 'step') { noise(t, 0.05, 0.05 * v, 150 + Math.random() * 80, 1, 'lowpass', d); noise(t, 0.02, 0.012 * v, 2400, 1.5, 'bandpass', d); } // barely-there footsteps
+  else if (k === 'stepwet') { noise(t, 0.08, 0.04 * v, 1700 + Math.random() * 400, 1.2, 'bandpass', d); noise(t, 0.05, 0.03 * v, 200, 1, 'lowpass', d); }
   else if (k === 'swing') noise(t, 0.1, 0.12, 1500, 1, 'bandpass', d);
   else if (k === 'ko') { const o = osc('sawtooth', 400, t, 0.6, 0.2, d); o.frequency.exponentialRampToValueAtTime(80, t + 0.6); }
   else if (k === 'level') [0, 4, 7, 12].forEach((n, i) => osc('triangle', mtof(72 + n), t + i * 0.09, 0.25, 0.25, d));
@@ -166,13 +168,14 @@ const THEMES = {
   bhangra: { step: 60 / 104 / 3, len: 24, play(s, t, d) { const k = s % 12, pos = k % 3, beat = Math.floor(k / 3); if (pos === 0) dholBass(t, d, beat % 2 === 0 ? 0.95 : 0.7); if (pos === 2) dholBass(t, d, 0.5); if (pos === 1 || (pos === 2 && beat === 3)) dholTilli(t, d, pos === 1 ? 1 : 0.7); if (pos === 0 && (beat === 1 || beat === 3)) { chimta(t, d); clap(t, d, 0.7); } if (s % 24 === 21) dholTilli(t + 0.07, d, 0.8); } },
 };
 const Theme = { cur: null, timer: null, step: 0, next: 0, gain: null, int: 0.5 };
+const themeLevel = () => Theme.cur ? clamp(Music.vol * 1.6, 0.18, 0.55) * (Theme.cur === 'chase' ? 0.8 : 1) : 0;
 export function setTheme(id, k) {
   if (k !== undefined) Theme.int += (k - Theme.int) * 0.08; // intensity eases toward the target (called every frame)
   if (Theme.cur === id) return; Theme.cur = id; if (id && k !== undefined) Theme.int = Math.min(k, 0.4); if (!Music.ctx) return; const c = Music.ctx;
   if (!Theme.gain) { Theme.gain = c.createGain(); Theme.gain.gain.value = 0; Theme.gain.connect(c.destination); }
   const g = Theme.gain.gain; g.cancelScheduledValues(c.currentTime);
   if (id) {
-    g.setTargetAtTime(clamp(Music.vol * 1.6, 0.18, 0.55) * (id === 'chase' ? 0.8 : 1), c.currentTime, 0.25); Theme.step = 0; Theme.next = c.currentTime + 0.05;
+    g.setTargetAtTime(themeLevel() * (VOX.live.length ? 0.4 : 1), c.currentTime, 0.25); Theme.step = 0; Theme.next = c.currentTime + 0.05;
     if (!Theme.timer) Theme.timer = setInterval(() => { const T = THEMES[Theme.cur]; if (!T) return; while (Theme.next < c.currentTime + 0.12) { T.play(Theme.step, Theme.next, Theme.gain); Theme.next += T.step; Theme.step++; } }, 25);
     for (const a of [Radio.live, Radio.audio]) if (a) a.volume = radioVol();
   } else {
@@ -273,5 +276,16 @@ export async function voice(url, who, vol, pan) {
   let buf; try { buf = await voxBuf(url); } catch { VOX.cache.delete(url); return false; }
   const src = c.createBufferSource(); src.buffer = buf; const g = c.createGain(); g.gain.value = clamp(vol, 0, 1) * 1.7;
   const p = c.createStereoPanner ? c.createStereoPanner() : null; if (p) { p.pan.value = clamp(pan, -0.85, 0.85); src.connect(p); p.connect(g); } else src.connect(g);
-  g.connect(Music.sfx); const v = { src, who }; VOX.live.push(v); src.onended = () => { VOX.live = VOX.live.filter(x => x !== v); }; src.start(); return true;
+  g.connect(Music.sfx); const v = { src, who }; VOX.live.push(v); themeDuck(); src.onended = () => { VOX.live = VOX.live.filter(x => x !== v); themeDuck(); }; src.start(); return true;
 }
+
+// fight / chase music dips while someone is talking so the words come through
+function themeDuck() { if (!Theme.gain || !Theme.cur) return; Theme.gain.gain.setTargetAtTime(themeLevel() * (VOX.live.length ? 0.4 : 1), Music.ctx.currentTime, 0.08); }
+
+// ---- phones only let a page make sound after a tap: unlock (and retry the radio) on every tap until sound is running
+export function unlock() {
+  initAudio(); const c = Music.ctx; if (!c) return;
+  if (c.state !== 'running') { c.resume().catch(() => {}); try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(); } catch {} }
+  if (Radio.blocked && Radio.playing && !Radio.street) { Radio.blocked = false; if (liveSt() === 'mine') playMine(); else playLive(); }
+}
+export const audioRunning = () => !!Music.ctx && Music.ctx.state === 'running';
