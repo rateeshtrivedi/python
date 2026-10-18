@@ -248,7 +248,7 @@ const C_EV = {
 // mix = { out, veh, traffic, nature, market, temple, night } (0..1), from the game a few times a second
 export function setCity(m) {
   if (!Music.ctx) return; if (!City.bus) cityInit(); const c = Music.ctx, t = c.currentTime, on = City.on && m.out;
-  City.bus.gain.setTargetAtTime(on ? (Theme.cur ? 0.5 : 1) * (m.veh ? 0.55 : 1) : 0, t, 0.6);
+  City.bus.gain.setTargetAtTime(on ? 1.6 * (Theme.cur ? 0.5 : 1) * (m.veh ? 0.55 : 1) : 0, t, 0.6);
   City.rumble.gain.setTargetAtTime(0.09 * m.traffic, t, 0.8); City.crick.gain.setTargetAtTime(0.01 * m.night * (0.4 + m.nature), t, 1);
   City.murmur.gain.setTargetAtTime(0.03 * m.market * (0.6 + Math.random() * 0.6) * (1 - 0.6 * m.night), t, 0.3);
   const dt = Math.min(1, c.currentTime - (City.last || c.currentTime)); City.last = c.currentTime; if (!on || !dt) return;
@@ -261,3 +261,17 @@ export function setCity(m) {
 export function stinger(kind) { if (!Music.ctx) return; const t = Music.ctx.currentTime, d = Music.sfx;
   if (kind === 'escape') [0, 4, 7, 12, 16].forEach((n, i) => osc('triangle', mtof(64 + n), t + i * 0.08, 0.6, 0.16, d));
   else [12, 8, 5, 0].forEach((n, i) => osc('sawtooth', mtof(50 + n), t + i * 0.22, 0.4, 0.07, d)); }
+
+// ---- spoken NPC lines: decoded once and cached, panned to where the speaker stands, quieter with distance.
+// One line per speaker at a time and at most three at once, so a big fight doesn't turn into noise.
+const VOX = { cache: new Map(), live: [] };
+async function voxBuf(url) { if (!VOX.cache.has(url)) VOX.cache.set(url, fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(b => Music.ctx.decodeAudioData(b))); return VOX.cache.get(url); }
+export async function voice(url, who, vol, pan) {
+  if (!Music.ctx) return false; const c = Music.ctx;
+  for (const v of VOX.live.filter(v => v.who === who)) { try { v.src.stop(); } catch {} }
+  VOX.live = VOX.live.filter(v => v.who !== who); if (VOX.live.length >= 3) return true; // busy: this line is skipped, not shown as text
+  let buf; try { buf = await voxBuf(url); } catch { VOX.cache.delete(url); return false; }
+  const src = c.createBufferSource(); src.buffer = buf; const g = c.createGain(); g.gain.value = clamp(vol, 0, 1) * 1.7;
+  const p = c.createStereoPanner ? c.createStereoPanner() : null; if (p) { p.pan.value = clamp(pan, -0.85, 0.85); src.connect(p); p.connect(g); } else src.connect(g);
+  g.connect(Music.sfx); const v = { src, who }; VOX.live.push(v); src.onended = () => { VOX.live = VOX.live.filter(x => x !== v); }; src.start(); return true;
+}
