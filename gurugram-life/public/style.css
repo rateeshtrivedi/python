@@ -298,3 +298,61 @@ body.racing #navchip{display:none!important}
 #doncall .dc-no{background:#d7331f;color:#fff}#doncall .dc-yes{background:#2fc46b;color:#fff}
 #navring{position:fixed;left:0;top:0;width:48px;height:48px;z-index:6;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));will-change:transform}
 @media (max-width:760px){#navring svg{width:40px;height:40px}}
+
+/* ===================== PHONES (touch): keep the city visible =====================
+   Small stats card (tap for the full panel), small map with the place under it, no top chips (they live in Menu),
+   one notification at a time, one line of chat, no news feed, smaller see-through controls. */
+.toast.out{opacity:0;transform:translateY(-6px);transition:opacity .2s,transform .2s}
+body.touch #stat{left:8px;top:calc(8px + env(safe-area-inset-top,0px));width:150px;border-width:2px;border-radius:12px;background:rgba(27,20,16,.72);cursor:pointer}
+body.touch #stat .stripe{height:3px}
+body.touch #stat .in{padding:4px 8px 6px;gap:2px}
+body.touch #pname{font-size:13px}body.touch #plv{font-size:10.5px;padding:0 6px}
+body.touch #money{font-size:16px}body.touch #ptitle{display:none}
+body.touch #stat .blab,body.touch #stat .bar:has(#xpb),body.touch #sapna{display:none!important}
+body.touch #stat .bar{height:4px}
+body.touch #stat.open{width:200px}
+body.touch #stat.open .blab{display:flex!important}body.touch #stat.open .bar:has(#xpb){display:block!important}body.touch #stat.open #sapna:not([hidden]){display:block!important}body.touch #stat.open #ptitle{display:inline}
+body.touch #mapwrap{right:8px;top:calc(8px + env(safe-area-inset-top,0px));width:84px;height:84px;border-width:2px}
+body.touch #topbtns{display:none!important}
+body.touch #loc{left:auto!important;right:8px!important;top:calc(96px + env(safe-area-inset-top,0px))!important;bottom:auto!important;transform:none!important;max-width:118px!important;font:700 11px var(--display)!important;padding:1px 8px!important;background:rgba(27,20,16,.6)!important}
+body.touch #loc small{display:none}
+body.touch #navchip{right:8px!important;top:calc(118px + env(safe-area-inset-top,0px))!important;max-width:170px!important;font-size:11px!important}
+body.touch #mchip{left:8px;top:calc(76px + env(safe-area-inset-top,0px));font-size:11.5px;padding:2px 9px;border-width:1.5px;background:rgba(27,20,16,.72)}
+body.touch #job{left:8px!important;top:calc(104px + env(safe-area-inset-top,0px))!important;width:150px!important;padding:6px 8px!important;font-size:11.5px!important}
+body.touch #job b{font-size:13px}body.touch #job .dist{font-size:16px}
+body.touch #banner{top:calc(140px + env(safe-area-inset-top,0px))!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;max-width:calc(100% - 24px)!important;font-size:11.5px!important;padding:3px 12px!important}
+body.touch #toasts{top:calc(166px + env(safe-area-inset-top,0px))!important;width:min(330px,calc(100% - 40px))!important}
+body.touch .toast{font-size:13px;padding:5px 11px;border-width:1.5px;background:rgba(27,20,16,.86)}
+body.touch #feed{display:none!important}
+body.touch #chatlog{left:8px!important;right:auto!important;bottom:calc(136px + env(safe-area-inset-bottom,0px))!important;width:calc(100% - 210px)!important;min-width:150px}
+body.touch #chatlog div{font-size:11.5px;padding:2px 7px;background:rgba(27,20,16,.55)}
+body.touch #chatlog div:nth-last-child(n+3){display:none}
+body.touch #quest{top:calc(108px + env(safe-area-inset-top,0px))!important;min-width:0!important;max-width:calc(100% - 24px)!important;padding:5px 46px 6px 10px!important}
+body.touch #quest b{font-size:15px}body.touch #quest span{font-size:12px}body.touch #quest small{font-size:9.5px}
+body.touch #tut{top:calc(108px + env(safe-area-inset-top,0px))!important;padding:7px 10px!important}body.touch #tut p{font-size:13px}
+body.touch #bigtxt{top:24%}body.touch #bigtxt b{font-size:clamp(26px,8vw,46px)}body.touch #bigtxt small{font-size:14px}
+body.touch #prompt{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important;font-size:14px!important;padding:6px 14px!important}
+body.touch #joy{left:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:112px;height:112px;background:rgba(27,20,16,.28);border-color:rgba(246,192,38,.45)}
+body.touch #controls{right:10px!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;gap:8px!important}
+body.touch #controls .cbtn{width:54px!important;height:54px!important;font-size:11.5px!important;background:rgba(27,20,16,.5);border-width:2px}
+body.touch #controls .cbtn kbd{display:none}
+body.touch #controls .cbtn.red{background:rgba(120,25,15,.55)}
+body.touch #controls .cbtn.big{width:70px!important;height:70px!important;font-size:14px!important;background:rgba(20,50,90,.55)}
+body.touch #controls .cbtn.menu{height:34px!important;font-size:12px!important;padding:0 14px}
+body.touch #controls .cbtn.gold{background:var(--sarson)}
+/* phones held sideways: little height, so even smaller and the messages go to the free middle at the top */
+@media (max-height:500px){
+  body.touch #mapwrap{width:72px;height:72px}
+  body.touch #loc{top:calc(84px + env(safe-area-inset-top,0px))!important}
+  body.touch #navchip{top:calc(104px + env(safe-area-inset-top,0px))!important}
+  body.touch #banner{top:calc(8px + env(safe-area-inset-top,0px))!important;max-width:calc(100% - 360px)!important}
+  body.touch #toasts{top:calc(36px + env(safe-area-inset-top,0px))!important;width:min(360px,calc(100% - 360px))!important}
+  body.touch #quest,body.touch #tut{top:calc(8px + env(safe-area-inset-top,0px))!important;max-width:calc(100% - 360px)!important}
+  body.touch #joy{width:96px;height:96px}
+  body.touch #controls .cbtn{width:48px!important;height:48px!important}
+  body.touch #controls .cbtn.big{width:60px!important;height:60px!important}
+  body.touch #chatlog{bottom:calc(10px + env(safe-area-inset-bottom,0px))!important;left:124px!important;width:calc(100% - 330px)!important}
+  body.touch #prompt{bottom:calc(16px + env(safe-area-inset-bottom,0px))!important}
+  body.touch #bigtxt{top:14%}
+}
+body.touch #stat.open{z-index:8}body.touch #hud:has(#stat.open) #mchip,body.touch #hud:has(#stat.open) #job{display:none!important}
