@@ -59,7 +59,7 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **Language**: the login screen (and Menu → Bhasha) lets players pick Haryanvi, Hindi or English. Hindi is written in Roman letters (Hinglish), like the Haryanvi. The game is written in Haryanvi; for Hindi and English every piece of text on screen is translated as it appears, using the language packs in `public/js/lang/`. Names of people, places and shops stay as they are. Hindi and English players join with the Bollywood station on.
 
-**Radio**: real Haryanvi, Punjabi and Bollywood songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
+**Radio**: real Haryanvi, Punjabi, Bollywood and English hit songs from live internet radio stations (found through the public radio-browser.info directory by `server/stations.js`, cached 6 hours, HTTPS streams only), starting at low volume, plus "Meri Playlist" for players' own song files.
 
 **Joining**: name → character creator (ladka/ladki, skin, 5 hairstyles each, hair colour, T-shirt/kurta/jacket or kurti/jacket/saree, colours, pants, moonchh/daadhi or bindi/jhumke, cap/pagdi/dupatta, kaala chashma, and Chacha's car) with a live 3D preview → choose where to start (Ambience Mall runs the Pehla Din story).
 

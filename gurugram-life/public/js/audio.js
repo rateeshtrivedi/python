@@ -1,4 +1,4 @@
-// Sound: live Haryanvi, Punjabi and Bollywood internet radio (real songs), the player's own song files, and SFX.
+// Sound: live Haryanvi, Punjabi, Bollywood and English internet radio (real songs), the player's own song files, and SFX.
 export const hooks = { toast: () => {}, label: () => {} };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
@@ -9,9 +9,10 @@ export const STATIONS = [
   { id: 'har', name: 'Haryanvi Live', freq: 'LIVE', sub: 'Asli Haryanvi gaane, live internet radio se' },
   { id: 'bol', name: 'Bollywood Live', freq: 'LIVE', sub: 'Bollywood hits, live internet radio se' },
   { id: 'pun', name: 'Punjabi Live', freq: 'LIVE', sub: 'Punjabi aur bhangra hits, live' },
+  { id: 'eng', name: 'English Hits Live', freq: 'LIVE', sub: 'Angrezi top hits, pop aur dance, live' },
   { id: 'mine', name: 'Meri Playlist', freq: 'MP3', sub: 'Your own Haryanvi & Punjabi songs' },
 ];
-export const Radio = { st: 'har', playing: false, audio: null, live: null, list: [], idx: 0, src: null, override: null, chans: { har: [], pun: [], bol: [] }, ci: { har: 0, pun: 0, bol: 0 }, loading: null, fails: 0 };
+export const Radio = { st: 'har', playing: false, audio: null, live: null, list: [], idx: 0, src: null, override: null, chans: { har: [], pun: [], bol: [], eng: [] }, ci: { har: 0, pun: 0, bol: 0, eng: 0 }, loading: null, fails: 0 };
 let NOISE = null;
 export function initAudio() {
   if (Music.ctx) return; const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
@@ -28,20 +29,21 @@ function dholBass(t, dest, v = 0.9) { const o = osc('sine', 95, t, 0.38, v, dest
 const RB_HOSTS = ['de1.api.radio-browser.info', 'de2.api.radio-browser.info', 'fi1.api.radio-browser.info', 'nl1.api.radio-browser.info'];
 async function fetchDirect() { // solo build without our server: ask the public directory straight from the browser
   const q = async tag => { for (const h of RB_HOSTS) { try { const r = await fetch('https://' + h + '/json/stations/search?tag=' + encodeURIComponent(tag) + '&hidebroken=true&order=clickcount&reverse=true&limit=40'); if (r.ok) return await r.json(); } catch {} } return []; };
-  const pick = list => list.filter(s => /^https:\/\//.test(s.url_resolved || '') && /mp3|aac/i.test(s.codec || '') && !/gurbani|kirtan|gurdwara|sikh|paath|bhajan|news|talk/i.test((s.name || '') + ' ' + (s.tags || ''))).slice(0, 15).map(s => ({ name: String(s.name || 'Live radio').trim().slice(0, 40), url: s.url_resolved }));
-  const [h, p, b, bw, hn] = await Promise.all([q('haryanvi'), q('punjabi'), q('bhangra'), q('bollywood'), q('hindi')]);
-  return { har: pick(h), pun: pick([...p, ...b]), bol: pick([...bw, ...hn]) };
+  const pick = list => list.filter(s => /^https:\/\//.test(s.url_resolved || '') && /mp3|aac/i.test(s.codec || '') && !/gurbani|kirtan|gurdwara|sikh|paath|bhajan|news|talk|christ|church|sport/i.test((s.name || '') + ' ' + (s.tags || ''))).slice(0, 15).map(s => ({ name: String(s.name || 'Live radio').trim().slice(0, 40), url: s.url_resolved }));
+  const [h, p, b, bw, hn, t4, pop] = await Promise.all([q('haryanvi'), q('punjabi'), q('bhangra'), q('bollywood'), q('hindi'), q('top 40'), q('pop')]);
+  return { har: pick(h), pun: pick([...p, ...b]), bol: pick([...bw, ...hn]), eng: pick([...t4, ...pop].filter(s => /english/i.test(s.language || ''))) };
 }
 export function loadStations() {
   if (Radio.loading) return Radio.loading;
   Radio.loading = (async () => {
     let d = null; try { const r = await fetch('/api/stations'); if (r.ok) d = await r.json(); } catch {}
-    if (!d || !(d.har || []).length && !(d.pun || []).length && !(d.bol || []).length) { try { d = await fetchDirect(); } catch {} }
-    d = d || {}; Radio.chans.har = d.har || []; Radio.chans.pun = d.pun || []; Radio.chans.bol = d.bol || [];
+    if (!d || !(d.har || []).length && !(d.pun || []).length && !(d.bol || []).length && !(d.eng || []).length) { try { d = await fetchDirect(); } catch {} }
+    d = d || {}; Radio.chans.har = d.har || []; Radio.chans.pun = d.pun || []; Radio.chans.bol = d.bol || []; Radio.chans.eng = d.eng || [];
     if (!Radio.chans.har.length) Radio.chans.har = Radio.chans.pun.slice(); // no Haryanvi stream up right now: fall back to Punjabi
     if (!Radio.chans.pun.length) Radio.chans.pun = Radio.chans.har.slice();
     if (!Radio.chans.bol.length) Radio.chans.bol = Radio.chans.har.slice(); // no Bollywood stream up: desi beats it is
-    const saved = lsGet('gl_chan'); if (saved) for (const k of ['har', 'pun', 'bol']) { const i = Radio.chans[k].findIndex(c => c.url === saved[k]); if (i >= 0) Radio.ci[k] = i; }
+    if (!Radio.chans.eng.length) Radio.chans.eng = Radio.chans.bol.slice(); // no English stream up: Bollywood instead
+    const saved = lsGet('gl_chan'); if (saved) for (const k of ['har', 'pun', 'bol', 'eng']) { const i = Radio.chans[k].findIndex(c => c.url === saved[k]); if (i >= 0) Radio.ci[k] = i; }
     return Radio.chans;
   })();
   Radio.loading.then(c => { if (!c.har.length && !c.bol.length) Radio.loading = null; }); // retry later if nothing came back
@@ -61,7 +63,7 @@ async function playLive() {
   const ch = L[Radio.ci[st] % L.length]; const a = liveAudio(); a.src = ch.url; a.volume = Music.vol;
   clearTimeout(Radio.stallT); Radio.stallT = setTimeout(() => { if (a.paused || a.readyState < 3) a.dispatchEvent(new Event('error')); }, 12000);
   const p = a.play(); if (p && p.catch) p.catch(e => { if (e && e.name === 'NotAllowedError') { Radio.playing = false; hooks.label(); } else if (e && e.name !== 'AbortError') a.dispatchEvent(new Event('error')); });
-  lsSet('gl_chan', { har: (Radio.chans.har[Radio.ci.har] || {}).url, pun: (Radio.chans.pun[Radio.ci.pun] || {}).url, bol: (Radio.chans.bol[Radio.ci.bol] || {}).url });
+  lsSet('gl_chan', { har: (Radio.chans.har[Radio.ci.har] || {}).url, pun: (Radio.chans.pun[Radio.ci.pun] || {}).url, bol: (Radio.chans.bol[Radio.ci.bol] || {}).url, eng: (Radio.chans.eng[Radio.ci.eng] || {}).url });
 }
 function stopLive() { clearTimeout(Radio.stallT); if (Radio.live) { Radio.live.pause(); Radio.live.removeAttribute('src'); Radio.live.load(); } }
 export function nextChannel(d, auto) { const st = liveSt(); if (st === 'mine') return mineNext(d); const n = Radio.chans[st].length; if (!n) return; Radio.ci[st] = (Radio.ci[st] + d + n) % n; if (!auto) Radio.fails = 0; if (Radio.playing) playLive(); hooks.label(); }
