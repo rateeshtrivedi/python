@@ -130,6 +130,8 @@ export function sfx(k, vol = 1) {
   else if (k === 'crash') noise(t, 0.3, 0.5, 600, 0.7, 'lowpass', d);
   else if (k === 'eat') { noise(t, 0.05, 0.2, 2000, 2, 'bandpass', d); noise(t + 0.12, 0.05, 0.2, 2200, 2, 'bandpass', d); }
   else if (k === 'engine') { const o = osc('sawtooth', 60, t, 0.5, 0.15, d); o.frequency.exponentialRampToValueAtTime(140, t + 0.4); }
+  else if (k === 'bark') for (const o of [0, 0.2]) { noise(t + o, 0.07, 0.35, 900, 2, 'bandpass', d); const b = osc('sawtooth', 340, t + o, 0.1, 0.1, d); b.frequency.exponentialRampToValueAtTime(210, t + o + 0.09); }
+  else if (k === 'yelp') { const b = osc('triangle', 900, t, 0.22, 0.12, d); b.frequency.exponentialRampToValueAtTime(1500, t + 0.06); b.frequency.exponentialRampToValueAtTime(700, t + 0.2); }
   else if (k === 'moo') { const o = osc('sawtooth', 160, t, 0.9, 0.15, d, 0.1); o.frequency.exponentialRampToValueAtTime(110, t + 0.8); }
   else if (k === 'chat') osc('sine', 990, t, 0.08, 0.12, d);
   else if (k === 'siren') { for (let i = 0; i < 4; i++) { const o = osc('square', 700, t + i * 0.5, 0.45, 0.06, d); o.frequency.linearRampToValueAtTime(1100, t + i * 0.5 + 0.25); o.frequency.linearRampToValueAtTime(700, t + i * 0.5 + 0.45); } }

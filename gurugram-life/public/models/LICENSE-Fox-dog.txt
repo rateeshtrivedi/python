@@ -1,0 +1,5 @@
+dog.glb is the "Fox" glTF sample model (KhronosGroup glTF-Sample-Assets), used as the game's street dogs (recoloured in the game).
+- Model: PixelMannen, Creative Commons Zero v1.0 Universal (public domain)
+- Rigging & animation: tomkranis, Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/)
+- glTF conversion: @AsoboStudio and @scurest, Creative Commons Attribution 4.0 International
+Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Fox
