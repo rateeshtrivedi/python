@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createWorld } from '../public/shared/world.js';
 import { stations } from './stations.js';
+import { SITE, PAGES, homeLD, robots, sitemap, notFound } from './pages.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -52,6 +53,15 @@ app.set('trust proxy', true);
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+// Search engines: one address for the site. The bare domain sends people to www (301); the onrender.com copy stays
+// playable but tells Google not to index it, so ranking isn't split between two addresses.
+const CANON_HOST = SITE.replace(/^https?:\/\//, '');
+app.use((req, res, next) => {
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
+  if (CANON_HOST.startsWith('www.') && host === CANON_HOST.slice(4) && req.method === 'GET') return res.redirect(301, SITE + req.originalUrl);
+  if (/\.onrender\.com$/.test(host)) res.setHeader('X-Robots-Tag', 'noindex');
   next();
 });
 const VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local';
@@ -104,11 +114,18 @@ function siteOrigin(req) {
   if (!/^[a-z0-9.-]+(:\d+)?$/i.test(host)) return '';
   return (req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http') + '://' + host;
 }
+const GVERIFY = /^[\w-]{10,80}$/.test(process.env.GOOGLE_SITE_VERIFICATION || '') ? `\n<meta name="google-site-verification" content="${process.env.GOOGLE_SITE_VERIFICATION}">` : ''; // Search Console HTML-tag method
+const HOME_LD = homeLD().map(o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`).join('\n');
+const HOME_HTML = INDEX_HTML.split('__CANON__').join(SITE).replace('__GVERIFY__', GVERIFY).replace('__LD__', HOME_LD);
 app.get(['/', '/index.html'], (req, res) => {
-  res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(INDEX_HTML.split('__ORIGIN__').join(siteOrigin(req)));
+  res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(HOME_HTML.split('__ORIGIN__').join(siteOrigin(req)));
 });
+for (const [p, render] of Object.entries(PAGES)) app.get([p, p + '/'], (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.type('html').send(render(req)); });
+app.get('/robots.txt', (req, res) => res.type('text/plain').send(robots()));
+app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(sitemap()));
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).
 app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
+app.use((req, res) => { res.status(404).type('html').send(notFound(req)); });
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8 * 1024 });
 

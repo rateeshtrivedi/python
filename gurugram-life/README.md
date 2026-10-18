@@ -95,6 +95,8 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **Street races**: five races on real roads (Sheetla Mata Road, Golf Course Road, Cyber City, NH-48, Badshahpur), each against a named rival; winning unlocks the next one. New players start straight into the first race. Driving has NOS (filled by drifting, near misses with traffic and checkpoints), drift smoke and a speed camera. Personal bests and the top 20 times per race are kept on the server.
 
+**Search (SEO)**: the canonical address is `https://www.gurugramlife.com` (override with `SITE_URL`). The game page carries a keyword title and description, a canonical link, and structured data (`WebSite` + `VideoGame`, free, browser, Gurugram/Gurgaon). `server/pages.js` serves readable pages for search engines and visitors: `/about` (with FAQ), `/how-to-play` and `/places` (all 25 in-game Gurugram areas), linked from the start screen, plus `robots.txt`, `sitemap.xml` and a real 404. The bare domain redirects to www (301) and the `onrender.com` copy sends `X-Robots-Tag: noindex` so ranking isn't split. `GOOGLE_SITE_VERIFICATION` adds the Search Console meta tag. Steps to get indexed are in DEPLOY.md.
+
 ## Testing
 
 `npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock. `GL_LANG=hi` or `GL_LANG=en` runs it with the game translated.
