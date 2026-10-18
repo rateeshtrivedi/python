@@ -2298,7 +2298,7 @@ function startGame(daily) {
 let last = performance.now(), hungerT = 0, regenT = 0, hudT = 0, shT = 99;
 const PERF = { acc: 0, n: 0, pr: Math.min(window.devicePixelRatio || 1, 1.5) };
 function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel ratio a step (1.5 → 1.25 → 1 → 0.85), fast again → step back up
-  PERF.acc += frameMs; PERF.n++; if (PERF.n < 120 && PERF.acc < 2000) return; // every ~2 s, or sooner on a very slow device const avg = PERF.acc / PERF.n; PERF.acc = PERF.n = 0; const max = Math.min(window.devicePixelRatio || 1, 1.5);
+  PERF.acc += frameMs; PERF.n++; if (PERF.n < 120 && PERF.acc < 2000) return; /* every ~2 s, sooner on a very slow device */ const avg = PERF.acc / PERF.n; PERF.acc = PERF.n = 0; const max = Math.min(window.devicePixelRatio || 1, 1.5);
   let pr = PERF.pr; if (avg > 26 && pr > 0.85) pr = Math.max(0.85, +(pr - 0.25).toFixed(2)); else if (avg < 15 && pr < max) pr = Math.min(max, +(pr + 0.25).toFixed(2));
   if (pr !== PERF.pr) { PERF.pr = pr; renderer.setPixelRatio(pr); resize(); }
   // still slow at the lowest resolution: drop sun shadows first, then show fewer realistic people (the rest keep their simple figure); back up when fast
