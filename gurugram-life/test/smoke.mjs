@@ -86,9 +86,9 @@ try {
   { // search: canonical address, structured data, crawlable pages, robots and sitemap
     const home = await (await fetch(`http://localhost:${PORT}/`)).text(); const lds = [...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1])['@type']);
     check(/<link rel="canonical" href="https:\/\/gurugramlife\.com\/">/.test(home) && lds.includes('VideoGame') && lds.includes('WebSite') && !home.includes('__CANON__') && !home.includes('__LD__'), 'home page: canonical URL and structured data');
-    const pages = await Promise.all(['/about', '/how-to-play', '/places'].map(async p => { const r = await fetch(`http://localhost:${PORT}${p}`); const t = await r.text(); return r.ok && /<h1>/.test(t) && t.includes('rel="canonical"') && !/\bTau\b/.test(t); }));
+    const pages = await Promise.all(['/about', '/how-to-play', '/places', '/updates', '/places/dlf-cyber-city', '/places/sadar-bazaar'].map(async p => { const r = await fetch(`http://localhost:${PORT}${p}`); const t = await r.text(); return r.ok && /<h1>/.test(t) && t.includes('rel="canonical"') && !/\bTau\b/.test(t); }));
     const rb = await (await fetch(`http://localhost:${PORT}/robots.txt`)).text(), sm = await (await fetch(`http://localhost:${PORT}/sitemap.xml`)).text(), nf = await fetch(`http://localhost:${PORT}/no-such-page`);
-    check(pages.every(Boolean) && rb.includes('Sitemap: https://gurugramlife.com/sitemap.xml') && (sm.match(/<loc>/g) || []).length === 4 && nf.status === 404, 'about/how-to-play/places pages, robots.txt, sitemap, 404');
+    check(pages.every(Boolean) && rb.includes('Sitemap: https://gurugramlife.com/sitemap.xml') && (sm.match(/<loc>/g) || []).length === 30 && nf.status === 404, 'about/how-to-play/places pages, robots.txt, sitemap, 404');
     const bare = await new Promise(res => http.get({ host: 'localhost', port: PORT, path: '/about', headers: { host: 'gurugramlife.com' } }, r => { r.resume(); res(r); })); // fetch() can't set Host
     const www = await new Promise(res => http.get({ host: 'localhost', port: PORT, path: '/about', headers: { host: 'www.gurugramlife.com' } }, r => { r.resume(); res(r); }));
     check(bare.statusCode === 200 && www.statusCode === 200, 'no domain redirects from the game (the host handles www, avoids a redirect loop)');

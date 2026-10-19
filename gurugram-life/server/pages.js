@@ -1,6 +1,8 @@
 // Plain HTML pages for search engines and people who want to read before playing: /about, /how-to-play, /places,
 // plus robots.txt, sitemap.xml and a 404 page. The game itself is a 3D canvas, so these pages carry the words
 // Google ranks. Everything here is visible text (no hidden keyword blocks); keep it true to the game.
+import { PLACE_PAGES } from './places.js';
+import { DIST } from '../public/shared/data.js';
 export const SITE = (process.env.SITE_URL || 'https://gurugramlife.com').replace(/\/+$/, ''); // the address the domain host serves (www redirects here)
 const UPDATED = new Date().toISOString().slice(0, 10); // deploy date: pages change only when the code does
 
@@ -55,18 +57,52 @@ footer{border-top:1px solid #3a2d24;padding:18px;text-align:center;color:#d9c7a3
 function page(req, { path, title, desc, h1, body, ld }) {
   const url = SITE + path; const lds = [].concat(ld || []).map(o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`).join('');
   const link = (p, t) => `<a href="${p}"${p === path ? ' aria-current="page"' : ''}>${t}</a>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  return `<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(desc)}"><link rel="canonical" href="${url}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="Gurugram Life"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
+<meta property="og:type" content="website"><meta property="og:locale" content="en_IN"><meta property="og:site_name" content="Gurugram Life"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}"><meta property="og:image" content="${SITE}/img/og-image.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#d7331f">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png"><link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Mukta:wght@400;700&display=swap">
 <style>${CSS}</style>${lds}</head><body>
-<header><a class="logo" href="/">Gurugram <span>Life</span></a><nav>${link('/', 'Play free')}${link('/about', 'About')}${link('/how-to-play', 'How to play')}${link('/places', 'Places')}</nav></header>
+<header><a class="logo" href="/">Gurugram <span>Life</span></a><nav>${link('/', 'Play free')}${link('/about', 'About')}${link('/how-to-play', 'How to play')}${link('/places', 'Places')}${link('/updates', 'Updates')}</nav></header>
 <main><h1>${h1}</h1>${body}</main>
 <footer>Gurugram Life · a free 3D city life game set in Gurugram (Gurgaon), Haryana · <a href="/">Play now</a></footer></body></html>`;
 }
-const crumbs = (path, name) => ({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Gurugram Life', item: SITE + '/' }, { '@type': 'ListItem', position: 2, name, item: SITE + path }] });
+const crumbs = (path, name, mid) => ({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Gurugram Life', item: SITE + '/' }, ...(mid ? [{ '@type': 'ListItem', position: 2, name: mid[1], item: SITE + mid[0] }] : []), { '@type': 'ListItem', position: mid ? 3 : 2, name, item: SITE + path }] });
+const BY_NAME = Object.fromEntries(PLACE_PAGES.map(p => [p.name, p]));
+// areas next to this one on the game map (the city is a 5 x 5 grid of real areas)
+function neighbours(name) { const d = DIST.find(x => x[2] === name); if (!d) return []; return DIST.filter(x => Math.abs(x[0] - d[0]) + Math.abs(x[1] - d[1]) === 1 && BY_NAME[x[2]]).map(x => BY_NAME[x[2]]); }
+function placePage(req, P) {
+  const path = '/places/' + P.slug, nb = neighbours(P.name);
+  return page(req, { path, title: `${P.name}, Gurugram in Gurugram Life: things to do in the free 3D game`, desc: `${P.name} in Gurugram Life, the free 3D Gurugram (Gurgaon) game: ${P.todo.slice(0, 3).join(', ').toLowerCase()}. Play free in your browser.`.slice(0, 300),
+    h1: `${esc(P.name)} in Gurugram Life`,
+    body: `<p><a href="/places">← All Gurugram places</a></p>
+<h2>About ${esc(P.name)}</h2><p>${esc(P.real)}</p>
+<h2>${esc(P.name)} in the game</h2><p>${esc(P.game)}</p>
+<h2>Things to do</h2><ul>${P.todo.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+${nb.length ? `<h2>Nearby on the map</h2><div class="grid">${nb.map(n => `<div class="card"><b><a href="/places/${n.slug}">${esc(n.name)}</a></b>${esc(n.todo[0])}.</div>`).join('')}</div>` : ''}
+<p>New to the game? Read <a href="/how-to-play">how to play</a> or <a href="/about">what Gurugram Life is</a>. Shops and businesses in the game are made up, except Ambience Mall.</p>
+<a class="play" href="/">Play in ${esc(P.name)} now →</a>`,
+    ld: [crumbs(path, P.name, ['/places', 'Places']), { '@context': 'https://schema.org', '@type': 'TouristAttraction', name: P.name, description: P.real, containedInPlace: { '@type': 'City', name: 'Gurugram', alternateName: 'Gurgaon' } }] });
+}
+// what changed in the game, newest first (keep adding to the top)
+export const UPDATES = [
+  ['2026-10-19', 'A page for every place', ['Every Gurugram area in the game now has its own page with real-life background, things to do and nearby places.', 'New Updates page (this one).']],
+  ['2026-10-18', 'Sound like GTA, street dogs and talking NPCs', ['Sound now starts with your first tap on phones.', 'Street fighters, drivers, race rivals and the Gali ke Don bosses speak their lines out loud in Hindi and Haryanvi.', 'Radio plays in vehicles, with RJ Bunty, station idents and funny ads for in-game businesses. New English Hits channel.', 'City sounds on foot: horns, autos, crows, koels, vendors calling and temple bells. Soft footsteps and punches.', 'Chase music that builds up as the police close in.', 'Desi street dogs that sniff around, bark and run away from speeding cars.']],
+  ['2026-10-18', 'Realistic world and 3D people', ['Realistic 3D people with clothes, hair, skin tones and real animations.', 'Sky with clouds, sun shadows, reflective glass towers and shiny cars.', 'Detailed roads, zebra crossings, black-and-yellow kerbs, pavers and building walls with AC units.', 'A proper CNG auto, better cars, buses and trucks, and desi cows.']],
+  ['2026-10-18', 'Cleaner screen on phones', ['A smaller, less crowded HUD on phones so you can see the city, with one notification at a time.']],
+  ['2026-10-16', 'Languages and the Gali ke Don story', ['Pick English, Hindi or Haryanvi on the first screen. Hindi is written in Roman letters.', 'Bollywood radio for Hindi and English players.', 'Gali ke Don, a five-chapter gangster story: it starts with a phone call and the boss comes to the nearest corner.']],
+  ['2026-10-12', 'Monsoon and boats', ['Weather for everyone in the city, from drizzle to extreme rain, with roads that flood as it pours.', 'Buy a boat and outrun the Jal Police on the water.']],
+  ['2026-10-11', 'Avatar creator, races and daily tasks', ['Make your own avatar and choose where to start.', 'Street races against five rivals, daily tasks that unlock the next level, and AI players when you are alone.', 'Easy GTA-style controls on phone and laptop, and a 3D city map.']],
+];
+function updatesPage(req) {
+  return page(req, { path: '/updates', title: 'Gurugram Life updates: new features and patch notes', desc: 'What is new in Gurugram Life, the free 3D Gurugram (Gurgaon) game: latest features, fixes and patch notes, newest first.',
+    h1: 'Updates and patch notes',
+    body: `<p>Gurugram Life gets new features every few days. Here is what changed, newest first.</p>
+${UPDATES.map(([d, t, items]) => `<h2>${esc(t)}</h2><p><time datetime="${d}">${new Date(d + 'T12:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</time></p><ul>${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`).join('\n')}
+<p>See the <a href="/places">places</a> you can visit and <a href="/how-to-play">how to play</a>.</p><a class="play" href="/">Play the latest version →</a>`,
+    ld: [crumbs('/updates', 'Updates')] });
+}
 
 export const PAGES = {
   '/about': req => page(req, { path: '/about', title: 'About Gurugram Life: free 3D Gurugram (Gurgaon) life game',
@@ -107,23 +143,26 @@ export const PAGES = {
     desc: 'All the real Gurugram (Gurgaon) areas you can visit in the Gurugram Life game, from DLF Cyber City and Golf Course Road to Iffco Chowk, Sadar Bazaar and Old Gurgaon.',
     h1: 'Gurugram places in the game',
     body: `<p>Gurugram Life is built from ${PLACES.length} real areas of Gurugram (Gurgaon). Here is what you will find in each one in the game.</p>
-<div class="grid">${PLACES.map(([n, d]) => `<div class="card"><b>${esc(n)}</b>${esc(d)}</div>`).join('')}</div>
+<div class="grid">${PLACES.map(([n, d]) => `<div class="card"><b>${BY_NAME[n] ? `<a href="/places/${BY_NAME[n].slug}">${esc(n)}</a>` : esc(n)}</b>${esc(d)}</div>`).join('')}</div>
 <p>Businesses and shop names inside the game are made up for fun, except Ambience Mall.</p><a class="play" href="/">Explore Gurugram now →</a>`,
     ld: [crumbs('/places', 'Places'), { '@context': 'https://schema.org', '@type': 'ItemList', name: 'Gurugram areas in Gurugram Life', itemListElement: PLACES.map(([n], i) => ({ '@type': 'ListItem', position: i + 1, name: n })) }] }),
 };
 
+for (const P of PLACE_PAGES) PAGES['/places/' + P.slug] = req => placePage(req, P);
+PAGES['/updates'] = updatesPage;
+
 // Structured data for the home page: the game, the website and who makes it.
 export function homeLD() {
-  return [{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Gurugram Life', alternateName: ['Gurgaon Life', 'Gurugram Life game'], url: SITE + '/', inLanguage: ['en', 'hi'] },
+  return [{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Gurugram Life', alternateName: ['Gurgaon Life', 'Gurugram Life game'], url: SITE + '/', inLanguage: ['en-IN', 'hi-Latn'] },
     { '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Gurugram Life', alternateName: ['Gurgaon Life', 'Gurugram Life 3D'], url: SITE + '/', image: SITE + '/img/og-image.jpg',
       description: 'Free 3D multiplayer life game set in Gurugram (Gurgaon), Haryana. Earn, race, party and fight in Cyber City, Golf Course Road and Sohna Road, in your browser on phone or laptop.',
       genre: ['Life simulation', 'Open world', 'Action', 'Racing'], gamePlatform: ['Web browser', 'Android', 'iOS', 'Windows', 'macOS'], applicationCategory: 'GameApplication', operatingSystem: 'Any (web browser)',
-      playMode: ['MultiPlayer', 'SinglePlayer'], inLanguage: ['en', 'hi'], isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'INR', availability: 'https://schema.org/InStock' },
+      playMode: ['MultiPlayer', 'SinglePlayer'], inLanguage: ['en-IN', 'hi-Latn'], isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'INR', availability: 'https://schema.org/InStock' },
       contentLocation: { '@type': 'City', name: 'Gurugram', alternateName: 'Gurgaon', containedInPlace: { '@type': 'State', name: 'Haryana' } } }];
 }
 export function robots() { return `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /ws\n\nSitemap: ${SITE}/sitemap.xml\n`; }
 export function sitemap() {
-  const urls = [['/', '1.0', 'daily'], ['/about', '0.8', 'weekly'], ['/how-to-play', '0.7', 'weekly'], ['/places', '0.7', 'monthly']];
+  const urls = [['/', '1.0', 'daily'], ['/about', '0.8', 'weekly'], ['/how-to-play', '0.7', 'weekly'], ['/places', '0.7', 'monthly'], ['/updates', '0.6', 'weekly'], ...PLACE_PAGES.map(P => ['/places/' + P.slug, '0.6', 'monthly'])];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(([p, pr, f]) => `  <url><loc>${SITE}${p}</loc><lastmod>${UPDATED}</lastmod><changefreq>${f}</changefreq><priority>${pr}</priority></url>`).join('\n')}\n</urlset>\n`;
 }
 export function notFound(req) {
