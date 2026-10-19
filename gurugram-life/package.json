@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "PORT=3000 node --watch server/index.js",
-    "test": "node test/smoke.mjs",
+    "test": "node test/smoke.mjs && node test/story.mjs",
     "build:solo": "node scripts/build-solo.mjs",
     "test:controls": "node test/controls.e2e.cjs"
   },

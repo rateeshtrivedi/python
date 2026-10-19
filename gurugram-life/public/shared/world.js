@@ -2,7 +2,7 @@
 // Owns money, purchases, missions, leaderboards, auctions, crews, turf, the belt, battles and events.
 import * as D from './data.js';
 
-const INTERIORS = ['mall', 'office', 'theka', 'dhaba', 'club'];
+const INTERIORS = ['mall', 'office', 'theka', 'dhaba', 'club', 'home'];
 
 // opts: { rid(n) -> random id string, load() -> saved world object or null, save(jsonString), bots: boolean }
 export function createWorld(opts) {
@@ -22,8 +22,8 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 
 function newProfile(name, color) {
   return {
-    id: rid(10), token: rid(32), name, color, money: 2000, xp: 0, level: 1, respect: 0, rank: 0,
-    vehicles: [], cur: null, houses: ['pg'], home: 'pg', outfit: { shirt: null, hat: 'none', shades: false },
+    id: rid(10), token: rid(32), name, color, money: D.START_MONEY, xp: 0, level: 1, respect: 0, rank: 0,
+    vehicles: [], cur: null, houses: ['street'], home: 'street', story: { done: false }, spouse: null, /* Sapno ka Shehar: start on the footpath */ outfit: { shirt: null, hat: 'none', shades: false },
     bling: [], mods: {}, plate: null, crew: null, c: {}, missions: { active: [], next: 0, round: 0 },
     daily: { last: '', streak: 0 }, blessed: '', party: 0, tutDone: false, created: Date.now(), lastSeen: Date.now(),
   };
@@ -81,8 +81,31 @@ function track(c, k, n = 1) {
     ms.bonusPaid = true; const st = p.streak && p.streak.day === prevDay(ms.day) ? p.streak : { n: 0 }; p.streak = { n: st.n + 1, day: ms.day };
     const bonus = D.dailyBonus(p.level, p.streak.n - 1); p.money += bonus; p.respect += 10;
     send(c, { t: 'daydone', bonus, streak: p.streak.n }); announce(p.name + ' ne aaj ke saare kaam poore kar diye! Streak: ' + p.streak.n + ' din', 'event');
+    storyPrize(c);
   } else if (nDone === 3) send(c, { t: 'toast', text: 'Teen kaam poore! Ab XP poora hote hi level up hoga. Baaki kaam = bada bonus.', kind: 'money', sfx: 'level' });
   addXP(c, 40); sendProfile(c);
+}
+// Sapno ka Shehar: the chapter is the rung of the home ladder you stand on (D.LADDER). Finishing all of a day's kaam hands
+// over the next home up the ladder for free (and moves you in); on the top rung the prize is the diamond set, then the story is done.
+const chapterOf = p => (p.story && p.story.done) ? D.CHAPTERS.length : Math.min(D.homeRank(p), D.CHAPTERS.length - 1);
+function storyPrize(c) {
+  const p = c.p; p.story = p.story || { done: false }; if (p.story.done) return; const r = D.homeRank(p); let prize;
+  if (r < D.LADDER.length - 1) { const id = D.LADDER[r + 1]; p.houses.push(id); p.home = id; prize = { kind: 'house', id, name: D.HOUSES[id].name }; p.respect += 20; announce(p.name + ' footpath se ' + D.HOUSES[id].name + ' tak pahunch gaya! Sapno ka Shehar, Din ' + (r + 1) + ' poora.', 'showoff'); }
+  else { if (!p.bling.includes('heera')) p.bling.push('heera'); p.story.done = true; prize = { kind: 'bling', id: 'heera', name: D.BLING.heera.name }; p.respect += 100; broadcast(pinfo(c)); announce(p.name + ' ab Gurugram ka Chaudhary se! Footpath se farmhouse tak ka safar poora. 👑', 'showoff'); }
+  dirty = true; sendProfile(c); send(c, { t: 'chapter', ch: chapterOf(p), prize, sfx: 'level' });
+}
+// rishta: Mausi ji's call (a 2BHK or better and a car) → meet at Cyber Hub → a drive to Leisure Valley → the ring → the shaadi
+const CAFE = { x: 102, z: -259 }, VALLEY = { x: 300, z: -150 };
+function rishta(c, m) {
+  const p = c.p, st = c.st || {}, sp = p.spouse; const stage = sp ? sp.stage : 0; const want = D.RISHTA_STEPS.indexOf(m.s);
+  if (want < 0 || want !== stage) return { ok: false, error: 'Pehle pichla kadam poora kar' };
+  if (want === 0) { if (!D.rishtaReady(p)) return { ok: false, error: 'Mausi ji: "Pehle 2BHK aur ek gaadi le, beta. Fir rishta."' };
+    const g = m.g === 'm' ? 'm' : 'f'; p.spouse = { stage: 1, g, name: D.cleanText(m.name, 14) || pick(D.SPOUSE_NAMES[g]), seed: Math.floor(Math.random() * 1e6) }; }
+  else if (want === 1) { if (!c.st || st.in || !(dist(st, CAFE) <= 40)) return { ok: false, error: 'Cyber Hub ke cafe pe mil' }; sp.stage = 2; }
+  else if (want === 2) { if (!st.v || !(dist(st, VALLEY) <= 70)) return { ok: false, error: 'Gaadi mein Leisure Valley tak le ja' }; sp.stage = 3; p.respect += 5; }
+  else if (want === 3) { if (!p.bling.includes('ring')) return { ok: false, error: 'Goyal Jewellers se sagaai ki angoothi le' }; sp.stage = 4; p.respect += 10; }
+  else { if (!charge(c, D.SHAADI_COST)) return { ok: false, error: 'Shaadi ka kharcha ' + fmt(D.SHAADI_COST) + ' se' }; sp.stage = 5; sp.at = Date.now(); p.respect += 50; p.party += 30; announce('Shaadi mubarak! ' + p.name + ' aur ' + sp.name + ' ki shaadi ho gayi. Band baaja baaraat! 💍', 'party'); }
+  dirty = true; sendProfile(c); return { ok: true, spouse: p.spouse };
 }
 // Aaj ke kaam: seven tasks a day from D.DAILY, picked per player per day (Gurugram date). Three done unlock the next level; all seven pay a streak bonus.
 const istDay = (t = Date.now()) => new Date(t + 5.5 * 3600e3).toISOString().slice(0, 10);
@@ -314,7 +337,7 @@ function handleBuy(c, m) {
     const v = D.VEH[id]; if (!v || !D.BUY_VEHICLES.includes(id)) return fail('Yeh gaadi nahi bikti'); if (p.vehicles.includes(id)) return fail('Yeh gaadi pehle se teri se');
     name = v.name; price = v.price; after = () => { p.vehicles.push(id); p.cur = id; track(c, 'vehbuy'); addXP(c, 80); p.respect += 10; if (price >= 150000) announce(p.name + ' ne nayi ' + v.name + ' kharidi! Dekho kya swag se.', 'showoff'); };
   } else if (kind === 'house') {
-    const h = D.HOUSES[id]; if (!h) return fail('Unknown property'); if (p.houses.includes(id)) return fail('Pehle se tera se');
+    const h = D.HOUSES[id]; if (!h) return fail('Unknown property'); if (p.houses.includes(id)) return fail('Pehle se tera se'); if (!h.price) return fail('Yeh ghar bikta nahi: aaj ke saare kaam poore kar, Sapno ka Shehar mein milega');
     name = h.name; price = h.price; after = () => { p.houses.push(id); p.home = id; addXP(c, 150); p.respect += 25; if (price >= 500000) announce(p.name + ' ab ' + h.name + ' ke maalik hain!', 'showoff'); };
   } else if (kind === 'hat') {
     const h = D.HATS[id]; if (!h) return fail('Unknown hat'); name = h[0]; price = p.outfit.hat === id ? 0 : h[1];
@@ -486,6 +509,7 @@ function handle(c, m) {
       return reply({ ok: false, error: 'Abhi nahi. ' + Math.max(0, need - (p.c.shifts || 0)) + ' aur shifts kar aur Level ' + (p.rank + 2) + ' tak pahunch.' });
     }
     case 'setcur': { if (p.vehicles.includes(m.v)) { p.cur = m.v; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
+    case 'rishta': reply(rishta(c, m)); break;
     case 'sethome': { if (p.houses.includes(m.h)) { p.home = m.h; dirty = true; sendProfile(c); } break; }
     case 'unshade': { if (p.outfit.shades) { p.outfit.shades = false; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'name': { const n = D.cleanText(m.name, 16); if (n.length >= 2 && rateOk(c, 'name', 30)) { p.name = n; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
@@ -744,7 +768,7 @@ function tick1s() {
 
 function raceTops() { const o = {}; for (const R of D.RACES) o[R.id] = ((db.races || {})[R.id] || []).slice(0, 5).map(e => ({ name: e.name, ms: e.ms })); return o; }
 
-const FUNNEL = [['play', 'Pressed Khelo'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['start_other', 'Started somewhere else (no story)'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
+const FUNNEL = [['play', 'Pressed Khelo'], ['intro_play', 'Intro film started'], ['intro_done', 'Watched the whole intro film'], ['intro_skip', 'Skipped the intro film'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['start_other', 'Started somewhere else (no story)'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
 
 
 // ------------------------------------------------------------------ computer players: nobody should walk an empty city

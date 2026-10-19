@@ -8,6 +8,7 @@ import * as HU from './humans.js';
 import * as RL from './realism.js';
 import * as DG from './dogs.js';
 import * as RD from './rides.js';
+import * as HM from './homes.js';
 import { VOICES } from './voices.js';
 import { CREDITS, CHANGED, LICENCES } from '../shared/credits.js';
 
@@ -228,6 +229,8 @@ function setLook(ch, look) {
   if (look.shades && !b.includes('gshades')) bx(u.hatG, 0.5, 0.1, 0.04, 0x050505, 0, 2.38, 0.32);
   if (b.includes('gshades')) { bx(u.hatG, 0.5, 0.11, 0.04, 0x050505, 0, 2.38, 0.32); bx(u.hatG, 0.54, 0.03, 0.05, GOLD, 0, 2.44, 0.33, { mat: glow(GOLD) }); }
   if (b.includes('chain')) { const t = new THREE.Mesh(TORUS, glow(GOLD)); t.scale.set(0.3, 0.3, 0.6); t.rotation.x = Math.PI / 2 - 0.3; t.position.set(0, 1.86, 0.18); u.blingG.add(t); sph(u.blingG, 0.08, GOLD, 0, 1.62, 0.27, glow(GOLD)); }
+  if (b.includes('heera')) { const t = new THREE.Mesh(TORUS, glow(0xeaf8ff)); t.scale.set(0.34, 0.34, 0.5); t.rotation.x = Math.PI / 2 - 0.3; t.position.set(0, 1.9, 0.16); u.blingG.add(t); for (let i = 0; i < 5; i++) sph(u.blingG, 0.06, 0, -0.16 + i * 0.08, 1.7 - Math.abs(i - 2) * 0.03, 0.3, glow(0xbfefff)); }
+  if (b.includes('ring')) sph(u.blingL, 0.06, 0, 0, -0.98, 0.08, glow(GOLD));
   if (b.includes('kada')) { const t = new THREE.Mesh(TORUS, glow(GOLD)); t.scale.set(0.16, 0.16, 0.3); t.rotation.x = Math.PI / 2; t.position.set(0, -0.72, 0); u.blingR.add(t); }
   if (b.includes('watch')) { bx(u.blingL, 0.28, 0.12, 0.3, GOLD, 0, -0.72, 0, { mat: glow(GOLD) }); bx(u.blingL, 0.12, 0.1, 0.05, 0x111111, 0, -0.72, 0.16); }
   if (look.belt) { bx(u.blingG, 0.96, 0.22, 0.56, GOLD, 0, 1.05, 0, { mat: glow(GOLD) }); bx(u.blingG, 0.36, 0.3, 0.06, 0xd7331f, 0, 1.05, 0.29); }
@@ -532,7 +535,7 @@ function districtBuilders() {
 }
 
 // ---------------- interiors
-function floorTex(kind) { return texFrom((x, w, h) => { if (kind === 'marble') { x.fillStyle = '#e8e2d6'; x.fillRect(0, 0, w, h); x.fillStyle = '#d6cdbb'; x.fillRect(0, 0, w / 2, h / 2); x.fillRect(w / 2, h / 2, w / 2, h / 2); } else if (kind === 'carpet') { x.fillStyle = '#3d4a5c'; x.fillRect(0, 0, w, h); for (let i = 0; i < 200; i++) { x.fillStyle = pick(['#43526a', '#38455a']); x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } } else if (kind === 'tile') { x.fillStyle = '#bdb3a0'; x.fillRect(0, 0, w, h); x.strokeStyle = '#8f8676'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2); } else if (kind === 'club') { x.fillStyle = '#120a1c'; x.fillRect(0, 0, w, h); x.strokeStyle = '#2a1838'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2); } else { x.fillStyle = '#a8875a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 300; i++) { x.fillStyle = pick(['#9b7a4f', '#b39264', '#8f7048']); x.fillRect(Math.random() * w, Math.random() * h, 3, 2); } } }, 64, 64, 1, 1); }
+function floorTex(kind) { return texFrom((x, w, h) => { if (kind === 'marble') { x.fillStyle = '#e8e2d6'; x.fillRect(0, 0, w, h); x.fillStyle = '#d6cdbb'; x.fillRect(0, 0, w / 2, h / 2); x.fillRect(w / 2, h / 2, w / 2, h / 2); } else if (kind === 'carpet') { x.fillStyle = '#3d4a5c'; x.fillRect(0, 0, w, h); for (let i = 0; i < 200; i++) { x.fillStyle = pick(['#43526a', '#38455a']); x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } } else if (kind === 'tile') { x.fillStyle = '#bdb3a0'; x.fillRect(0, 0, w, h); x.strokeStyle = '#8f8676'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2); } else if (kind === 'parquet') { x.fillStyle = '#7a4a26'; x.fillRect(0, 0, w, h); for (let r = 0; r < 8; r++) for (let c = 0; c < 2; c++) { x.fillStyle = pick(['#83512b', '#6f4222', '#8c5a31', '#76482a']); x.fillRect(c * w / 2 + (r % 2) * w / 4, r * h / 8, w / 2 - 1, h / 8 - 1); } } else if (kind === 'chess') { x.fillStyle = '#efe9dd'; x.fillRect(0, 0, w, h); x.fillStyle = '#2b2622'; x.fillRect(0, 0, w / 2, h / 2); x.fillRect(w / 2, h / 2, w / 2, h / 2); x.strokeStyle = 'rgba(200,170,90,.6)'; x.lineWidth = 1; x.strokeRect(0.5, 0.5, w - 1, h - 1); } else if (kind === 'club') { x.fillStyle = '#120a1c'; x.fillRect(0, 0, w, h); x.strokeStyle = '#2a1838'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2); } else { x.fillStyle = '#a8875a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 300; i++) { x.fillStyle = pick(['#9b7a4f', '#b39264', '#8f7048']); x.fillRect(Math.random() * w, Math.random() * h, 3, 2); } } }, 64, 64, 1, 1); }
 function makeRoom(key, ox, oz, W, D2, H, fkind, wall, fr) {
   const g = new THREE.Group(); scene.add(g); const ft = floorTex(fkind); ft.repeat.set(W / (fr || 6), D2 / (fr || 6));
   const f = new THREE.Mesh(new THREE.PlaneGeometry(W, D2), new THREE.MeshLambertMaterial({ map: ft })); f.rotation.x = -Math.PI / 2; f.position.set(ox, 0.01, oz); g.add(f);
@@ -687,8 +690,9 @@ function renderMissions() {
   $('missions').querySelector('h4').textContent = 'Aaj ke kaam · ' + nd + '/' + act.length + (P.streak && P.streak.n ? ' · 🔥' + P.streak.n : '');
   const ds = donState(); if (ds) box.append(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? (ds.called ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.at[2] + ')' : '📞 Golu ka call: Gali ke Don ch ' + (ds.ch + 1)) : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
   for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
+  { const cl = chapterLine(); if (cl && nd < act.length) box.append(el('button', { type: 'button', class: 'm don', onclick: appSapne }, el('i', { text: '🏠' }), el('span', { text: 'Din ' + cl.n + ': saare ' + act.length + ' kaam = ' + cl.C.prize }), el('b', { text: nd + '/' + act.length }), el('em', { style: 'width:' + Math.round(nd / act.length * 100) + '%' }))); }
   if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Kal naye kaam aayenge' : nd < 3 ? (3 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Saare 7 = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
-  $('mchip').textContent = '📋 Aaj ke kaam ' + nd + '/' + act.length;
+  const cl = chapterLine(); $('mchip').textContent = (cl ? '🏠 Din ' + cl.n + ' · kaam ' : '📋 Aaj ke kaam ') + nd + '/' + act.length;
 }
 function goTask(a) {
   if (a.done) return toast('Ye kaam ho gaya ✓ Baaki kar!');
@@ -724,7 +728,7 @@ function updateDon() {
 }
 // the phone rings: how a new player finds the story. Accepting brings the boss to the nearest corner.
 function maybeDonCall(s) {
-  if (G.donCallOpen || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return;
+  if (G.donCallOpen || G.film || G.story || !$('raceres').hidden || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return; // not over the intro film or a story card
   if (G.story || (G.race && G.race.phase !== 'done') || G.frun || G.map || G.inside || G.selfie || G.minigame || G.chase || !$('modal').hidden || !$('raceres').hidden || G.veh && Math.abs(G.vs) > 20) return;
   const day = P.missions && P.missions.day; const lc = L.donCalls && L.donCalls.day === day ? L.donCalls : { day, n: 0 }; if (lc.n >= 2) return;
   lc.n++; L.donCalls = lc; saveLocal(); showDonCall(s);
@@ -793,7 +797,7 @@ function mallStore(kind) {
   if (kind === 'cinema') openModal('Reel Star Cinema', 'Popcorn free with ticket · ' + wallet(), b => { for (const mv of [['Chaudhary No.1', 'Haryanvi action · 2h 10m'], ['Dil Haryanvi', 'Romance + dhamaal · 2h 25m'], ['Cyber City Ke Sher', 'Office comedy · 1h 55m']]) b.append(itemRow(mv[0], mv[1], fmt(250), async () => { const r = await buy('misc', 'movie'); if (!r.ok) return; closeModal(); fadeTo('Picture chal rahi se... ' + mv[0], 2600, () => { L.hunger = Math.min(100, L.hunger + 10); toast('Paisa vasool picture thi!'); }); })); });
 }
 function openDealer() { openModal('Chaudhary Motors', 'Gaadi le, swag badha · ' + wallet(), b => { for (const t of D.BUY_VEHICLES) { const v = D.VEH[t]; const own = P.vehicles.includes(t); b.append(itemRow(v.name, 'Top speed ' + v.speed * 4 + ' km/h · ' + (v.kind === 2 ? '2-wheeler' : 'Car') + (own ? ' · in your garage' : ''), own ? 'Owned' : fmt(v.price), async () => { const r = await buy('vehicle', t); if (r.ok) { A.sfx('level'); toast('Badhai ho! ' + v.name + ' teri hui. Press V to ride.', 'money'); closeModal(); } }, own)); } }); }
-function openProperty() { openModal('Yadav Estates', 'Ghar lo, roz kiraya kamao · ' + wallet(), b => { b.append(el('p', { text: 'Sharma PG mein rehne walon se Yadav ji roz ' + fmt(D.PG_RENT) + ' rent katte hain. Apna ghar le aur rent ki chhutti.' })); for (const [k, h] of Object.entries(D.HOUSES)) { const own = P.houses.includes(k); b.append(itemRow(h.name, (h.daily ? 'Daily income +' + fmt(h.daily) : 'Starter room') + (P.home === k ? ' · your home' : '') + (k === 'farm' ? ' · host farmhouse parties' : ''), own ? (P.home === k ? 'Home' : 'Set home') : fmt(h.price), async () => { if (own) { net.send('sethome', { h: k }); toast('Ab yeh tera ghar se: ' + h.name); closeModal(); return; } const r = await buy('house', k); if (r.ok) { A.sfx('level'); toast('Naya ghar! ' + h.name, 'money'); closeModal(); } }, own && P.home === k, own)); } }); }
+function openProperty() { openModal('Yadav Estates', 'Ghar lo, roz kiraya kamao · ' + wallet(), b => { b.append(el('p', { text: 'Sharma PG mein rehne walon se Yadav ji roz ' + fmt(D.PG_RENT) + ' rent katte hain. Apna ghar le aur rent ki chhutti.' })); for (const [k, h] of Object.entries(D.HOUSES)) { const own = P.houses.includes(k); if (h.street || (!h.price && !own)) continue; b.append(itemRow(h.name, (h.daily ? 'Daily income +' + fmt(h.daily) : 'Starter room') + (P.home === k ? ' · your home' : '') + (k === 'farm' ? ' · host farmhouse parties' : ''), own ? (P.home === k ? 'Home' : 'Set home') : fmt(h.price), async () => { if (own) { net.send('sethome', { h: k }); toast('Ab yeh tera ghar se: ' + h.name); closeModal(); return; } const r = await buy('house', k); if (r.ok) { A.sfx('level'); toast('Naya ghar! ' + h.name, 'money'); closeModal(); } }, own && P.home === k, own)); } }); }
 function openMetro(from) { openModal('Rapid Metro', 'From ' + from + ' · ₹30 a trip', b => { for (const m of METROS) { if (m.name === from) continue; b.append(itemRow(m.name, 'About 1 minute', fmt(30), async () => { const r = await buy('misc', 'metro'); if (!r.ok) return; closeModal(); fadeTo('Rapid Metro: agla station ' + m.name, 1600, () => teleport(m.x, m.z + 4, 0)); })); } }); }
 async function rentScooter() { if (G.veh) return toast('Pehle current gaadi se utar (V)'); const r = await buy('misc', 'rent'); if (r.ok) { G.rented = true; mount('rent'); toast('Bhaago e-scooter rent ho gaya! V se utroge to rental khatam.'); } }
 function openJeweller() { openModal('Goyal Jewellers', 'Golf Course Road · ' + wallet(), b => { b.append(el('p', { text: 'Jitna sona, utni izzat. Sab players ko tera bling dikhega.' })); for (const [id, it] of Object.entries(D.BLING)) { const own = P.bling.includes(id); b.append(itemRow(it.name, '+' + Math.round(it.show / 2) + ' respect · show-off ' + it.show, own ? 'Pehna hua' : fmt(it.price), async () => { const r = await buy('bling', id); if (r.ok) { toast('Chamak gaya! ' + it.name, 'money'); G.modalBuild && G.modalBuild(); } }, own)); } }); }
@@ -825,7 +829,7 @@ function openPhone() {
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Bhasha', '#2f5fd0', 'Aa', appLang], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
+    const apps = [['Sapne', '#c2185b', '★', appSapne], ['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Bhasha', '#2f5fd0', 'Aa', appLang], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
@@ -843,8 +847,8 @@ function openCredits() {
 function appRide() { openModal('Chalo Driver', 'Passenger le jao, paise kamao' + (G.ev?.type === 'flood' ? ' · FLOOD SURGE 2x' : ''), b => { if (G.job) { b.append(el('p', { text: 'Current job: ' + jobText() }), itemRow('Cancel current job', '', 'Cancel', () => { endJob(); closeModal(); }, false, true)); return; } b.append(el('p', { text: G.veh ? 'Cars pay 40% more (AC wali sawari).' : 'Ride ke liye gaadi chahiye. Iffco Chowk se e-scooter rent kar, ya Chaudhary Motors se khareed.' }), itemRow('Go online and accept a ride', 'Pickup → drop, fast drop = tip', G.veh ? 'Go online' : 'Need vehicle', () => { closeModal(); startJob('ride'); }, !G.veh)); }); }
 function appDelivery() { openModal('Jhatpat Food', '10 minute delivery, Gurugram style' + (G.ev?.type === 'flood' ? ' · FLOOD SURGE 2x' : ''), b => { if (G.job) { b.append(el('p', { text: 'Current job: ' + jobText() }), itemRow('Cancel current job', '', 'Cancel', () => { endJob(); closeModal(); }, false, true)); return; } b.append(el('p', { text: 'Paidal bhi chalega, par gaadi se jaldi hoga.' }), itemRow('Accept a delivery order', 'Restaurant se uthao, sector mein pahunchao', 'Accept', () => { closeModal(); startJob('delivery'); })); }); }
 function appGarage() { openModal('Garage', 'V to ride your selected vehicle · H for pressure horn', b => { if (!P.vehicles.length) { b.append(el('p', { text: 'Garage khaali se. Chaudhary Motors (NH-48 Auto Mile) se gaadi le, ya Iffco Chowk pe e-scooter rent kar.' }), itemRow('Set GPS to Chaudhary Motors', '', 'Set GPS', () => { setWaypoint(300, -300, 'Chaudhary Motors'); closeModal(); })); return; } for (const t of P.vehicles) { const m = P.mods[t] || {}; const mods = Object.keys(m).filter(k => m[k] !== false).map(k => D.MODS[k].name).join(', '); b.append(itemRow(D.VEH[t].name, (P.cur === t ? 'Selected' : 'Tap to select') + (mods ? ' · ' + mods : ''), P.cur === t ? 'Selected' : 'Select', () => { net.send('setcur', { v: t }); P.cur = t; appGarage(); }, P.cur === t)); } b.append(itemRow('Modify at Sandhu Car Accessories', 'Horn, film, bull bar, neon, stickers, plates', 'GPS', () => { setWaypoint(345, -255, 'Sandhu Car Accessories'); closeModal(); }, false, true)); }); }
-function homePos() { const h = D.HOUSES[P.home] || D.HOUSES.pg; if (P.home === 'farm') return { x: D.SPOTS.farmLawn.x, z: D.SPOTS.farmLawn.z }; return { x: h.at[0] * 150 + (h.at[0] < 0 ? 40 : -40), z: h.at[1] * 150 + 66 }; }
-function appHome() { const h = D.HOUSES[P.home]; openModal('Ghar: ' + h.name, 'Sleep to restore health and cure the hangover', b => { b.append(itemRow('Go home', 'Free auto ride home', 'Go', () => { closeModal(); fadeTo('Ghar ja rya se...', 1200, () => { const p = homePos(); teleport(p.x, p.z, 0); }); }), itemRow('So jao', 'Full health, hangover gayab', 'Sleep', () => { closeModal(); fadeTo('Zzz... so rya se', 2200, () => { G.hp = 100;  G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal(); const p = homePos(); teleport(p.x, p.z, 0); toast('Neend poori! Ram Ram.'); }); }), itemRow('Buy a better home', 'Yadav Estates, DLF Phase 3', 'GPS', () => { setWaypoint(-300, -103, 'Yadav Estates'); closeModal(); }, false, true)); if (P.houses.includes('farm')) b.append(itemRow('Host a farmhouse party', 'Sab players ko invite jaega', fmt(D.MISC.party[1]), () => hostParty(), !!G.party)); }); }
+function homePos() { if (P.home === 'street') return { x: HM.CAMP.x + 2.2, z: HM.CAMP.z + 0.6 }; const h = D.HOUSES[P.home] || D.HOUSES.pg; if (P.home === 'farm') return { x: D.SPOTS.farmLawn.x, z: D.SPOTS.farmLawn.z }; return { x: h.at[0] * 150 + (h.at[0] < 0 ? 40 : -40), z: h.at[1] * 150 + 66 }; }
+function appHome() { const h = D.HOUSES[P.home]; openModal('Ghar: ' + h.name + (P.home === 'street' ? ' 😴' : ''), 'Sleep to restore health and cure the hangover', b => { b.append(itemRow('Go home', P.home === 'street' ? 'Footpath, Rajiv Chowk' : 'Free auto ride, seedha andar', 'Go', () => { closeModal(); fadeTo('Ghar ja rya se...', 1200, () => { if (G.inside) { G.inside = null; setIndoor(false); } if (P.home === 'street' || !goInside(false)) { const p = homePos(); teleport(p.x, p.z, 0); } }); }), itemRow('So jao', 'Full health, hangover gayab', 'Sleep', () => { closeModal(); fadeTo('Zzz... so rya se', 2200, () => { G.hp = 100;  G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal(); const p = homePos(); teleport(p.x, p.z, 0); toast('Neend poori! Ram Ram.'); }); }), itemRow('Buy a better home', 'Yadav Estates, DLF Phase 3', 'GPS', () => { setWaypoint(-300, -103, 'Yadav Estates'); closeModal(); }, false, true)); if (P.houses.includes('farm')) b.append(itemRow('Host a farmhouse party', 'Sab players ko invite jaega', fmt(D.MISC.party[1]), () => hostParty(), !!G.party)); }); }
 async function appLeaderboard(tab) {
   tab = tab || 'rich'; const r = await net.req('lb', {}); const lb = (r.ok && r.lb) || G.lb || {};
   openModal('Gurugram Top 10', 'Sabse bada kaun? Live rankings', b => {
@@ -1357,7 +1361,7 @@ const BUBBLES = [];
 // NPCs speak their lines out loud (recorded voices, panned and fading with distance) instead of showing a bubble.
 // Lines without a recording (player chat) still appear as a speech bubble.
 const VOX_P = new THREE.Vector3(), VOX_R = new THREE.Vector3();
-function say(obj, text, secs) { const v = VOICES[text]; if (v) return speak(obj, text, secs, v); bubble(obj, text, secs); }
+function say(obj, text, secs) { if (G.film) return; const v = VOICES[text]; if (v) return speak(obj, text, secs, v); bubble(obj, text, secs); }
 function speak(obj, text, secs, v) {
   const m = obj.mesh || obj; m.getWorldPosition(VOX_P); const d = VOX_P.distanceTo(camera.position); if (d > 45) return; // too far to hear
   const u = m.userData || {}, g0 = (u.dress && u.dress.g) || u.voiceG || 'm', g = v[1].includes(g0) ? g0 : v[1][0];
@@ -1645,7 +1649,7 @@ function removeRemote(id) { const R = REMOTES.get(id); if (!R) return; scene.rem
 function updateRemotes(dt) {
   const k = 1 - Math.exp(-dt * 10);
   for (const [, R] of REMOTES) {
-    const vis = R.visible && (G.inside || '') === R.inn; const m = R.mesh;
+    const vis = R.visible && (G.inside || '') === R.inn && R.inn !== 'home' && !G.film; /* everyone's home is their own; the intro film shows only you */ const m = R.mesh;
     if (R.vm) { R.vm.visible = vis; R.vm.position.x += (R.tx - R.vm.position.x) * k; R.vm.position.z += (R.tz - R.vm.position.z) * k; R.vm.position.y = 0.2; R.vm.rotation.y = angLerp(R.vm.rotation.y, R.tr, k); m.position.set(R.vm.position.x, 0.55, R.vm.position.z); m.rotation.y = R.vm.rotation.y; sitChar(m); m.visible = vis && (D.VEH[R.veh].kind === 2 || D.VEH[R.veh].kind === 5); if (D.VEH[R.veh].kind === 5) { const wd = waterDepth(R.vm.position.x, R.vm.position.z); if (wd > 0.25) R.vm.position.y = 0.05 + Math.min(wd, 1) * 0.35; m.position.y = R.vm.position.y + 0.35; } if (R.label) R.label.visible = true;
       if (vis && R.fx && Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) < 40) { R.bassT = (R.bassT || 0) - dt; if (R.bassT < 0) { R.bassT = 0.5; A.sfx('bass', 1 - Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) / 40); } } }
     else { m.visible = vis; m.position.x += (R.tx - m.position.x) * k; m.position.z += (R.tz - m.position.z) * k; m.position.y = R.hp <= 0 ? 0.4 : (R.inn ? 0 : groundY(m.position.x, m.position.z)); m.rotation.y = angLerp(m.rotation.y, R.tr, k); m.rotation.x = R.hp <= 0 ? -Math.PI / 2 : 0; animChar(m, dt, R.a === 3 ? 3 : R.a === 1 ? 1 : 0); }
@@ -1677,7 +1681,7 @@ net.on('welcome', m => {
   buildFlood(); if (G.ev?.type === 'ipl') drawIpl(G.ev.data); renderRoast();
   if (!G.started) startGame(m.daily); else { applyMyLook(); updateHUD(); renderMissions(); }
 });
-net.on('profile', m => { const crewChanged = P && P.crew !== m.p.crew; P = m.p; updateHUD(); renderMissions(); applyMyLook(); if (crewChanged) net.req('crews', {}).then(r => { if (r.ok) G.turf = r.turf; }); });
+net.on('profile', m => { const crewChanged = P && P.crew !== m.p.crew; P = m.p; lsSet('gl_home', P.home); updateHUD(); renderMissions(); applyMyLook(); if (crewChanged) net.req('crews', {}).then(r => { if (r.ok) G.turf = r.turf; }); });
 net.on('pi', applyInfo);
 net.on('s', m => { updateSnapshot(m.p); if (m.n !== G.peerCount) { G.peerCount = m.n; setNetChip(); } });
 net.on('left', m => removeRemote(m.id));
@@ -1689,7 +1693,7 @@ net.on('jacked', m => { if (G.veh && !(G.race && G.race.phase !== 'done')) { G.v
 net.on('jackwin', jackWin);
 net.on('don', m => { A.sfx('level'); const C = D.DON[m.ch - 1], N = D.DON[m.ch]; setTimeout(() => showCard(m.final ? '👑 GALI KA DON!' : 'Chapter ' + m.ch + ' poora! +' + fmt(m.reward), C.outro, [[m.final ? 'Card banao, sabko dikhao 📸' : 'Aaj ka card banao 📸', () => { $('raceres').hidden = true; makeDayCard(); }, 'alt'], ['Theek se', () => { $('raceres').hidden = true; }, 'alt2']], m.final ? 'Monday ko nayi kahani shuru hogi.' : 'Kal milte hain... Chapter ' + (m.ch + 1) + ': ' + N.boss + ' (' + N.at[2] + ')'), 1600); });
 net.on('mprog', m => { if (!P) return; P.c[m.k] = m.v; renderMissions(); });
-net.on('daydone', m => { setTimeout(() => showCard('Aaj ka din: kamaal! 🔥', 'Saare kaam poore, streak ' + m.streak + ' din. Sabko dikha de!', [['Aaj ka card banao 📸', () => { $('raceres').hidden = true; makeDayCard(); }, 'alt'], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]), 3600); bigText('AAJ KE SAARE KAAM POORE!', 'Bonus ' + fmt(m.bonus) + ' · streak ' + m.streak + ' din 🔥', 3.2); A.sfx('level'); for (let i = 0; i < 4; i++) setTimeout(() => firework(G.x + rnd(-30, 30), G.z + rnd(-30, 30)), i * 500); });
+net.on('daydone', m => { setTimeout(() => !(G.chapterPrize && now() - G.chapterPrize.at < 15) && showCard('Aaj ka din: kamaal! 🔥', 'Saare kaam poore, streak ' + m.streak + ' din. Sabko dikha de!', [['Aaj ka card banao 📸', () => { $('raceres').hidden = true; makeDayCard(); }, 'alt'], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]), 3600); bigText('AAJ KE SAARE KAAM POORE!', 'Bonus ' + fmt(m.bonus) + ' · streak ' + m.streak + ' din 🔥', 3.2); A.sfx('level'); for (let i = 0; i < 4; i++) setTimeout(() => firework(G.x + rnd(-30, 30), G.z + rnd(-30, 30)), i * 500); });
 net.on('dmg', m => { takeHit(m.d, m.name); if (Math.random() < 0.5) toast(m.name + ' ne kaan ke neeche baja diya!', 'bad'); });
 net.on('fx', m => {
   if (m.fx === 'punch') { const R = REMOTES.get(m.by); if (R) R.mesh.userData.punchT = 0.22; if (m.target !== P.id) A.sfx('punch', 0.5); }
@@ -1776,7 +1780,7 @@ function setWeather(w, quiet) {
   if (w.lvl >= 2 && prev < 2) setTimeout(() => toast('Naya kaam: "Paani paar karo" · Menu → Paani paar, ya bhare chowk pe jaa'), 3500);
 }
 function updateWeather(dt) {
-  const W = D.WEATHER[(G.weather && G.weather.lvl) || 0]; WX.wl += (W.rain - WX.wl) * Math.min(1, dt / 6); WX.ww += (W.water - WX.ww) * Math.min(1, dt / (W.water > WX.ww ? 25 : 60)); // water rises fast, drains slowly
+  const W = D.WEATHER[G.film ? 0 : (G.weather && G.weather.lvl) || 0]; if (G.film) WX.wl = WX.ww = 0; /* the dream film is always dry */ WX.wl += (W.rain - WX.wl) * Math.min(1, dt / 6); WX.ww += (W.water - WX.ww) * Math.min(1, dt / (W.water > WX.ww ? 25 : 60)); // water rises fast, drains slowly
   const out = !G.inside; RAIN.visible = out && WX.wl > 0.02 && !G.map; rainMat.uniforms.uTime.value = now(); rainMat.uniforms.uCam.value.copy(camera.position); rainMat.uniforms.uDensity.value = WX.wl * (PERF.pr < 1 ? 0.6 : 1);
   FLOOD_MESH.forEach((m, i) => { const s = D.FLOOD_SPOTS[i]; const r = spotRadius(s); m.visible = WX.ww > 0.05; m.scale.set(r, r, 1); m.position.y = 0.08 + WX.ww * 0.35; m.material.opacity = 0.55 + WX.ww * 0.35; });
   lakeMesh.position.y = 0.25 + Math.sin(now() * 0.8) * 0.03;
@@ -2217,6 +2221,201 @@ function speedCamera(dt) {
   const sfx2 = (G.nosOn ? 0.85 : clamp((sp - 26) / 14, 0, 0.35)).toFixed(2); if (G.sfxOp !== sfx2) { G.sfxOp = sfx2; $('speedfx').style.opacity = sfx2; }
 }
 
+// ================================================================ SAPNO KA SHEHAR: the main story
+// You get off the bus at Rajiv Chowk with ₹500 and sleep on the footpath. Finish all of a day's kaam and the server hands
+// over the next home up the ladder (D.LADDER), free; the top rung's prize is the diamond set. Five dreams to chase:
+// a lavish ghar, a lavish gaadi, a jeevansathi, paisa and zevar. Every session starts at home (or on the footpath).
+const KIT = { bx, cyl, sph, sign, table, chair, addCol, glow, mat, makeRoom, makeVehicle, texFrom, pick };
+const chapter = () => !P ? 0 : P.story && P.story.done ? D.CHAPTERS.length : Math.min(D.homeRank(P), D.CHAPTERS.length - 1);
+const married = () => !!(P && P.spouse && P.spouse.stage >= 5);
+const houseDistrict = id => { const h = D.HOUSES[id]; const d = DIST.find(x => x[0] === h.at[0] && x[1] === h.at[1]); return d ? d[2] : 'Gurugram'; };
+let HOME = null;
+function ensureHome() { // (re)builds the home interior when the home, the jewellery, the cars or the spouse change
+  if (!P || !HM.homeSpec(P.home)) return null;
+  const key = [P.home, (P.bling || []).join(), (P.vehicles || []).join(), married() ? P.spouse.name : ''].join('|'); if (HOME && HOME.key === key) return HOME;
+  if (HOME) { scene.remove(HOME.g); for (let i = ZONES.length - 1; i >= 0; i--) if (ZONES[i].zone === 'home') ZONES.splice(i, 1); COL.home = []; }
+  INTERIOR_NAMES.home = D.HOUSES[P.home].name; DOOR_NAMES.home = houseDistrict(P.home); DOORS.home = homePos();
+  const b = HM.buildHome(KIT, P.home, P); HOME = { key, g: b.g, spot: b.spot, spouse: null }; INTERIOR.home.name = INTERIOR_NAMES.home;
+  zone('home', b.spot.wake.x, b.spot.wake.z, 3, () => 'So jao: subah tak, poori health', () => sleepNow());
+  zone('home', b.spot.wake.x - 2, b.spot.wake.z + 2.5, 2.5, () => 'Sapne dekho (5 sapne, kahani)', () => appSapne());
+  if (married()) { const s = makeSpouse(); s.position.set(b.spot.spouse.x, 0, b.spot.spouse.z); s.rotation.y = Math.PI; b.g.add(s); HOME.spouse = s; zone('home', b.spot.spouse.x, b.spot.spouse.z, 3, () => 'Baat karo: ' + P.spouse.name, () => spouseTalk()); }
+  return HOME;
+}
+function spouseLook(sp) {
+  const f = sp.g === 'f', k = sp.seed || 1;
+  return { body: { g: sp.g, skin: k % 5, hair: f ? [0, 2, 3][k % 3] : [0, 2][k % 2], hc: (k >> 3) % 2, top: f ? 2 : 1, pants: f ? 0 : 1, acc: f ? 2 : 1 }, shirt: (f ? [0xc2185b, 0xd7331f, 0x8b3fc4, 0xf3b61f] : [0xf5f5f5, 0xf3b61f, 0x2e6bd1, 0x7a1c1c])[(k >> 5) % 4], hat: 'none', shades: false, bling: f ? ['chain'] : ['watch'] };
+}
+function makeSpouse(sp) { sp = sp || P.spouse; const lk = spouseLook(sp); const c = makeChar(lk.shirt); setLook(c, lk); const l = labelSprite((married() ? '❤️ ' : '') + sp.name, { fs: 34, scale: 0.5 }); l.position.set(0, 3.0, 0); c.add(l); return c; }
+const SPOUSE_LINES = ['Aa gaye? Khana lag gaya se!', 'Aaj kitna kamaya? Sapna yaad se na?', 'Mummy ka phone aaya tha, tera haal pooch rahi thi.', 'Chal aaj Cyber Hub chalein?', 'Bas ek baat: gaadi dhyaan se chalana.', 'Agla sapna: farmhouse! Main saath hoon.', 'Thak gaye? Chai bana doon?'];
+function spouseTalk() { if (!HOME || !HOME.spouse) return; say(HOME.spouse, pick(SPOUSE_LINES), 3); }
+function sleepNow() { fadeTo('Zzz… ' + (married() ? P.spouse.name + ' ne chaadar odha di' : 'so rya se'), 2200, () => { G.hp = 100; G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal(); toast('Neend poori! Ram Ram.'); if (HOME && HOME.spouse) setTimeout(() => say(HOME.spouse, 'Good morning! Chai ready se ☕', 3), 900); }); }
+// wake up in your own bed (or walk in through the front door)
+function goInside(wake) {
+  if (!ensureHome()) return false; if (G.veh) dismount(); if (G.race) return false; const s = HOME.spot.wake, I = INTERIOR.home;
+  G.inside = 'home'; setIndoor(true); if (wake) { G.x = s.x + 1.4; G.z = s.z + 2; G.r = G.yaw = Math.atan2(HM.HOME_O.x - G.x, HM.HOME_O.z + 2 - G.z); /* face into the room */ } else { G.x = I.spawn.x; G.z = I.spawn.z; G.r = G.yaw = I.spawn.r; }
+  DOORS.home = homePos(); if (HOME.spouse) setTimeout(() => say(HOME.spouse, wake ? 'Uth gaye? Aaj ka din bada se!' : pick(SPOUSE_LINES), 3), 1200); return true;
+}
+function enterHome() { fadeTo('Ghar…', 600, () => { if (!goInside(false)) toast('Abhi ghar nahi ja sakte'); }); }
+// a door with the home's name where it stands in the city; on the footpath, the camp at Rajiv Chowk
+const HOME_DOOR = { g: null, key: '' };
+function updateHomeDoor() {
+  if (!P || HOME_DOOR.key === P.home) return; HOME_DOOR.key = P.home; if (HOME_DOOR.g) world.remove(HOME_DOOR.g); HOME_DOOR.g = null; if (P.home === 'street') return;
+  const p = homePos(), g = new THREE.Group(); g.position.set(p.x, 0.2, p.z - 1.5); world.add(g);
+  bx(g, 2.6, 3.6, 0.4, 0x5a3a22, 0, 1.8, 0); bx(g, 3.4, 0.4, 0.6, 0xf6c026, 0, 3.8, 0, { mat: glow(0xf6c026) }); sign(g, 'GHAR', D.HOUSES[P.home].name, '#1b1410', '#f6c026', 4.4, 0.9, 0, 4.7, 0.25); HOME_DOOR.g = g;
+}
+ZONES.push({ zone: 'out', get x() { return P ? homePos().x : 1e5; }, get z() { return P ? homePos().z : 1e5; }, r: 4, label: () => !P ? null : P.home === 'street' ? 'Footpath: thoda so le' : 'Apna ghar: andar jao', act: () => P.home === 'street' ? footpathSleep() : enterHome() });
+function footpathSleep() { fadeTo('Footpath pe raat… machhar, horn, aur sapne', 2400, () => { G.hp = Math.max(G.hp, 75); saveLocal(); toast('Kamar akad gayi. Aaj ke saare kaam poore kar: Sharma Aunty PG ka kamra degi!'); }); }
+
+// the chapter goal on screen: "Din 2 · Aaj ke saare kaam = 1BHK, Sector 14"
+function chapterLine() { const ch = chapter(); if (ch >= D.CHAPTERS.length) return null; return { n: ch + 1, C: D.CHAPTERS[ch] }; }
+net.on('chapter', m => {
+  G.chapterPrize = { at: now() }; const C = D.CHAPTERS[Math.min(m.ch, D.CHAPTERS.length - 1)]; const pr = m.prize || {};
+  setTimeout(() => { bigText(pr.kind === 'house' ? 'NAYA GHAR! 🔑' : 'GURUGRAM KA CHAUDHARY! 👑', pr.name, 3.2); A.sfx('cheer'); for (let i = 0; i < 6; i++) setTimeout(() => firework(G.x + rnd(-30, 30), G.z + rnd(-30, 30)), i * 400); }, 3400);
+  setTimeout(() => showCard(pr.kind === 'house' ? 'Din ' + m.ch + ' poora: ' + pr.name + ' tera! 🔑' : 'Sapno ka Shehar: poora! 👑', pr.kind === 'house' ? (m.ch < D.CHAPTERS.length ? 'Agla adhyay: ' + C.title + '. ' + C.intro : '') : 'Footpath se farmhouse tak. Heeron ka haar tera, aur poora Gurugram tujhe jaanta se.', [
+    pr.kind === 'house' ? ['Naya ghar dekho 🏠', () => { $('raceres').hidden = true; fadeTo('Saamaan shift ho rya se… 🚚', 1800, () => { if (G.inside) { G.inside = null; setIndoor(false); } goInside(false); bigText(pr.name.toUpperCase(), 'Welcome home', 2.2); }); }] : ['Zevar dekho 💎', () => { $('raceres').hidden = true; fadeTo('Ghar…', 800, () => goInside(false)); }],
+    ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']], 'Har din saare kaam poore kar: agla sapna paas aata jaayega.'), 7200);
+});
+
+// Menu → Sapne: the chapter and the five dreams, each with its next step
+function dreamRows() {
+  const r = D.homeRank(P), hl = D.LADDER.length - 1; const cars = (P.vehicles || []).map(v => D.VEH[v]).filter(Boolean); const best = cars.length ? Math.max(...cars.map(v => v.price)) : 0; const top = D.VEH.cruiser.price;
+  const nw = D.netWorth(P), goals = [100000, 1000000, 10000000], goal = goals.find(x => nw < x) || goals[2]; const bl = P.bling || [], allB = Object.keys(D.BLING).length; const st = P.spouse ? P.spouse.stage : 0;
+  const nextCar = D.BUY_VEHICLES.map(t => [t, D.VEH[t]]).filter(([t, v]) => v.kind === 4 && v.price > best)[0];
+  return [
+    ['🏠', 'Lavish Ghar', D.HOUSES[P.home].name + ' · ' + r + '/' + hl, r / hl, r < hl ? 'Agla: ' + D.HOUSES[D.LADDER[r + 1]].name + ' (aaj ke saare kaam, ya Yadav Estates se kharido)' : 'Sabse bada ghar tera!', r < hl ? ['Kaam', openTasks] : ['Ghar', () => { closeModal(); fadeTo('Ghar…', 600, () => goInside(false)); }]],
+    ['🚗', 'Lavish Gaadi', best ? cars.sort((a, b) => b.price - a.price)[0].name : 'Abhi koi gaadi nahi', Math.min(1, best / top), nextCar ? 'Agla: ' + nextCar[1].name + ' · ' + fmt(nextCar[1].price) + ', Chaudhary Motors' : 'Sabse mehngi gaadi teri!', nextCar ? ['GPS', () => { closeModal(); setWaypoint(300, -296, 'Chaudhary Motors'); }] : null],
+    ['❤️', 'Jeevansathi', st >= 5 ? P.spouse.name + ' ke saath shaadi ho gayi' : st ? 'Rishta: ' + P.spouse.name : 'Abhi akela', st / 5, rishtaNext(), rishtaAction()],
+    ['💰', 'Paisa', 'Net worth ' + fmt(nw), Math.min(1, nw / goal), nw >= goals[2] ? 'Crorepati! 🎉' : 'Agla padaav: ' + fmt(goal) + (goal === 1e5 ? ' (Lakhpati)' : goal === 1e6 ? ' (Das Lakhiya)' : ' (Crorepati)'), ['Races', appRaces]],
+    ['💎', 'Zevar', bl.length + '/' + allB + ' cheezein', bl.length / allB, bl.length < allB ? 'Goyal Jewellers, Golf Course Road: chain, kada, ghadi, angoothi, heeron ka haar' : 'Poora khazana tera!', bl.length < allB ? ['GPS', () => { closeModal(); setWaypoint(-300, 47, 'Goyal Jewellers'); }] : null],
+  ];
+}
+function appSapne() {
+  const cl = chapterLine(), ch = chapter();
+  openModal('Sapno ka Shehar', 'Bada shehar, bade sapne · ' + wallet(), b => {
+    if (cl) { const act = dailyTasks(), nd = act.filter(a => a.done).length; b.append(el('h3', { text: 'Din ' + cl.n + ': ' + cl.C.title }), el('p', { text: cl.C.intro }), itemRow('Aaj ke saare kaam = ' + cl.C.prize, nd + '/' + act.length + ' poore · muft mein milega', 'Kaam', openTasks)); }
+    else b.append(el('h3', { text: 'Kahani poori! 👑' }), el('p', { text: 'Footpath se farmhouse tak. Ab aur bada: crorepati bano, poora zevar, sabse tez gaadi.' }));
+    b.append(el('h3', { text: 'Tere 5 sapne' }));
+    for (const [ic, t, now2, pct, next, btn] of dreamRows()) { const row = itemRow(ic + ' ' + t + ' · ' + now2, next, btn ? btn[0] : '✓', btn ? btn[1] : () => {}, !btn); row.append(el('div', { class: 'tbar' }, el('i', { style: 'width:' + Math.round(clamp(pct, 0, 1) * 100) + '%' }))); b.append(row); }
+    b.append(el('p', { class: 'fine', text: 'Ladder: ' + D.LADDER.map((h, i) => (i <= D.homeRank(P) ? '✓ ' : '') + D.HOUSES[h].name).join(' → ') + (ch >= D.CHAPTERS.length ? '' : '') }));
+  });
+}
+
+// ---------------- rishta: Mausi ji → meet at Cyber Hub → long drive → ring → shaadi
+const CAFE = { x: 102, z: -259 }, VALLEY = { x: 300, z: -150 }, JEWELLER = { x: -300, z: 47 };
+function rishtaNext() {
+  const st = P.spouse ? P.spouse.stage : 0; const n = P.spouse && P.spouse.name;
+  if (!st) return D.rishtaReady(P) ? 'Mausi ji ke paas ek rishta se!' : 'Pehle 2BHK (ya bada ghar) aur ek gaadi: fir Mausi ji rishta layengi';
+  return ['', 'Cyber Hub, The Brew Yard pe ' + n + ' se milo', n + ' ko gaadi mein Leisure Valley tak long drive pe le jao', 'Goyal Jewellers se sagaai ki angoothi lo (' + fmt(D.BLING.ring.price) + ')', 'Shaadi! Band, baaja, ghodi: ' + fmt(D.SHAADI_COST), n + ' ghar pe intezaar kar rahi/raha se ❤️'][st];
+}
+function rishtaAction() {
+  const st = P.spouse ? P.spouse.stage : 0;
+  if (!st) return D.rishtaReady(P) ? ['Haan', () => { closeModal(); mausiCall(); }] : null;
+  return [null, ['GPS', () => { closeModal(); setWaypoint(CAFE.x, CAFE.z, P.spouse.name); }], ['GPS', () => { closeModal(); setWaypoint(VALLEY.x, VALLEY.z, 'Leisure Valley'); }], ['GPS', () => { closeModal(); setWaypoint(JEWELLER.x, JEWELLER.z, 'Goyal Jewellers'); }], ['Shaadi', () => { closeModal(); doShaadi(); }], ['Ghar', () => { closeModal(); fadeTo('Ghar…', 600, () => goInside(false)); }]][st];
+}
+function mausiCall() {
+  G.rishtaAsked = true; A.sfx('beep'); const want = AVD.g === 'f' ? 'm' : 'f';
+  showCard('📞 Mausi ji ka phone', '"Beta, ab apna ghar se, gaadi se… ek bahut accha rishta aaya se! Ek baar mil to le."', [
+    ['Dulhan dhoondo 👰', () => rishtaStart('f'), want === 'f' ? '' : 'alt'], ['Dulha dhoondo 🤵', () => rishtaStart('m'), want === 'm' ? '' : 'alt'], ['Abhi nahi, Mausi ji', () => { $('raceres').hidden = true; toast('Mausi ji: "Theek se, par der mat kariyo!"'); }, 'alt2']]);
+}
+async function rishtaStart(g) { $('raceres').hidden = true; const r = await net.req('rishta', { s: 'call', g }); if (!r.ok) return toast(r.error, 'bad'); P.spouse = r.spouse; setWaypoint(CAFE.x, CAFE.z, P.spouse.name + ' (cafe)'); bigText('RISHTA AAYA! ❤️', P.spouse.name + ' Cyber Hub pe milegi/milega', 2.4); A.sfx('level'); }
+const DATE = { npc: null };
+function updateRishta(dt) {
+  if (!P || !G.started) return; const sp = P.spouse, st = sp ? sp.stage : 0;
+  // the call comes once a session, when you're free and qualify
+  if (!st && !G.rishtaAsked && D.rishtaReady(P) && !G.story && !G.race && !G.inside && !G.chase && now() - (G.startedAt || 0) > 40) { G.rishtaAsked = true; setTimeout(mausiCall, 500); }
+  // stage 1: they wait at the Cyber Hub cafe
+  const show = st === 1; if (show && !DATE.npc) { DATE.npc = makeSpouse(sp); DATE.npc.position.set(CAFE.x, 0.2, CAFE.z); DATE.npc.rotation.y = 0; world.add(DATE.npc); } if (!show && DATE.npc) { world.remove(DATE.npc); DATE.npc = null; }
+  if (DATE.npc) DATE.npc.visible = !G.inside;
+  if (st === 2 && G.veh && D.VEH[G.veh].kind === 4 && Math.hypot(G.x - VALLEY.x, G.z - VALLEY.z) < 60 && !DATE.busy) { DATE.busy = true; net.req('rishta', { s: 'date' }).then(r => { DATE.busy = false; if (!r.ok) return; P.spouse = r.spouse; bigText('DATE SUPERHIT! ❤️', sp.name + ': "Aaj ka din yaad rahega"', 2.6); A.sfx('cheer'); setWaypoint(JEWELLER.x, JEWELLER.z, 'Goyal Jewellers (angoothi)'); toast('Ab sagaai ki angoothi: Goyal Jewellers, Golf Course Road'); }); }
+  if (st === 2 && G.veh && (DATE.lineT = (DATE.lineT || 0) - dt) < 0) { DATE.lineT = 14; toast(sp.name + ': "' + pick(['Gaana badlo na, kuch romantic!', 'Dheere chalao, jaldi kya se?', 'Golf Course Road raat mein kitni sundar lagti se!', 'Chalo Leisure Valley, wahan thandi hawa se']) + '"'); }
+  if (st === 3 && (P.bling || []).includes('ring') && !DATE.busy) { DATE.busy = true; net.req('rishta', { s: 'ring' }).then(r => { DATE.busy = false; if (!r.ok) return; P.spouse = r.spouse; bigText('SAGAAI PAKKI! 💍', sp.name + ' ne haan kar di!', 2.6); A.sfx('cheer'); setTimeout(() => showCard('Ab shaadi! 🎺', 'Band, baaja, ghodi, DJ aur poore Gurugram ki daawat: ' + fmt(D.SHAADI_COST), [['Shaadi karo ' + fmt(D.SHAADI_COST), () => { $('raceres').hidden = true; doShaadi(); }], ['Paise jod ke', () => { $('raceres').hidden = true; }, 'alt2']]), 2800); }); }
+}
+ZONES.push({ zone: 'out', x: CAFE.x, z: CAFE.z, r: 4, label: () => P && P.spouse && P.spouse.stage === 1 ? 'Milo: ' + P.spouse.name : null, act: async () => {
+  const sp = P.spouse; if (DATE.npc) say(DATE.npc, 'Hi! Mausi ji ne bahut taareef ki thi tumhari.', 3); const r = await net.req('rishta', { s: 'meet' }); if (!r.ok) return toast(r.error, 'bad'); P.spouse = r.spouse;
+  setTimeout(() => showCard('❤️ ' + sp.name, '"Coffee acchi thi. Ek long drive pe chalein? Leisure Valley tak."', [['Chalo, gaadi nikaalta hoon', () => { $('raceres').hidden = true; setWaypoint(VALLEY.x, VALLEY.z, 'Leisure Valley (date)'); toast('Gaadi (F) mein ' + sp.name + ' ko Leisure Valley le jao'); }]]), 1500);
+} });
+async function doShaadi() {
+  const r = await net.req('rishta', { s: 'shaadi' }); if (!r.ok) return toast(r.error, 'bad'); P.spouse = r.spouse; A.sfx('cheer');
+  fadeTo('Band baaja baaraat! 🎺 ' + P.name + ' weds ' + P.spouse.name, 3200, () => { if (G.inside) { G.inside = null; setIndoor(false); } goInside(false); bigText('SHAADI MUBARAK! 💍', P.name + ' ❤️ ' + P.spouse.name, 3.2); for (let i = 0; i < 6; i++) setTimeout(() => burst(G.x + rnd(-3, 3), 3, G.z + rnd(-3, 3), pick([0xf6c026, 0xff6fa5, 0xffffff, 0xd7331f]), 24, { speed: 5, life: 1.4 }), i * 350); });
+}
+
+// ================================================================ INTRO FILM: the dream, once, for a new player
+// A 20-second film played in the game itself (no video download; fits a phone held upright or a laptop): off the bus at
+// Rajiv Chowk with ₹500, a night on the footpath, then the dream with the player's own avatar (a farmhouse, a long car,
+// a shaadi, money and jewellery) and the title. Narrator and score: /audio/intro/intro.mp3 (promo/intro). Skip any time.
+const FILM = { on: false };
+let INTRO_BUF = null; const introPrefetch = () => INTRO_BUF || (INTRO_BUF = fetch('/audio/intro/intro.mp3').then(r => r.arrayBuffer()));
+const FILM_LEN = 20.2;
+const lerpV = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+const ease = k => k * k * (3 - 2 * k);
+const FARM_IN = { x: HM.HOME_O.x, z: HM.HOME_O.z };
+// [start, end, caption, setup, camera(k, t)]: positions in the city (Rajiv Chowk, Golf Course Road) and in the dream farmhouse
+const FILM_SHOTS = [
+  [0, 3.3, 'Rajiv Chowk. Jeb mein ₹500.', () => { filmOut(0.3); filmPlace(52, 66.5, 0); FILM.bus.visible = true; },
+    k => { const bxp = 120 - 62 * ease(Math.min(1, k * 1.3)); FILM.bus.position.set(bxp, 0.05, 78.5); FILM.bus.rotation.y = -Math.PI / 2; filmCam(lerpV([38, 1.6, 71.5], [41, 1.9, 70.5], k), lerpV([bxp, 2.2, 78], [52, 1.8, 67], ease(k))); }],
+  [3.3, 6.6, 'Raat footpath pe… aankhon mein sapne.', () => { FILM.bus.visible = false; filmOut(0.86); filmPlace(HM.CAMP.x - 2.0, HM.CAMP.z + 0.9, Math.PI * 0.6); },
+    k => { const u = ease(Math.max(0, (k - 0.45) / 0.55)); filmCam(lerpV([HM.CAMP.x + 3.4, 1.3, HM.CAMP.z + 3.8], [HM.CAMP.x + 0.5, 9, HM.CAMP.z + 11], u), lerpV([HM.CAMP.x - 0.8, 0.9, HM.CAMP.z + 0.4], [20, 45, -250], u)); }],
+  [6.6, 9.2, 'Apna aalishaan ghar', () => { filmIn(); filmPlace(FARM_IN.x, FARM_IN.z + 6, Math.PI); },
+    k => filmCam(lerpV([FARM_IN.x + 18, 6.5, FARM_IN.z + 19], [FARM_IN.x + 8, 4, FARM_IN.z + 13], ease(k)), [FARM_IN.x - 2, 3, FARM_IN.z - 4])],
+  [9.2, 11.6, 'Lambi gaadi', () => { filmOut(0.74); filmPlace(-300, 60, 0); player.visible = false; FILM.car.visible = true; },
+    k => { const cx = -400 + 120 * k; FILM.car.position.set(cx, 0.05, 71.5); FILM.car.rotation.y = Math.PI / 2; filmCam([cx - 6 + 3 * k, 1.5, 65.5], [cx + 1, 1.1, 71.5]); }],
+  [11.6, 14.0, 'Jeevansathi', () => { FILM.car.visible = false; player.visible = true; filmIn(); filmPlace(FARM_IN.x - 0.8, FARM_IN.z + 4, 0); setLook(player, filmLook({ wed: true })); FILM.spouse.visible = true; FILM.spouse.position.set(FARM_IN.x + 0.8, 0, FARM_IN.z + 4); FILM.spouse.rotation.y = 0; FILM.boomT = 0; },
+    (k, dt) => { filmCam(lerpV([FARM_IN.x, 2.7, FARM_IN.z + 11], [FARM_IN.x, 2.3, FARM_IN.z + 8.5], ease(k)), [FARM_IN.x, 2.0, FARM_IN.z + 4]); if ((FILM.boomT -= dt) < 0) { FILM.boomT = 0.35; burst(FARM_IN.x + rnd(-2, 2), 6, FARM_IN.z + 4 + rnd(-1, 1), pick([0xf6c026, 0xff6fa5, 0xffffff, 0xd7331f]), 14, { speed: 2, up: -1, grav: 3, life: 2.4 }); } }],
+  [14.0, 16.6, 'Paisa · Zevar · Izzat', () => { FILM.spouse.visible = false; player.visible = true; filmIn(); filmPlace(FARM_IN.x, FARM_IN.z + 4, 0); setLook(player, filmLook({ rich: true })); FILM.boomT = 0; },
+    (k, dt) => { const a = 0.6 + k * 1.4; filmCam([FARM_IN.x + Math.sin(a) * 3.4, 2.3, FARM_IN.z + 4 + Math.cos(a) * 3.4], [FARM_IN.x, 1.9, FARM_IN.z + 4]); if ((FILM.boomT -= dt) < 0) { FILM.boomT = 0.25; burst(FARM_IN.x + rnd(-1.5, 1.5), 5.5, FARM_IN.z + 4 + rnd(-1.5, 1.5), 0x7fbf7f, 6, { note: true, mat: glow(0x9fd39f), speed: 1.2, up: -0.5, grav: 1.6, life: 3 }); } }],
+  [16.6, FILM_LEN, null, () => { filmOut(0.78); filmPlace(HM.CAMP.x + 2.4, HM.CAMP.z + 1.2, -Math.PI / 2); applyMyLook(); player.visible = true; FILM.box.classList.add('titled'); },
+    k => filmCam(lerpV([260, 95, 260], [190, 70, 150], ease(k)), [0, 12, -160])],
+];
+function filmLook(o) {
+  const lk = { ...myLook(), body: P.look || avLook().body }; const f = lk.body && lk.body.g === 'f';
+  if (o.wed) return { ...lk, shirt: f ? 0xc2185b : 0xf5e6c8, hat: f ? 'dupatta' : 'sehra', bling: ['chain'] };
+  return { ...lk, shades: true, bling: ['chain', 'heera', 'kada', 'watch', 'gshades'] };
+}
+function filmCam(p, l) { camera.position.set(p[0], p[1], p[2]); camera.lookAt(l[0], l[1], l[2]); }
+function filmPlace(x, z, r) { G.x = x; G.z = z; G.r = G.yaw = r; player.position.set(x, 0, z); player.rotation.y = r; }
+function filmOut(dayT) { if (G.inside) { G.inside = null; setIndoor(false); } DAY.fixed = true; DAY.t = dayT; renderer.domElement.style.filter = ''; FILM.vig.classList.remove('on'); }
+function filmIn() { G.inside = 'home'; setIndoor(true); renderer.domElement.style.filter = 'sepia(.22) saturate(1.3) brightness(1.06)'; FILM.vig.classList.add('on'); } // the dream: warm and soft
+async function playIntroFilm(done) {
+  if (FILM.on) return; FILM.on = true; G.film = true; G.frozen = true; FILM.done = done; FILM.t = 0; FILM.shot = -1; FILM.vol = A.Music.vol; A.setVolume(0);
+  FILM.save = { dayFixed: DAY.fixed, dayT: DAY.t, x: G.x, z: G.z, r: G.r };
+  FILM.box = el('div', { id: 'film' }, el('div', { class: 'bar top' }), el('div', { class: 'bar bot' }), FILM.vig = el('div', { class: 'vig' }), FILM.flash = el('div', { class: 'flash' }), FILM.cap = el('div', { class: 'cap' }),
+    el('div', { class: 'title' }, el('small', { text: 'Gurugram Life' }), el('b', { text: 'SAPNO KA SHEHAR' }), el('span', { text: 'Footpath se farmhouse tak' })),
+    el('button', { type: 'button', class: 'skip', text: 'Skip ⏭', onclick: () => endFilm(true) }));
+  document.body.append(FILM.box); document.body.classList.add('film');
+  // the dream's sets and cast: the farmhouse (with cars and jewellery), a bus, a long car, the jeevansathi
+  FILM.home = HM.buildHome(KIT, 'farm', { vehicles: ['cruiser', 'desert', 'chhotu'], bling: ['chain', 'kada', 'watch', 'ring', 'heera'], mods: {}, plate: 'HR26 SAPNA' }); HOME = null; INTERIOR.home.name = 'Sapno ka ghar';
+  FILM.bus = makeVehicle('bus'); FILM.car = makeVehicle('cruiser', 0x151515, { glow: 2 }, 'HR26 SAPNA'); const sg = (P.look && P.look.g) || AVD.g;
+  FILM.spouse = makeChar(0xc2185b); setLook(FILM.spouse, spouseLook({ g: sg === 'f' ? 'm' : 'f', seed: 4242 })); for (const a of [FILM.bus, FILM.car, FILM.spouse]) { a.visible = false; scene.add(a); }
+  // the score and narrator in one file, on the game's audio context (phones allowed sound at the start tap). It was fetched
+  // when Play was pressed; wait up to 2.5 s for it, and if it is later than that, bring it in at the right moment of the film
+  const ctx = A.Music.ctx; FILM.clock = false;
+  if (ctx) { const bufP = introPrefetch().then(b => ctx.decodeAudioData(b.slice(0)));
+    bufP.then(buf => { if (!FILM.on || FILM.src) return; const off = FILM.clock ? FILM.t : 0; if (off > FILM_LEN - 1.5) return; const sNode = ctx.createBufferSource(); sNode.buffer = buf; const g = ctx.createGain(); g.gain.value = 0.9; sNode.connect(g).connect(ctx.destination); sNode.start(0, off); FILM.src = sNode; FILM.t0 = ctx.currentTime - off; FILM.ctx = ctx; }).catch(e => console.warn('Gurugram Life: intro music not played', e));
+    await Promise.race([bufP.catch(() => {}), new Promise(r => setTimeout(r, 2500))]); }
+  FILM.tags = []; scene.traverse(o => { if (o.isSprite && o.visible) { o.visible = false; FILM.tags.push(o); } }); /* name tags and bubbles off: it's a film */
+  FILM.clock = true; step('intro_play');
+}
+function updateFilm(dt) {
+  if (!FILM.clock) { filmCam([HM.CAMP.x + 4, 5, HM.CAMP.z + 12], [HM.CAMP.x, 1, HM.CAMP.z]); return; } // waiting for the music to load
+  FILM.t = FILM.ctx && FILM.ctx.state === 'running' ? FILM.ctx.currentTime - FILM.t0 : FILM.t + dt; const t = FILM.t;
+  if (t >= FILM_LEN) return endFilm(false);
+  const i = FILM_SHOTS.findIndex(s => t >= s[0] && t < s[1]); const S = FILM_SHOTS[i]; if (!S) return;
+  if (i !== FILM.shot) { FILM.shot = i; S[3](); FILM.cap.classList.remove('on'); if (S[2]) { FILM.cap.textContent = S[2]; setTimeout(() => FILM.cap && FILM.cap.classList.add('on'), 60); } FILM.flash.classList.add('on'); setTimeout(() => FILM.flash && FILM.flash.classList.remove('on'), 140); }
+  const fov = innerWidth < innerHeight ? 74 : 52; if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); } // a phone held upright sees more around the player
+  S[4]((t - S[0]) / (S[1] - S[0]), dt);
+}
+function endFilm(skipped) {
+  if (!FILM.on) return; FILM.on = false; FILM.clock = false; G.film = false;
+  try { if (FILM.src) FILM.src.stop(); } catch { /* already stopped */ } FILM.src = null; FILM.ctx = null; A.setVolume(FILM.vol);
+  for (const a of [FILM.bus, FILM.car, FILM.spouse]) if (a) scene.remove(a); for (const o of FILM.tags || []) o.visible = true; FILM.tags = null;
+  if (FILM.home) { scene.remove(FILM.home.g); for (let i = ZONES.length - 1; i >= 0; i--) if (ZONES[i].zone === 'home') ZONES.splice(i, 1); COL.home = []; FILM.home = null; HOME = null; }
+  if (G.inside) { G.inside = null; setIndoor(false); } renderer.domElement.style.filter = ''; DAY.fixed = FILM.save.dayFixed; DAY.t = FILM.save.dayT;
+  G.x = FILM.save.x; G.z = FILM.save.z; G.r = G.yaw = FILM.save.r; player.visible = true; applyMyLook(); camera.fov = baseFov(); camera.updateProjectionMatrix();
+  FILM.box.remove(); FILM.box = FILM.cap = FILM.vig = FILM.flash = null; document.body.classList.remove('film'); lsSet('gl_intro', 1); step(skipped ? 'intro_skip' : 'intro_done'); G.donCallNext = now() + 120; /* let the new player settle in first */
+  fadeTo('', 500, () => { const d = FILM.done; FILM.done = null; if (d) d(); });
+}
+window.addEventListener('keydown', e => { if (!FILM.on || !['Escape', 'Enter', 'Space'].includes(e.code)) return; e.preventDefault(); e.stopImmediatePropagation(); endFilm(true); }, true);
+
 // ================================================================ PEHLA DIN: the scripted first two minutes
 // One beat flows into the next with no menus: race → road rage → swag → police chase → club → a dream to chase.
 const BEATS = ['race', 'fight', 'swag', 'chase', 'club'];
@@ -2225,6 +2424,13 @@ function quest(title, sub) {
   const q = $('quest'); if (!title) { q.hidden = true; return; } q.hidden = false; q.textContent = '';
   const n = G.story ? BEATS.indexOf(G.story.beat) + 1 : 0; q.append(el('small', { text: 'Pehla Din · ' + n + '/5' }), el('b', { text: title }));
   if (sub) q.append(el('span', { text: sub })); q.append(el('button', { type: 'button', class: 'skip', text: 'Skip', onclick: skipStory }));
+}
+// day one: off the bus, a bag, ₹500, and five dreams
+function arrival() {
+  const C = D.CHAPTERS[0]; A.sfx('level');
+  showCard('Din 1: ' + C.title, C.intro + ' Tere 5 sapne: lavish ghar, lavish gaadi, jeevansathi, paisa aur zevar.', [
+    ['Chalo, shuru karein! 🏁', () => { $('raceres').hidden = true; startStory(); }], ['Pehle ghoom ke dekhoon', () => { $('raceres').hidden = true; endStoryCommon(); toast('Aaj ke kaam (upar) poore kar. Raat footpath pe, kal PG mein!'); }, 'alt2']],
+    'Aaj ke saare kaam poore kar: Sharma Aunty PG ka kamra muft degi. Har din ek naya, bada ghar.');
 }
 function startStory() { G.story = { beat: 'race' }; step('story_start'); startRace(D.RACES[0].id, { intro: true }); }
 function skipStory() { if (!G.story) return; const s = G.story; G.story = null; quest(null); step('story_skip'); if (s.monu) dropMonu(); if (G.race) cleanupRace(); $('raceres').hidden = true; endStoryCommon(); toast('Story skip. Phone (P) mein sab kuch hai.'); }
@@ -2290,6 +2496,7 @@ function showCard(title, sub, buttons, foot) {
 }
 // Sapna: the next thing to own, always on screen, so there is always a reason to earn
 function sapnaGoal() {
+  const cl = chapterLine(), act = dailyTasks(); if (cl && act.length) { const nd = act.filter(a => a.done).length; if (nd < act.length) return { name: 'Din ' + cl.n + ' · ' + cl.C.prize, kind: 'story', pct: nd / act.length }; }
   const own = (P.vehicles || []).map(v => D.VEH[v] ? D.VEH[v].price : 0); const best = own.length ? Math.max(...own) : 0;
   for (const t of D.BUY_VEHICLES) { const v = D.VEH[t]; if (!P.vehicles.includes(t) && v.price > best) return { name: v.name, price: v.price, kind: 'vehicle' }; }
   const hs = Object.entries(D.HOUSES).filter(([id, h]) => h.price && !P.houses.includes(id)).sort((a, b) => a[1].price - b[1].price);
@@ -2297,18 +2504,19 @@ function sapnaGoal() {
 }
 function renderSapna() {
   const g = sapnaGoal(); const box = $('sapna'); if (!g) { box.hidden = true; return; } box.hidden = false;
-  const pct = clamp(P.money / g.price, 0, 1); const ready = pct >= 1; const key = g.name + (ready ? 1 : 0);
+  const pct = g.kind === 'story' ? g.pct : clamp(P.money / g.price, 0, 1); const ready = g.kind !== 'story' && pct >= 1; const key = g.name + (ready ? 1 : 0);
   if (box.dataset.k !== key) { box.dataset.k = key; box.textContent = ''; box.append(el('div', { class: 'blab' }, el('span', { text: 'Sapna: ' + g.name }), el('span', { id: 'sapt' })), el('div', { class: 'bar' }, el('i', { id: 'sapb' }))); box.classList.toggle('ready', ready);
     if (ready && G.sapnaSeen !== g.name && G.started && !G.story) { G.sapnaSeen = g.name; bigText('SAPNA POORA HO SAKTA SE!', g.name + ' le le: ' + (g.kind === 'vehicle' ? 'Chaudhary Motors, NH-48' : 'Yadav Estates'), 2.4); A.sfx('level'); } }
   $('sapt').textContent = ready ? 'Ab le le!' : Math.floor(pct * 100) + '%'; $('sapb').style.width = (pct * 100) + '%';
 }
-$('sapna').onclick = () => { const g = sapnaGoal(); if (!g) return; if (P.money >= g.price) { if (g.kind === 'vehicle') setWaypoint(300, -296, 'Chaudhary Motors'); else openProperty(); } else appRaces(); };
+$('sapna').onclick = () => { const g = sapnaGoal(); if (!g) return; if (g.kind === 'story') return appSapne(); if (P.money >= g.price) { if (g.kind === 'vehicle') setWaypoint(300, -296, 'Chaudhary Motors'); else openProperty(); } else appRaces(); };
 
 // ================================================================ LOGIN & BOOT
 // Joining: name → avatar (first time, or "Avatar badlo") → start place → play
 const AVD = Object.assign({ g: 'm', skin: 2, hair: 0, hc: 0, top: 0, pants: 0, acc: 1, color: lsGet('gl_color') ?? 0, hat: 'none', shades: false, ride: 'chhotu' }, lsGet('gl_avatar') || {});
 const STARTS = [
-  ['ambience', 'Ambience Mall', 'Pehla Din yahin se: race, ladai, swag, party', () => ({ x: DOORS.mall.x + rnd(-3, 3), z: DOORS.mall.z + 37, r: Math.PI })],
+  ['ghar', 'Apna Ghar', '', () => ({ x: HM.CAMP.x + 2.4, z: HM.CAMP.z + 1.2, r: -Math.PI / 2 })], // home, or the footpath at Rajiv Chowk on day one
+  ['ambience', 'Ambience Mall', 'Mall, shopping, lucky draw', () => ({ x: DOORS.mall.x + rnd(-3, 3), z: DOORS.mall.z + 37, r: Math.PI })],
   ['sector29', 'Sector 29', 'Neon Nights club, Sher-e-Haryana Dhaba', () => ({ x: DOORS.club.x + rnd(-2, 2), z: DOORS.club.z + 10, r: Math.PI })],
   ['cyberhub', 'Cyber Hub', 'Office crowd, cafe, raat ki ronak', () => ({ x: 158, z: -228, r: Math.PI })],
   ['rajiv', 'Rajiv Chowk', 'Shehar ka centre, Iffco Chowk paas mein', () => ({ x: rnd(-9, 9), z: 48, r: Math.PI })],
@@ -2353,15 +2561,16 @@ let dragPrev = null; $('creator').addEventListener('pointerdown', e => { if (e.t
 window.addEventListener('pointermove', e => { if (dragPrev != null) { previewYaw += (e.clientX - dragPrev) * 0.012; dragPrev = e.clientX; } }); window.addEventListener('pointerup', () => { dragPrev = null; });
 function showStartPick() {
   $('login').hidden = true; $('creator').hidden = true; $('startpick').hidden = false; G.creating = !!PREVIEW; const box = $('splaces'); box.textContent = '';
-  const last = lsGet('gl_start') || 'ambience';
-  for (const [id, name, sub] of STARTS) box.append(el('button', { type: 'button', class: 'splace' + (id === 'ambience' ? ' rec' : '') + (id === last ? ' on' : ''), onclick: e => joinWhenReady(id, e.currentTarget) }, el('b', { text: name }), el('span', { text: sub })));
+  const last = lsGet('gl_start') || 'ghar'; const gh = lsGet('gl_home');
+  const gharSub = gh && gh !== 'street' && D.HOUSES[gh] ? D.HOUSES[gh].name + ': apne ghar mein subah' : 'Bus se utro, footpath pe pehli raat: Sapno ka Shehar yahin se shuru';
+  for (const [id, name0, sub0] of STARTS) { const name = id === 'ghar' && !(gh && gh !== 'street') ? 'Bus Adda' : name0, sub = id === 'ghar' ? gharSub : sub0; box.append(el('button', { type: 'button', class: 'splace' + (id === 'ghar' ? ' rec' : '') + (id === last ? ' on' : ''), onclick: e => joinWhenReady(id, e.currentTarget) }, el('b', { text: name }), el('span', { text: sub }))); }
 }
 renderLangPick();
 const savedName = lsGet('gl_name'); if (!savedName) { $('nameIn').value = pick(['Bunty', 'Monty', 'Rocky', 'Sunny', 'Lucky', 'Bittu', 'Golu', 'Pinky', 'Sweety', 'Neetu']) + ' ' + pick(['Yadav', 'Chaudhary', 'Dahiya', 'Sangwan', 'Malik', 'Hooda', 'Rao', 'Phogat']); $('loginNote').textContent = 'Naam badalna ho to badal le. Agle step mein apna avatar banao!'; } if (savedName) { $('nameIn').value = savedName; $('loginNote').textContent = 'Wapas aa gaya ' + savedName + '! Tera progress saved se.'; }
 if (savedName && lsGet('gl_lookset')) { $('playBtn').textContent = 'Chalo, Khelo!'; $('playBtn').after(el('button', { type: 'button', class: 'buy alt', id: 'avBtn', text: 'Avatar badlo', onclick: () => { saveName(); showCreator(); } })); } else $('playBtn').textContent = 'Aage: apna avatar banao →';
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn').click(); });
 function saveName() { let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); }
-$('playBtn').onclick = () => { saveName(); A.initAudio(); if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
+$('playBtn').onclick = () => { saveName(); A.initAudio(); if (!lsGet('gl_intro')) introPrefetch().catch(() => { INTRO_BUF = null; }); /* first-timer: get the film's soundtrack early */ if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
 // wait (up to 25 s) for the realistic people before entering, so nobody shows up as a block figure first
 async function joinWhenReady(id, btn) {
   A.unlock(); // inside the tap, so phones allow sound from the start
@@ -2391,10 +2600,16 @@ function startGame(daily) {
   const st = STARTS.find(x => x[0] === G.startId) || STARTS[0]; const sp = st[3](); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; G.pitch = 0.12;
   updateHUD(); renderMissions(); setNetChip(); G.startedAt = now();
   { const k = $('keyhint'); k.hidden = false; k.innerHTML = '<kbd>W A S D</kbd> chalo · <kbd>Shift</kbd> daudo<br><kbd>Space</kbd> jump · <kbd>Click</kbd> punch<br><kbd>E</kbd> action · <kbd>F</kbd> gaadi · <kbd>M</kbd> map<br><kbd>Tab</kbd> menu · <kbd>T</kbd> chat · <kbd>Esc</kbd> mouse'; } // stays on screen
-  const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length);
-  step('play'); bigText(st[1].toUpperCase(), 'Gurugram · ' + clockText(), 2);
-  if (fresh && st[0] === 'ambience') setTimeout(startStory, 2300); else if (fresh) { step('start_other'); endStoryCommon(); setTimeout(() => toast('Pehla Din story Ambience Mall pe milegi. Abhi ghoomo!'), 2600); }
-  else { toast('Ram Ram, ' + P.name + '! Wapas aa gaya.'); if (daily && daily.streak > 1) setTimeout(() => toast('Day ' + daily.streak + ' streak: +' + fmt(daily.amt) + ' wallet mein', 'money'), 9000); }
+  const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length); const cl = chapterLine();
+  step('play'); lsSet('gl_home', P.home); const intro = fresh && !lsGet('gl_intro'); // the dream film plays once, for someone who has never played
+  const begin = () => {
+    if (st[0] === 'ghar' && P.home !== 'street' && goInside(true)) bigText(cl ? 'DIN ' + cl.n + ' · ' + cl.C.title.toUpperCase() : 'SUBAH HO GAYI', D.HOUSES[P.home].name + ' · ' + clockText(), 2.6);
+    else if (st[0] === 'ghar') bigText(cl ? 'DIN ' + cl.n + ' · ' + cl.C.title.toUpperCase() : 'RAJIV CHOWK', 'Footpath, Rajiv Chowk · ' + clockText(), 2.6);
+    else bigText(st[1].toUpperCase(), 'Gurugram · ' + clockText(), 2);
+    if (fresh && st[0] === 'ghar') setTimeout(arrival, 2600); else if (fresh) { step('start_other'); endStoryCommon(); setTimeout(() => toast('Sapno ka Shehar ki kahani "Apna Ghar" se shuru hoti se. Abhi ghoomo!'), 2600); }
+    else { toast('Ram Ram, ' + P.name + '! Wapas aa gaya.'); if (daily && daily.streak > 1) setTimeout(() => toast('Day ' + daily.streak + ' streak: +' + fmt(daily.amt) + ' wallet mein', 'money'), 9000); }
+  };
+  if (intro) playIntroFilm(begin); else begin();
 }
 
 let last = performance.now(), hungerT = 0, regenT = 0, hudT = 0, shT = 99;
@@ -2410,10 +2625,10 @@ function loop(t) {
   requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); if (G.started) adaptQuality(t - last); last = t;
   updateDay(dt); updateWeather(dt);
   if (G.started) {
-    updatePlayer(dt); footsteps(); if (G.map) updateMap3D(); else { updateCamera(dt); speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
+    updatePlayer(dt); footsteps(); if (G.map) updateMap3D(); else { updateCamera(dt); if (G.film) updateFilm(dt); else speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
     hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 15) toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); saveLocal(); }
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
-    hudT += dt; if (hudT > 0.25) { hudT = 0; A.setCity(cityMix()); updateHUD(); renderSapna(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
+    updateRishta(dt); hudT += dt; if (hudT > 0.25) { hudT = 0; A.setCity(cityMix()); updateHUD(); renderSapna(); updateHomeDoor(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
     sendState(); if ((G.miniF = (G.miniF || 0) + 1) % 3 === 0) drawMini();
   } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0);
     if (mob) { // the panel covers the bottom 58%: frame the whole avatar in the strip above it, whatever the phone's shape
@@ -2430,7 +2645,7 @@ function loop(t) {
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
 ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); }, r: 16, label: () => G.ev?.type === 'baraat' ? 'Baraat: note udao (₹1,000)' : null, act: async () => { if (G.ev?.type !== 'baraat') return; const r = await buy('misc', 'notes'); if (r.ok) { G.dance = true; toast('Note udaye! Sab dekh rahe hain'); } } });
-function boot() { buildGround(); districtBuilders(); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
+function boot() { buildGround(); districtBuilders(); HM.buildCamp(KIT, world); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
 DG.loadDogs('/models/dog.glb').then(() => { if (!DOGS.length) spawnDogs(); }).catch(e => console.warn('Gurugram Life: street dogs not loaded', e)); // 160 KB

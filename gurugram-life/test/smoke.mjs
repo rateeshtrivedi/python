@@ -29,7 +29,7 @@ try {
   const a = player('A'), b = player('B'); await a.open(); await b.open();
   a.send('hello', { name: 'Bunty', color: 1 }); const wa = await a.wait(m => m.t === 'welcome');
   b.send('hello', { name: 'Pinky', color: 3 }); const wb = await b.wait(m => m.t === 'welcome');
-  check(wa.profile.money > 2000 && wa.daily, 'new player gets starting money + daily reward');
+  check(wa.profile.money > 500 && wa.daily && wa.profile.home === 'street', 'new player starts on the footpath with ₹500 + daily reward');
   check(!!wa.token && !('token' in wa.profile), 'token returned separately, not in public profile');
   const tasks = wa.profile.missions.active; const bad = tasks.find(t => t.k === 'badla');
   check(wa.profile.missions.v === 2 && tasks.length === 7 && new Set(tasks.map(t => t.slot)).size === 7, 'seven daily tasks, one per slot');
