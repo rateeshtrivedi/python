@@ -82,7 +82,7 @@ body.touch #chatlog{left:170px;width:calc(100% - 420px)}
 #fade.show{opacity:1;pointer-events:auto}
 
 /* Login */
-#login{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 50% 120%,#f08a24 0,#b8451c 30%,#3a1d22 70%,#1b1410 100%);overflow:auto}
+#login{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px;background:radial-gradient(ellipse at 50% 120%,#f08a24 0,#b8451c 30%,#3a1d22 70%,#1b1410 100%);overflow:auto}
 .plate{width:min(440px,100%);background:var(--cream);color:var(--ink);border-radius:22px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .plate .top{background:var(--lal);color:var(--sarson);padding:18px 22px 12px;text-align:center;position:relative}
 .plate h1{margin:0;font:800 46px/0.95 var(--display);letter-spacing:-.5px;text-wrap:balance}
@@ -358,3 +358,8 @@ body.touch #controls .cbtn.gold{background:var(--sarson)}
 body.touch #stat.open{z-index:8}body.touch #hud:has(#stat.open) #mchip,body.touch #hud:has(#stat.open) #job{display:none!important}
 
 .seolinks{text-align:center;font:700 13px var(--body);color:#7a4a1b}.seolinks a{color:#7a4a1b}
+
+/* homepage text below the start card: the card stays centred, the text follows when you scroll */
+#login>.plate{margin-top:auto;flex-shrink:0}
+.homeinfo{max-width:560px;width:100%;margin:22px 0 auto;padding:16px 18px;background:rgba(27,20,16,.72);border-radius:14px;color:#fff4d8;font:15px/1.55 var(--body)}
+.homeinfo h2{margin:0 0 8px;font:800 21px/1.2 var(--display);color:#f6c026}.homeinfo p{margin:0 0 9px}.homeinfo a{color:#f6c026}

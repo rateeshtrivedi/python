@@ -113,7 +113,8 @@ export async function setLang(id, remember = true) {
     let pairs = null; if (id !== 'har') { try { pairs = await loadDict(id); } catch (e) { console.warn('Gurugram Life: could not load language', id, e); id = 'har'; } }
     if (no !== switchNo) return; // a newer switch won
     LANG = id; if (pairs) compile(pairs); else { EXACT = null; cache = new Map(); }
-    document.documentElement.lang = id === 'en' ? 'en' : 'hi-Latn'; // Hindi and Haryanvi are both written in Roman letters
+    // the page and its search text stay English (en-IN); the game UI in Hindi / Haryanvi is marked Roman-script Hindi
+    document.documentElement.lang = 'en-IN'; for (const id2 of ['hud', 'modal', 'creator', 'startpick']) { const e = document.getElementById(id2); if (e) e.lang = id === 'en' ? 'en-IN' : 'hi-Latn'; }
     if (id !== 'har') watch(); if (document.body) retranslate();
   })();
 }
