@@ -97,6 +97,8 @@ try {
     check(slash.statusCode === 301 && slash.headers.location === '/about' && /max-age=31536000/.test(tls.headers['strict-transport-security'] || '') && !plain.headers['strict-transport-security'], 'trailing slash 301s to one address; HSTS over HTTPS only');
     const feed = await (await fetch(`http://localhost:${PORT}/updates.xml`)).text(), llm = await fetch(`http://localhost:${PORT}/llms.txt`), hi = await (await fetch(`http://localhost:${PORT}/hi`)).text(), how = await (await fetch(`http://localhost:${PORT}/how-to-play`)).text();
     check(/<rss[\s\S]*<item>/.test(feed) && llm.ok && hi.includes('lang="hi"') && hi.includes('hreflang="en-IN"') && how.includes('hreflang="hi" href="https://gurugramlife.com/hi/how-to-play"') && home.includes('hreflang="hi"'), 'RSS feed, llms.txt, Hindi pages with hreflang pairs');
+    { const { CREDITS } = await import('../public/shared/credits.js'); const about = await (await fetch(`http://localhost:${PORT}/about`)).text(); const glb = await Promise.all(['auto', 'hatch', 'sedan', 'jeep', 'truck', 'bus', 'bike', 'scooter', 'cow'].map(f => fetch(`http://localhost:${PORT}/models/rides/${f}.glb`, { method: 'HEAD' })));
+      check(CREDITS.every(c => about.includes(c.url) && about.includes(c.author.replace(/'/g, '&#39;'))) && glb.every(r => r.ok), 'credits on /about name every model author; vehicle and cow models served'); }
   }
   const three = await fetch(`http://localhost:${PORT}/vendor/three/three.module.js`); check(three.ok, 'three.js served from /vendor');
   a2.ws.close(); b.ws.close();
