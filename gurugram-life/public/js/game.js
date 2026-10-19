@@ -1649,7 +1649,7 @@ function removeRemote(id) { const R = REMOTES.get(id); if (!R) return; scene.rem
 function updateRemotes(dt) {
   const k = 1 - Math.exp(-dt * 10);
   for (const [, R] of REMOTES) {
-    const vis = R.visible && (G.inside || '') === R.inn && R.inn !== 'home'; /* everyone's home is their own */ const m = R.mesh;
+    const vis = R.visible && (G.inside || '') === R.inn && R.inn !== 'home' && !G.film; /* everyone's home is their own; the intro film shows only you */ const m = R.mesh;
     if (R.vm) { R.vm.visible = vis; R.vm.position.x += (R.tx - R.vm.position.x) * k; R.vm.position.z += (R.tz - R.vm.position.z) * k; R.vm.position.y = 0.2; R.vm.rotation.y = angLerp(R.vm.rotation.y, R.tr, k); m.position.set(R.vm.position.x, 0.55, R.vm.position.z); m.rotation.y = R.vm.rotation.y; sitChar(m); m.visible = vis && (D.VEH[R.veh].kind === 2 || D.VEH[R.veh].kind === 5); if (D.VEH[R.veh].kind === 5) { const wd = waterDepth(R.vm.position.x, R.vm.position.z); if (wd > 0.25) R.vm.position.y = 0.05 + Math.min(wd, 1) * 0.35; m.position.y = R.vm.position.y + 0.35; } if (R.label) R.label.visible = true;
       if (vis && R.fx && Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) < 40) { R.bassT = (R.bassT || 0) - dt; if (R.bassT < 0) { R.bassT = 0.5; A.sfx('bass', 1 - Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) / 40); } } }
     else { m.visible = vis; m.position.x += (R.tx - m.position.x) * k; m.position.z += (R.tz - m.position.z) * k; m.position.y = R.hp <= 0 ? 0.4 : (R.inn ? 0 : groundY(m.position.x, m.position.z)); m.rotation.y = angLerp(m.rotation.y, R.tr, k); m.rotation.x = R.hp <= 0 ? -Math.PI / 2 : 0; animChar(m, dt, R.a === 3 ? 3 : R.a === 1 ? 1 : 0); }
@@ -2344,6 +2344,7 @@ async function doShaadi() {
 // Rajiv Chowk with ₹500, a night on the footpath, then the dream with the player's own avatar (a farmhouse, a long car,
 // a shaadi, money and jewellery) and the title. Narrator and score: /audio/intro/intro.mp3 (promo/intro). Skip any time.
 const FILM = { on: false };
+let INTRO_BUF = null; const introPrefetch = () => INTRO_BUF || (INTRO_BUF = fetch('/audio/intro/intro.mp3').then(r => r.arrayBuffer()));
 const FILM_LEN = 20.2;
 const lerpV = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
 const ease = k => k * k * (3 - 2 * k);
@@ -2385,10 +2386,12 @@ async function playIntroFilm(done) {
   FILM.home = HM.buildHome(KIT, 'farm', { vehicles: ['cruiser', 'desert', 'chhotu'], bling: ['chain', 'kada', 'watch', 'ring', 'heera'], mods: {}, plate: 'HR26 SAPNA' }); HOME = null; INTERIOR.home.name = 'Sapno ka ghar';
   FILM.bus = makeVehicle('bus'); FILM.car = makeVehicle('cruiser', 0x151515, { glow: 2 }, 'HR26 SAPNA'); const sg = (P.look && P.look.g) || AVD.g;
   FILM.spouse = makeChar(0xc2185b); setLook(FILM.spouse, spouseLook({ g: sg === 'f' ? 'm' : 'f', seed: 4242 })); for (const a of [FILM.bus, FILM.car, FILM.spouse]) { a.visible = false; scene.add(a); }
-  try { // the score and narrator in one file, on the game's audio context so phones that allowed sound at the start tap keep it
-    const ctx = A.Music.ctx; if (ctx) { const buf = await Promise.race([fetch('/audio/intro/intro.mp3').then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)), new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3500))]);
-      if (FILM.on) { const s = ctx.createBufferSource(); s.buffer = buf; const g = ctx.createGain(); g.gain.value = 0.9; s.connect(g).connect(ctx.destination); s.start(); FILM.src = s; FILM.ctx = ctx; FILM.t0 = ctx.currentTime; } }
-  } catch (e) { console.warn('Gurugram Life: intro music not played', e); }
+  // the score and narrator in one file, on the game's audio context (phones allowed sound at the start tap). It was fetched
+  // when Play was pressed; wait up to 2.5 s for it, and if it is later than that, bring it in at the right moment of the film
+  const ctx = A.Music.ctx; FILM.clock = false;
+  if (ctx) { const bufP = introPrefetch().then(b => ctx.decodeAudioData(b.slice(0)));
+    bufP.then(buf => { if (!FILM.on || FILM.src) return; const off = FILM.clock ? FILM.t : 0; if (off > FILM_LEN - 1.5) return; const sNode = ctx.createBufferSource(); sNode.buffer = buf; const g = ctx.createGain(); g.gain.value = 0.9; sNode.connect(g).connect(ctx.destination); sNode.start(0, off); FILM.src = sNode; FILM.t0 = ctx.currentTime - off; FILM.ctx = ctx; }).catch(e => console.warn('Gurugram Life: intro music not played', e));
+    await Promise.race([bufP.catch(() => {}), new Promise(r => setTimeout(r, 2500))]); }
   FILM.tags = []; scene.traverse(o => { if (o.isSprite && o.visible) { o.visible = false; FILM.tags.push(o); } }); /* name tags and bubbles off: it's a film */
   FILM.clock = true; step('intro_play');
 }
@@ -2567,7 +2570,7 @@ const savedName = lsGet('gl_name'); if (!savedName) { $('nameIn').value = pick([
 if (savedName && lsGet('gl_lookset')) { $('playBtn').textContent = 'Chalo, Khelo!'; $('playBtn').after(el('button', { type: 'button', class: 'buy alt', id: 'avBtn', text: 'Avatar badlo', onclick: () => { saveName(); showCreator(); } })); } else $('playBtn').textContent = 'Aage: apna avatar banao →';
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn').click(); });
 function saveName() { let n = D.cleanText($('nameIn').value, 16); if (n.length < 2) n = 'Chhora ' + irnd(10, 99); lsSet('gl_name', n); }
-$('playBtn').onclick = () => { saveName(); A.initAudio(); if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
+$('playBtn').onclick = () => { saveName(); A.initAudio(); if (!lsGet('gl_intro')) introPrefetch().catch(() => { INTRO_BUF = null; }); /* first-timer: get the film's soundtrack early */ if (lsGet('gl_lookset')) showStartPick(); else showCreator(); };
 // wait (up to 25 s) for the realistic people before entering, so nobody shows up as a block figure first
 async function joinWhenReady(id, btn) {
   A.unlock(); // inside the tap, so phones allow sound from the start
