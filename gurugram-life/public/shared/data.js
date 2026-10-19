@@ -21,11 +21,34 @@ export const VEH = {
 export const BUY_VEHICLES = ['scooty', 'dhakad', 'chhotu', 'naav', 'desert', 'cruiser'];
 
 export const HOUSES = {
+  street: { name: 'Footpath, Rajiv Chowk',      price: 0,       daily: 0,    at: [0, 0], street: true },
   pg:    { name: 'Sharma PG, DLF Phase 3',      price: 0,       daily: 0,    at: [-2, -1] },
+  room:  { name: '1BHK, Sector 14',             price: 30000,   daily: 100,  at: [-1, 1] },
   flat:  { name: '2BHK flat, Sushant Lok',      price: 80000,   daily: 300,  at: [0, 2] },
   pent:  { name: 'Penthouse, Golf Course Road', price: 500000,  daily: 1500, at: [-2, 0] },
+  kothi: { name: 'Kothi, Golf Course Extension', price: 900000, daily: 2500, at: [-2, 1] },
   farm:  { name: 'Farmhouse, Bhondsi',          price: 1200000, daily: 4000, at: [1, 2] },
 };
+// Sapno ka Shehar, the main story: you get off the bus with a bag and ₹500 and sleep on the footpath. Every day you
+// finish all of today's kaam, the next home up this ladder is yours, free. Bigger homes can also be bought sooner.
+export const LADDER = ['street', 'pg', 'room', 'flat', 'pent', 'kothi', 'farm'];
+export const homeRank = p => Math.max(0, ...(p.houses || []).map(h => LADDER.indexOf(h)));
+export const START_MONEY = 500;
+// chapter n is played on the way to LADDER[n]; the last chapter's prize is the diamond set
+export const CHAPTERS = [
+  { title: 'Bus Adda', intro: 'Haryana Roadways ki bus ne Rajiv Chowk pe utaar diya. Jeb mein ₹500, haath mein ek bag, aankhon mein sapne. Aaj ki raat footpath pe.', prize: 'Sharma PG ka kamra' },
+  { title: 'Pehli Chhat', intro: 'Sir pe chhat aa gayi! Par PG mein chhe log aur ek bathroom. Apna kamra chahiye.', prize: '1BHK, Sector 14' },
+  { title: 'Apna Kamra', intro: 'Apna darwaza, apni chaabi. Ab ghar waale bhi aana chahte hain: bada ghar chahiye.', prize: '2BHK flat, Sushant Lok' },
+  { title: 'Ghar Basao', intro: 'Sushant Lok ka 2BHK. Mausi ji ne rishte ki baat chhed di. Ab sapna aasmaan ka: penthouse!', prize: 'Penthouse, Golf Course Road' },
+  { title: 'Aasmaan Chhoo', intro: 'Golf Course Road ki 30vi manzil se poora Gurugram dikhta se. Par asli rutba kothi waalon ka.', prize: 'Kothi, Golf Course Extension' },
+  { title: 'Kothi Waale', intro: 'Lawn, jhoomar, garage. Log ab Saab bolte hain. Bas ek sapna baaki: Bhondsi ka farmhouse.', prize: 'Farmhouse, Bhondsi' },
+  { title: 'Gurugram ka Chaudhary', intro: 'Footpath se farmhouse tak. Aaj ka kaam poora kar, aur heeron ka haar tera.', prize: 'Heeron ka haar' },
+];
+export const SPOUSE_NAMES = { f: ['Simran', 'Pooja', 'Neha', 'Anjali', 'Kavya', 'Riya', 'Priya'], m: ['Rohit', 'Aman', 'Vikram', 'Karan', 'Arjun', 'Rahul', 'Sahil'] };
+export const SHAADI_COST = 25000;
+// rishta steps: Mausi ji calls (home 2BHK or better + a car) → meet at Cyber Hub → long drive to Leisure Valley → ring from Goyal Jewellers → shaadi
+export const RISHTA_STEPS = ['call', 'meet', 'date', 'ring', 'shaadi'];
+export const rishtaReady = p => homeRank(p) >= LADDER.indexOf('flat') && (p.vehicles || []).some(v => VEH[v] && VEH[v].kind === 4);
 export const PG_RENT = 200;
 
 export const RANKS = [['Intern', 400], ['Associate', 600], ['Sr. Associate', 850], ['Team Lead', 1200], ['Manager', 1700], ['VP', 2500], ['CEO Saab', 4000]];
@@ -37,6 +60,8 @@ export const BLING = {
   kada:   { name: 'Gold kada',            price: 15000, show: 15 },
   watch:  { name: 'Heavy gold watch',     price: 60000, show: 50 },
   gshades:{ name: 'Gold-frame chashma',   price: 12000, show: 12 },
+  ring:   { name: 'Sagaai ki angoothi',   price: 15000, show: 10 },
+  heera:  { name: 'Heeron ka haar',       price: 300000, show: 120 },
 };
 export const MODS = {
   horn:    { name: 'Pressure horn',            price: 3000,  desc: 'Press H. Everyone nearby hears it.' },
