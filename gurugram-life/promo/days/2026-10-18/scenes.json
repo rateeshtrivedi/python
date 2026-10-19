@@ -1,0 +1,8 @@
+[
+ {"sc": 0, "dur": 2.6, "pre": 1.0, "pov": "POV: You planned a 'chill Sunday' in Gurugram 😌", "cap": "the plan vs what actually happened 👇", "capAt": 0.9, "filter": "saturate(1.25) contrast(1.05)"},
+ {"sc": 1, "dur": 2.6, "pre": 1.0, "time": "PLAN: sleep till 12 😴", "cap": "REALITY: 9 AM cow traffic 🐄", "capAt": 0.35},
+ {"sc": 2, "dur": 2.6, "pre": 1.0, "time": "PLAN: light breakfast 🥗", "cap": "REALITY: 14 golgappe at Galleria 🤤", "capAt": 0.35},
+ {"sc": 3, "dur": 2.9, "pre": 1.0, "time": "PLAN: morning yoga 🧘", "cap": "REALITY: dangal with a pehlwan 💪", "capAt": 0.35},
+ {"sc": 4, "dur": 2.6, "pre": 1.0, "time": "PLAN: no drama today 🙏", "cap": "REALITY: roasted at the village chaupal 🔥", "capAt": 0.35},
+ {"sc": 5, "dur": 3.0, "pre": 1.0, "time": "PLAN: early night 🌙", "cap": "REALITY: Holi. In October. 🌈", "capAt": 0.35, "big": true, "filter": "saturate(1.25) contrast(1.05)"}
+]
