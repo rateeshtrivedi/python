@@ -155,7 +155,7 @@ function visibleChain(o) { for (let p = o; p; p = p.parent) { if (!p.visible) re
 function updateHumans(dt) { // which characters show their real body: nearest ones in view, a few on phones
   if (!HU.HUMANS.ready) return; HFRAME++;
   const phone = document.body.classList.contains('touch') || Math.min(innerWidth, innerHeight) < 520, R = phone ? 40 : 62, cap = Math.max(1, Math.round((phone ? 9 : 22) * (PERF.hk || 1)));
-  hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat); const cand = [];
+  camera.updateMatrixWorld(); hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat); const cand = []; // this frame's camera, not the last drawn one
   for (let i = HCHARS.length - 1; i >= 0; i--) {
     const g = HCHARS[i], u = g.userData;
     if (!g.parent) { if ((u.gone = (u.gone || 0) + 1) > 600) { HCHARS.splice(i, 1); unhumanize(g); } continue; } u.gone = 0;
@@ -1005,8 +1005,8 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && G.started && !G.map && $('modal').hidden && $('raceres').hidden) {
     if (locked()) { if (e.button === 0) punch(); else if (e.button === 2) doAction(); return; }
-    if (!G.noLock && now() - (G.lockTry || 0) > 1.2) { G.lockTry = now(); try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {} }
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, mouse: true }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; // no lock (yet): drag to look, click to punch
+    let lockReq = false; if (!G.noLock && now() - (G.lockTry || 0) > 1.2) { G.lockTry = now(); lockReq = true; try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {} }
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, mouse: true, lockReq }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; // no lock (yet): drag to look, click to punch
   }
   if (e.pointerType === 'touch' && e.clientX < window.innerWidth * 0.4 && document.body.classList.contains('touch')) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
 });
@@ -1014,7 +1014,7 @@ document.addEventListener('pointerlockerror', () => { if (!G.noLock) { G.noLock 
 document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('locked', locked()); if (locked()) L.locked = 1; });
 document.addEventListener('mousemove', e => { if (!locked()) return; G.yaw -= e.movementX * 0.0026; G.pitch = clamp(G.pitch + e.movementY * 0.002, 0.05, 1.2); G.lookAt = now(); });
 canvas.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; G.yaw -= dx * 0.006; G.pitch = clamp(G.pitch + dy * 0.004, 0.05, 1.2); G.lookAt = now(); if (Math.abs(dx) + Math.abs(dy) > 2) tutEvent('looked'); });
-canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) { const d = drag; drag = null; if (d.mouse && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) setTimeout(() => { if (!locked() && G.started && $('modal').hidden && !G.map) { if (d.btn === 2) doAction(); else punch(); } }, 120); } }); canvas.addEventListener('pointercancel', () => { drag = null; });
+canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) { const d = drag; drag = null; if (d.mouse && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) setTimeout(() => { if (!(locked() && d.lockReq) && G.started && $('modal').hidden && !G.map) { if (d.btn === 2) doAction(); else punch(); } }, 120); /* only the click that grabbed the mouse lock skips its punch */ } }); canvas.addEventListener('pointercancel', () => { drag = null; });
 canvas.addEventListener('wheel', e => { G.dist = clamp(G.dist + e.deltaY * 0.01, 4, 22); e.preventDefault(); }, { passive: false });
 const joy = $('joy'), knob = $('knob'); let joyId = null;
 joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); joyMove(e); });
@@ -1145,7 +1145,7 @@ function spawnFighters() {
   homes.forEach(h => FIGHTERS.push(makeFighter('Chhora ' + pick(['Monu', 'Sonu', 'Bittu', 'Golu', 'Rinku', 'Pintu', 'Lalit', 'Sandy']), h[0], h[1], 60, 6, pick([0x1c1c1c, 0xd7331f, 0x2e6bd1, 0xf3b61f]))));
   PEHLWAN = makeFighter('Pehlwan Bhola', AKHARA.x, AKHARA.z, 160, 9, 0xd7331f, true); PEHLWAN.mesh.scale.set(1.25, 1.25, 1.25); PEHLWAN.state = 'idle'; FIGHTERS.push(PEHLWAN);
 }
-function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined }); scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
+function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined, g: 'm' }); /* chhore, bosses and the pehlwan are men */ scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
   if (n.donBoss) { n.state = 'ko'; n.t = 8; A.sfx('ko'); say(n, 'Bas kar... maan gaya tujhe!', 3); ev('npc_ko'); net.send('donko', { ch: n.donCh }); for (const h of DONF) if (h !== n && h.state !== 'ko') { h.state = 'ko'; h.t = 6; say(h, 'Bhaago!', 1.5); } bigText('CHAPTER ' + (n.donCh + 1) + ' POORA!', D.DON[n.donCh].boss + ' dhobi pachhad', 1.8); return; }
   if (n.fromPed) { n.state = 'ko'; n.t = 4; A.sfx('ko'); say(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createWorld } from '../public/shared/world.js';
 import { stations } from './stations.js';
-import { SITE, PAGES, homeLD, robots, sitemap, notFound } from './pages.js';
+import { SITE, PAGES, homeLD, robots, sitemap, notFound, analytics, rss, llms } from './pages.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -61,6 +61,8 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
   if (/\.onrender\.com$/.test(host)) res.setHeader('X-Robots-Tag', 'noindex');
+  // HTTPS only from now on (sent only over HTTPS, as the standard requires; Render / Cloudflare terminate TLS)
+  if (req.secure || String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
 const VERSION = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local';
@@ -116,11 +118,15 @@ function siteOrigin(req) {
 }
 const GVERIFY = /^[\w-]{10,80}$/.test(process.env.GOOGLE_SITE_VERIFICATION || '') ? `\n<meta name="google-site-verification" content="${process.env.GOOGLE_SITE_VERIFICATION}">` : ''; // Search Console HTML-tag method
 const HOME_LD = homeLD().map(o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`).join('\n');
-const HOME_HTML = INDEX_HTML.split('__CANON__').join(SITE).replace('__GVERIFY__', GVERIFY).replace('__LD__', HOME_LD);
+const HOME_HTML = INDEX_HTML.split('__CANON__').join(SITE).replace('__GVERIFY__', GVERIFY + analytics()).replace('__LD__', HOME_LD);
 app.get(['/', '/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(HOME_HTML.split('__ORIGIN__').join(siteOrigin(req)));
 });
-for (const [p, render] of Object.entries(PAGES)) app.get([p, p + '/'], (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.type('html').send(render(req)); });
+// one address per page: /about/ -> 301 -> /about (Express routes ignore the trailing slash otherwise)
+app.use((req, res, next) => { if (req.path.length > 1 && req.path.endsWith('/') && PAGES[req.path.slice(0, -1)]) return res.redirect(301, req.path.slice(0, -1) + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')); next(); });
+for (const [p, render] of Object.entries(PAGES)) app.get(p, (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.type('html').send(render(req)); });
+app.get('/updates.xml', (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.type('application/rss+xml').send(rss()); });
+app.get('/llms.txt', (req, res) => res.type('text/plain').send(llms()));
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(robots()));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(sitemap()));
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).

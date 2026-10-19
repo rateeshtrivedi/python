@@ -67,3 +67,14 @@ The site is ready for search engines (titles, structured data, `/about`, `/how-t
 6. **Links from elsewhere** matter most for ranking: put `www.gurugramlife.com` in the Instagram bio, YouTube channel links and every video description, and share it in Gurugram/Gurgaon groups, Reddit (r/gurgaon, r/IndianGaming) and with local pages and bloggers.
 
 What to expect: searches for the name ("gurugram life", "gurugram life game", "gurgaon life game") can show the site within days to a few weeks of indexing. Broad words alone ("gurugram", "gurgaon") are dominated by Wikipedia, government and news sites and need many links and visits over months.
+
+## 6. Google Analytics (optional, 10 minutes)
+1. Go to analytics.google.com, sign in, and create a **GA4 property** for `gurugramlife.com` (Admin → Create → Property, then add a **Web** data stream with the URL `https://gurugramlife.com`).
+2. Copy the **Measurement ID**. It looks like `G-AB12CD34EF`.
+3. On Render, open the service → **Environment** → **Add Environment Variable**: key `GA_ID`, value your Measurement ID. Save; Render redeploys.
+4. The tracking tag then appears on the game page and every info page. With no `GA_ID`, no tracking code is added at all.
+
+Search Console: if you verified with the DNS record (Domain property), nothing else is needed. If you prefer the HTML-tag method, set `GOOGLE_SITE_VERIFICATION` to the code Google gives you.
+
+## 7. Keeping the sitemap honest
+`server/pages.js` has `EDITED` (default last-edit date) and `LASTMOD` (per-page dates). When you change a page's text, set its date there so `<lastmod>` in the sitemap stays truthful. New patch notes go at the top of `UPDATES` in the same file; they also feed `/updates.xml` (RSS).
