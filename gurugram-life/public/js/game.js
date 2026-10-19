@@ -1361,7 +1361,7 @@ const BUBBLES = [];
 // NPCs speak their lines out loud (recorded voices, panned and fading with distance) instead of showing a bubble.
 // Lines without a recording (player chat) still appear as a speech bubble.
 const VOX_P = new THREE.Vector3(), VOX_R = new THREE.Vector3();
-function say(obj, text, secs) { const v = VOICES[text]; if (v) return speak(obj, text, secs, v); bubble(obj, text, secs); }
+function say(obj, text, secs) { if (G.film) return; const v = VOICES[text]; if (v) return speak(obj, text, secs, v); bubble(obj, text, secs); }
 function speak(obj, text, secs, v) {
   const m = obj.mesh || obj; m.getWorldPosition(VOX_P); const d = VOX_P.distanceTo(camera.position); if (d > 45) return; // too far to hear
   const u = m.userData || {}, g0 = (u.dress && u.dress.g) || u.voiceG || 'm', g = v[1].includes(g0) ? g0 : v[1][0];
@@ -2389,6 +2389,7 @@ async function playIntroFilm(done) {
     const ctx = A.Music.ctx; if (ctx) { const buf = await Promise.race([fetch('/audio/intro/intro.mp3').then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)), new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3500))]);
       if (FILM.on) { const s = ctx.createBufferSource(); s.buffer = buf; const g = ctx.createGain(); g.gain.value = 0.9; s.connect(g).connect(ctx.destination); s.start(); FILM.src = s; FILM.ctx = ctx; FILM.t0 = ctx.currentTime; } }
   } catch (e) { console.warn('Gurugram Life: intro music not played', e); }
+  FILM.tags = []; scene.traverse(o => { if (o.isSprite && o.visible) { o.visible = false; FILM.tags.push(o); } }); /* name tags and bubbles off: it's a film */
   FILM.clock = true; step('intro_play');
 }
 function updateFilm(dt) {
@@ -2403,7 +2404,7 @@ function updateFilm(dt) {
 function endFilm(skipped) {
   if (!FILM.on) return; FILM.on = false; FILM.clock = false; G.film = false;
   try { if (FILM.src) FILM.src.stop(); } catch { /* already stopped */ } FILM.src = null; FILM.ctx = null; A.setVolume(FILM.vol);
-  for (const a of [FILM.bus, FILM.car, FILM.spouse]) if (a) scene.remove(a);
+  for (const a of [FILM.bus, FILM.car, FILM.spouse]) if (a) scene.remove(a); for (const o of FILM.tags || []) o.visible = true; FILM.tags = null;
   if (FILM.home) { scene.remove(FILM.home.g); for (let i = ZONES.length - 1; i >= 0; i--) if (ZONES[i].zone === 'home') ZONES.splice(i, 1); COL.home = []; FILM.home = null; HOME = null; }
   if (G.inside) { G.inside = null; setIndoor(false); } renderer.domElement.style.filter = ''; DAY.fixed = FILM.save.dayFixed; DAY.t = FILM.save.dayT;
   G.x = FILM.save.x; G.z = FILM.save.z; G.r = G.yaw = FILM.save.r; player.visible = true; applyMyLook(); camera.fov = baseFov(); camera.updateProjectionMatrix();
