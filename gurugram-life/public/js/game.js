@@ -155,7 +155,7 @@ function visibleChain(o) { for (let p = o; p; p = p.parent) { if (!p.visible) re
 function updateHumans(dt) { // which characters show their real body: nearest ones in view, a few on phones
   if (!HU.HUMANS.ready) return; HFRAME++;
   const phone = document.body.classList.contains('touch') || Math.min(innerWidth, innerHeight) < 520, R = phone ? 40 : 62, cap = Math.max(1, Math.round((phone ? 9 : 22) * (PERF.hk || 1)));
-  hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat); const cand = [];
+  camera.updateMatrixWorld(); hMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); hFrustum.setFromProjectionMatrix(hMat); const cand = []; // this frame's camera, not the last drawn one
   for (let i = HCHARS.length - 1; i >= 0; i--) {
     const g = HCHARS[i], u = g.userData;
     if (!g.parent) { if ((u.gone = (u.gone || 0) + 1) > 600) { HCHARS.splice(i, 1); unhumanize(g); } continue; } u.gone = 0;
@@ -1145,7 +1145,7 @@ function spawnFighters() {
   homes.forEach(h => FIGHTERS.push(makeFighter('Chhora ' + pick(['Monu', 'Sonu', 'Bittu', 'Golu', 'Rinku', 'Pintu', 'Lalit', 'Sandy']), h[0], h[1], 60, 6, pick([0x1c1c1c, 0xd7331f, 0x2e6bd1, 0xf3b61f]))));
   PEHLWAN = makeFighter('Pehlwan Bhola', AKHARA.x, AKHARA.z, 160, 9, 0xd7331f, true); PEHLWAN.mesh.scale.set(1.25, 1.25, 1.25); PEHLWAN.state = 'idle'; FIGHTERS.push(PEHLWAN);
 }
-function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined }); scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
+function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined, g: 'm' }); /* chhore, bosses and the pehlwan are men */ scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
   if (n.donBoss) { n.state = 'ko'; n.t = 8; A.sfx('ko'); say(n, 'Bas kar... maan gaya tujhe!', 3); ev('npc_ko'); net.send('donko', { ch: n.donCh }); for (const h of DONF) if (h !== n && h.state !== 'ko') { h.state = 'ko'; h.t = 6; say(h, 'Bhaago!', 1.5); } bigText('CHAPTER ' + (n.donCh + 1) + ' POORA!', D.DON[n.donCh].boss + ' dhobi pachhad', 1.8); return; }
   if (n.fromPed) { n.state = 'ko'; n.t = 4; A.sfx('ko'); say(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }

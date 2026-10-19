@@ -86,12 +86,17 @@ try {
   { // search: canonical address, structured data, crawlable pages, robots and sitemap
     const home = await (await fetch(`http://localhost:${PORT}/`)).text(); const lds = [...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1])['@type']);
     check(/<link rel="canonical" href="https:\/\/gurugramlife\.com\/">/.test(home) && lds.includes('VideoGame') && lds.includes('WebSite') && !home.includes('__CANON__') && !home.includes('__LD__'), 'home page: canonical URL and structured data');
-    const pages = await Promise.all(['/about', '/how-to-play', '/places', '/updates', '/places/dlf-cyber-city', '/places/sadar-bazaar'].map(async p => { const r = await fetch(`http://localhost:${PORT}${p}`); const t = await r.text(); return r.ok && /<h1>/.test(t) && t.includes('rel="canonical"') && !/\bTau\b/.test(t); }));
+    const pages = await Promise.all(['/about', '/how-to-play', '/places', '/updates', '/places/dlf-cyber-city', '/places/sadar-bazaar', '/hi', '/hi/how-to-play', '/hi/places'].map(async p => { const r = await fetch(`http://localhost:${PORT}${p}`); const t = await r.text(); return r.ok && /<h1>/.test(t) && t.includes('rel="canonical"') && !/\bTau\b/.test(t); }));
     const rb = await (await fetch(`http://localhost:${PORT}/robots.txt`)).text(), sm = await (await fetch(`http://localhost:${PORT}/sitemap.xml`)).text(), nf = await fetch(`http://localhost:${PORT}/no-such-page`);
-    check(pages.every(Boolean) && rb.includes('Sitemap: https://gurugramlife.com/sitemap.xml') && (sm.match(/<loc>/g) || []).length === 30 && nf.status === 404, 'about/how-to-play/places pages, robots.txt, sitemap, 404');
+    check(pages.every(Boolean) && rb.includes('Sitemap: https://gurugramlife.com/sitemap.xml') && (sm.match(/<loc>/g) || []).length === 33 && !sm.includes('<priority>') && nf.status === 404, 'about/how-to-play/places pages, robots.txt, sitemap, 404');
     const bare = await new Promise(res => http.get({ host: 'localhost', port: PORT, path: '/about', headers: { host: 'gurugramlife.com' } }, r => { r.resume(); res(r); })); // fetch() can't set Host
     const www = await new Promise(res => http.get({ host: 'localhost', port: PORT, path: '/about', headers: { host: 'www.gurugramlife.com' } }, r => { r.resume(); res(r); }));
     check(bare.statusCode === 200 && www.statusCode === 200, 'no domain redirects from the game (the host handles www, avoids a redirect loop)');
+    const get = (p, h) => new Promise(res => http.get({ host: 'localhost', port: PORT, path: p, headers: h || {} }, r => { r.resume(); res(r); }));
+    const slash = await get('/about/'), tls = await get('/about', { 'x-forwarded-proto': 'https' }), plain = await get('/about');
+    check(slash.statusCode === 301 && slash.headers.location === '/about' && /max-age=31536000/.test(tls.headers['strict-transport-security'] || '') && !plain.headers['strict-transport-security'], 'trailing slash 301s to one address; HSTS over HTTPS only');
+    const feed = await (await fetch(`http://localhost:${PORT}/updates.xml`)).text(), llm = await fetch(`http://localhost:${PORT}/llms.txt`), hi = await (await fetch(`http://localhost:${PORT}/hi`)).text(), how = await (await fetch(`http://localhost:${PORT}/how-to-play`)).text();
+    check(/<rss[\s\S]*<item>/.test(feed) && llm.ok && hi.includes('lang="hi"') && hi.includes('hreflang="en-IN"') && how.includes('hreflang="hi" href="https://gurugramlife.com/hi/how-to-play"') && home.includes('hreflang="hi"'), 'RSS feed, llms.txt, Hindi pages with hreflang pairs');
   }
   const three = await fetch(`http://localhost:${PORT}/vendor/three/three.module.js`); check(three.ok, 'three.js served from /vendor');
   a2.ws.close(); b.ws.close();
