@@ -1005,8 +1005,8 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse' && G.started && !G.map && $('modal').hidden && $('raceres').hidden) {
     if (locked()) { if (e.button === 0) punch(); else if (e.button === 2) doAction(); return; }
-    if (!G.noLock && now() - (G.lockTry || 0) > 1.2) { G.lockTry = now(); try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {} }
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, mouse: true }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; // no lock (yet): drag to look, click to punch
+    let lockReq = false; if (!G.noLock && now() - (G.lockTry || 0) > 1.2) { G.lockTry = now(); lockReq = true; try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {} }
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, btn: e.button, mouse: true, lockReq }; try { canvas.setPointerCapture(e.pointerId); } catch {} return; // no lock (yet): drag to look, click to punch
   }
   if (e.pointerType === 'touch' && e.clientX < window.innerWidth * 0.4 && document.body.classList.contains('touch')) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
 });
@@ -1014,7 +1014,7 @@ document.addEventListener('pointerlockerror', () => { if (!G.noLock) { G.noLock 
 document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('locked', locked()); if (locked()) L.locked = 1; });
 document.addEventListener('mousemove', e => { if (!locked()) return; G.yaw -= e.movementX * 0.0026; G.pitch = clamp(G.pitch + e.movementY * 0.002, 0.05, 1.2); G.lookAt = now(); });
 canvas.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; G.yaw -= dx * 0.006; G.pitch = clamp(G.pitch + dy * 0.004, 0.05, 1.2); G.lookAt = now(); if (Math.abs(dx) + Math.abs(dy) > 2) tutEvent('looked'); });
-canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) { const d = drag; drag = null; if (d.mouse && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) setTimeout(() => { if (!locked() && G.started && $('modal').hidden && !G.map) { if (d.btn === 2) doAction(); else punch(); } }, 120); } }); canvas.addEventListener('pointercancel', () => { drag = null; });
+canvas.addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) { const d = drag; drag = null; if (d.mouse && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) setTimeout(() => { if (!(locked() && d.lockReq) && G.started && $('modal').hidden && !G.map) { if (d.btn === 2) doAction(); else punch(); } }, 120); /* only the click that grabbed the mouse lock skips its punch */ } }); canvas.addEventListener('pointercancel', () => { drag = null; });
 canvas.addEventListener('wheel', e => { G.dist = clamp(G.dist + e.deltaY * 0.01, 4, 22); e.preventDefault(); }, { passive: false });
 const joy = $('joy'), knob = $('knob'); let joyId = null;
 joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); joyMove(e); });
