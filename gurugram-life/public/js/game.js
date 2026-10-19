@@ -7,7 +7,9 @@ import * as I18N from './i18n.js';
 import * as HU from './humans.js';
 import * as RL from './realism.js';
 import * as DG from './dogs.js';
+import * as RD from './rides.js';
 import { VOICES } from './voices.js';
+import { CREDITS, CHANGED, LICENCES } from '../shared/credits.js';
 
 // ================================================================ UTIL
 const $ = id => document.getElementById(id);
@@ -254,8 +256,34 @@ function humanAnim(u, h, dt, mode, speedMul) {
 function sitChar(ch) { const u = ch.userData; u.sit = true; if (u.human && u.human.cur !== 'sit') { HU.play(u.human, 'sit', 0.15); u.human.mixer.update(0.02); } u.hipL.rotation.x = -1.3; u.hipR.rotation.x = -1.3; u.shL.rotation.x = -0.9; u.shR.rotation.x = -0.9; u.shL.rotation.z = 0; u.shR.rotation.z = 0; }
 
 function plateMesh(text) { const t = new THREE.CanvasTexture(signCanvas(text, null, '#ffffff', '#111111', 256, 64)); return new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), new THREE.MeshBasicMaterial({ map: t })); }
+// real models (rides.js) replace the box-built vehicles once they load: waiting groups are rebuilt in place, so every
+// reference to them (traffic, the player's ride, showroom) stays valid
+const RIDES_WAIT = [];
 function makeVehicle(type, colorOverride, mods, plate) {
-  const g = new THREE.Group(); const V = D.VEH[type]; const col = colorOverride || (V && V.color) || 0xcccccc; mods = mods || {};
+  const g = new THREE.Group(); buildVehicle(g, type, colorOverride, mods, plate);
+  if (HUMANS_P && RD.MODEL_OF[type] && !RD.has(type)) RIDES_WAIT.push([g, type, colorOverride, mods, plate]); return g;
+}
+function upgradeRides(f) {
+  if (f === 'cow') { for (const c of COWS) { c.mesh.clear(); c.mesh.userData.cow = RD.addCow(c.mesh); } return; }
+  for (let i = RIDES_WAIT.length - 1; i >= 0; i--) { const w = RIDES_WAIT[i]; if (!RD.has(w[1])) continue; RIDES_WAIT.splice(i, 1); w[0].clear(); buildVehicle(...w); }
+}
+function modelVehicle(g, type, col, mods, plate) {
+  const V = D.VEH[type], two = V && V.kind === 2;
+  const C = RD.addModel(g, type, type === 'police' ? 0xf5f5f5 : type === 'truck' ? 0xf28c1b : ['bus', 'auto'].includes(type) || two ? null : col), Ln = C.Ln, Wd = C.Wd, H = C.H;
+  if (type === 'police') { for (const s of [-1, 1]) sign(g, 'HARYANA POLICE', null, '#2563b8', '#ffffff', 2.4, 0.42, s * (Wd / 2 - 0.08), H * 0.5, -0.2, s * Math.PI / 2); bx(g, 0.5, 0.18, 0.3, 0, -0.3, H + 0.06, -0.3, { mat: glow(0xff2020) }); bx(g, 0.5, 0.18, 0.3, 0, 0.3, H + 0.06, -0.3, { mat: glow(0x2060ff) }); }
+  if (type === 'bus') for (const s of [-1, 1]) sign(g, 'GURUGRAM CITY BUS', null, '#f6c026', '#1b1410', 4, 0.55, s * (Wd / 2 + 0.03), 1.45, 0.6, s * Math.PI / 2);
+  if (type === 'truck') { sign(g, 'HORN OK PLEASE', 'Buri nazar wale tera muh kala', '#f6c026', '#d7331f', 2.4, 0.9, 0, 2.3, -Ln / 2 - 0.04, Math.PI); for (const s of [-1, 1]) sign(g, 'JAI HARYANA', 'Dalal Transport Co.', '#1a8a4a', '#fff4d8', 4.4, 1.1, s * (Wd / 2 + 0.02), 2.5, -1.4, s * Math.PI / 2); }
+  if (two) { if (plate) { const p = plateMesh(plate); p.scale.set(0.5, 0.5, 0.5); p.position.set(0, 0.8, -Ln / 2 - 0.04); p.rotation.y = Math.PI; g.add(p); } g.userData.len = Ln; g.userData.rad = 0.9; g.userData.two = true; return g; }
+  if (mods.bull) { bx(g, Wd * 0.9, 0.12, 0.12, 0x9a9a9a, 0, 0.6, Ln / 2 + 0.25); bx(g, Wd * 0.9, 0.12, 0.12, 0x9a9a9a, 0, 1.1, Ln / 2 + 0.25); for (const x of [-0.6, 0, 0.6]) bx(g, 0.1, 0.7, 0.1, 0x9a9a9a, x * Wd / 2, 0.85, Ln / 2 + 0.25); }
+  if (mods.glow !== undefined && mods.glow !== false) { const gc = D.GLOW_COLORS[mods.glow | 0] || D.GLOW_COLORS[0]; const p = new THREE.Mesh(new THREE.PlaneGeometry(Wd + 0.6, Ln + 0.6), new THREE.MeshBasicMaterial({ color: gc, transparent: true, opacity: 0.55, depthWrite: false })); p.rotation.x = -Math.PI / 2; p.position.y = 0.06; g.add(p); }
+  if (mods.sticker !== undefined && mods.sticker !== false) sign(g, D.STICKERS[mods.sticker | 0] || 'DESI BOYZ', null, '#111111', '#f6c026', Wd * 0.55, 0.26, 0, H * 0.72, -Ln / 2 + 0.25, Math.PI);
+  if (mods.film) g.traverse(o => { if (o.isMesh && o.material.transparent && o.material.envMap) o.material = RL.glass(true); });
+  if (plate) { const pf = plateMesh(plate); pf.position.set(0, 0.75, Ln / 2 + 0.03); g.add(pf); const pb = plateMesh(plate); pb.position.set(0, 0.85, -Ln / 2 - 0.03); pb.rotation.y = Math.PI; g.add(pb); }
+  g.userData.len = Ln; g.userData.rad = Math.min(2.6, Wd * 0.85); return g;
+}
+function buildVehicle(g, type, colorOverride, mods, plate) {
+  const V = D.VEH[type]; const col = colorOverride || (V && V.color) || 0xcccccc; mods = mods || {};
+  if (RD.has(type)) return modelVehicle(g, type, col, mods, plate);
   const tyre = mat(0x161616);
   const wheel = (x, y, z, r) => { const w = new THREE.Mesh(CYL, tyre); w.scale.set(r, 0.3, r); w.rotation.z = Math.PI / 2; w.position.set(x, y, z); g.add(w); return w; };
   if (type === 'auto') { RL.auto(g); g.userData.len = 2.8; g.userData.rad = 1.3; return g; }
@@ -801,6 +829,15 @@ function openPhone() {
     const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
+    b.append(itemRow('Credits', 'Artists whose work is in the game', 'Dekho', openCredits));
+  });
+}
+// the licences (CC BY 4.0) ask players to be told who made the models, even if they never open GitHub or the website
+function openCredits() {
+  openModal('Credits', 'Shukriya! Free work shared by these artists', b => {
+    const ul = el('ul', { class: 'credits', 'data-notr': '' });
+    for (const c of CREDITS) ul.append(el('li', null, el('b', { text: c.what }), ': ', el('a', { href: c.url, target: '_blank', rel: 'noopener nofollow', text: c.title }), ' by ' + c.author + ' (', el('a', { href: LICENCES[c.lic], target: '_blank', rel: 'noopener license nofollow', text: c.lic }), ')'));
+    b.append(ul, el('p', { text: CHANGED }), el('p', { text: 'Radio songs come from live internet radio stations. Game by Gurugram Life, made in Gurugram.' }));
   });
 }
 function appRide() { openModal('Chalo Driver', 'Passenger le jao, paise kamao' + (G.ev?.type === 'flood' ? ' · FLOOD SURGE 2x' : ''), b => { if (G.job) { b.append(el('p', { text: 'Current job: ' + jobText() }), itemRow('Cancel current job', '', 'Cancel', () => { endJob(); closeModal(); }, false, true)); return; } b.append(el('p', { text: G.veh ? 'Cars pay 40% more (AC wali sawari).' : 'Ride ke liye gaadi chahiye. Iffco Chowk se e-scooter rent kar, ya Chaudhary Motors se khareed.' }), itemRow('Go online and accept a ride', 'Pickup → drop, fast drop = tip', G.veh ? 'Go online' : 'Need vehicle', () => { closeModal(); startJob('ride'); }, !G.veh)); }); }
@@ -1276,7 +1313,7 @@ function updateDogs(dt) {
     DG.play(d, d.st === 'run' ? 'Run' : d.st === 'walk' ? 'Walk' : 'Survey', d.st === 'walk' ? 0.8 : 1); if (near < 70) d.mixer.update(dt);
   }
 }
-function makeCow() { const g = new THREE.Group(); RL.cow(g); return g; }
+function makeCow() { const g = new THREE.Group(); if (RD.cowReady()) g.userData.cow = RD.addCow(g); else RL.cow(g); return g; }
 function spawnAmbient() {
   for (let k = 0; k < 26; k++) { const d = pick(DIST); const c = makeChar(pick(D.SHIRTS)); if (Math.random() < 0.25) setLook(c, { shirt: c.userData.torso.material.color.getHex(), hat: pick(['pagdi', 'cap', 'none']) }); scene.add(c); PEDS.push({ mesh: c, cx: d[0] * 150, cz: d[1] * 150, t: rnd(0, 4), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.6, 2.4), talkT: rnd(5, 30) }); }
   for (let k = 0; k < 28; k++) { const along = Math.random() < 0.5 ? 'x' : 'z'; const r = pick(ROADS); const dir = Math.random() < 0.5 ? 1 : -1; const type = k < 11 ? 'auto' : k < 13 ? 'bus' : k < 15 ? 'truck' : pick(['chhotu', 'desert', 'cruiser', 'chhotu']); const v = makeVehicle(type, ['chhotu', 'desert', 'cruiser'].includes(type) ? pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0x151515, 0xf3b61f, 0xffffff]) : null); scene.add(v); CARS.push({ mesh: v, along, line: r + dir * 3.2, dir, p: rnd(-440, 440), sp: type === 'bus' || type === 'truck' ? 11 : rnd(12, 18), honkT: 0, type }); }
@@ -1298,7 +1335,7 @@ function updateAmbient(dt) {
     p.t += dt * p.sp / 272 * p.dir; const t = ((p.t % 1) + 1) % 1; const Lr = 68.5; let x, z; const s = t * 4; if (s < 1) { x = -Lr + 2 * Lr * s; z = -Lr; } else if (s < 2) { x = Lr; z = -Lr + 2 * Lr * (s - 1); } else if (s < 3) { x = Lr - 2 * Lr * (s - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (s - 3); } const px = p.cx + x, pz = p.cz + z; p.mesh.rotation.y = Math.atan2(px - p.mesh.position.x, pz - p.mesh.position.z); p.mesh.position.set(px, 0.2, pz); if (p.mesh.visible) animChar(p.mesh, dt, 1); p.talkT -= dt; if (p.talkT < 0) { p.talkT = rnd(15, 40); if (Math.hypot(px - G.x, pz - G.z) < 25) say(p, pick(NPC_LINES), 2.5); } }
   for (const c of CARS) {
     if (c.taken) { c.mesh.visible = false; continue; }
-    c.mesh.visible = out && Math.abs(c.mesh.position.x - ccx) + Math.abs(c.mesh.position.z - ccz) < 300; if (!out) continue; let x = c.along === 'x' ? c.line : c.p, z = c.along === 'x' ? c.p : c.line;
+    c.mesh.visible = out && Math.abs(c.mesh.position.x - ccx) + Math.abs(c.mesh.position.z - ccz) < (RL.Q.phone ? 200 : 300); /* phones: fewer far-off real models */ if (!out) continue; let x = c.along === 'x' ? c.line : c.p, z = c.along === 'x' ? c.p : c.line;
     const fx = c.along === 'x' ? 0 : c.dir, fz = c.along === 'x' ? c.dir : 0; const dx = G.x - x, dz = G.z - z; const ahead = dx * fx + dz * fz, lat = Math.abs(dx * fz - dz * fx);
     let blocked = ahead > 0 && ahead < (c.mesh.userData.len / 2 + 5) && lat < 2.4; for (const cw of COWS) { const ax = (cw.x - x) * fx + (cw.z - z) * fz, al = Math.abs((cw.x - x) * fz - (cw.z - z) * fx); if (ax > 0 && ax < c.mesh.userData.len / 2 + 4 && al < 2.4) blocked = true; }
     if (jam && Math.hypot(x - D.SPOTS.naka.x, z - D.SPOTS.naka.z) < 80) blocked = true;
@@ -1312,7 +1349,7 @@ function updateAmbient(dt) {
         if (Math.abs(G.vs) > 5 && (c.crashCD || 0) < now()) { c.crashCD = now() + 2; A.sfx('crash'); flashHit(); G.vs *= G.race ? 0.45 : -0.25; G.jolt = 0.4; c.stopT = now() + 2.5; if (Math.abs(G.vs) > 3) G.hp = Math.max(5, G.hp - 4); say(c, pick(['Abe andhe! Gaadi thok di!', 'Insurance tera baap bharega?', 'Ruk ja, utar neeche!', 'Kahan se licence liya?']), 2.2); } else G.vs *= 0.6; } }
     if (c.stopT && c.stopT > now() && !c.held) { c.p -= c.dir * c.sp * dt; }
   }
-  for (const c of COWS) { c.mesh.visible = out; if (!out) continue; c.t += dt; c.mesh.children[1].position.y = 1.7 + Math.sin(c.t * 1.5) * 0.08; if (c.mooT > 0) c.mooT -= dt; }
+  for (const c of COWS) { c.mesh.visible = out; if (!out) continue; c.t += dt; const cw = c.mesh.userData.cow; if (cw) { if (Math.abs(c.x - ccx) + Math.abs(c.z - ccz) < 90) RD.tickCow(cw, dt); } else c.mesh.children[1].position.y = 1.7 + Math.sin(c.t * 1.5) * 0.08; if (c.mooT > 0) c.mooT -= dt; }
   for (const n of MALLNPC) { const vis = G.inside === n.s.zone; n.mesh.visible = vis; if (!vis) continue; const dx = n.tx - n.x, dz = n.tz - n.z, d = Math.hypot(dx, dz); if (d < 0.6 || n.t <= 0) { n.tx = rnd(n.s.x0, n.s.x1); n.tz = rnd(n.s.z0, n.s.z1); n.t = 8; } else { n.x += dx / d * 1.8 * dt; n.z += dz / d * 1.8 * dt; n.mesh.rotation.y = Math.atan2(dx, dz); } n.t -= dt; n.mesh.position.set(n.x, 0, n.z); animChar(n.mesh, dt, d >= 0.6 ? 1 : 0); }
   if (G.inside === 'club') { const t = now(); CLUB.tiles.forEach((tl, i) => { const h = ((i * 0.13 + t * 0.6) % 1); tl.material.color.setHSL(h, 1, 0.25 + 0.25 * (Math.sin(t * 8 + i) > 0.6 ? 1 : 0)); }); CLUB.ball.rotation.y += dt; CLUB.lasers.forEach((l, i) => { l.rotation.y = t * (0.5 + i * 0.1) + i; }); CLUB.dancers.forEach(c => animChar(c, dt, 3)); }
 }
@@ -2398,5 +2435,6 @@ const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.lo
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
 DG.loadDogs('/models/dog.glb').then(() => { if (!DOGS.length) spawnDogs(); }).catch(e => console.warn('Gurugram Life: street dogs not loaded', e)); // 160 KB
 const HUMANS_P = /[?&]simple\b/.test(location.search) ? null : HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~2.7 MB, cached after the first visit
+if (HUMANS_P) HUMANS_P.then(() => RD.loadRides('/models/rides/', upgradeRides)); // ~4.5 MB after the people, one model at a time, traffic first
 window.addEventListener('pagehide', saveLocal);
 

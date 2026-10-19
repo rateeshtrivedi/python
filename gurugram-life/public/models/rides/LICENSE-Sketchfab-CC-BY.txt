@@ -1,0 +1,15 @@
+These vehicle and cow models come from Sketchfab and are licensed under Creative Commons Attribution 4.0 International
+(https://creativecommons.org/licenses/by/4.0/). They were made lighter for phones (fewer triangles, smaller textures),
+turned and scaled to fit the game, and some were recoloured. The game lists the same credits in Menu → Credits and on /about.
+
+auto.glb     "Autorikshaw - Indian Tuk Tuk" by bhagathartworks: https://sketchfab.com/3d-models/autorikshaw-indian-tuk-tuk-5775d012693741008acff9dad410e92d
+hatch.glb    "Ace '11 - Low Poly model" by Daniel Zhabotinsky: https://sketchfab.com/3d-models/ace-11-low-poly-model-055ff8a21b8d4d279debca089e2fafcd
+sedan.glb    "Kiri '10 - Low poly model" by Daniel Zhabotinsky: https://sketchfab.com/3d-models/kiri-10-low-poly-model-7fd6e15785fa4aa9bfd6e31eb7c97ba6
+jeep.glb     "Eugene MK6 '65 - Low poly model" by Daniel Zhabotinsky: https://sketchfab.com/3d-models/eugene-mk6-65-low-poly-model-22732575b0644cc9b65cf21857288189
+truck.glb    "LCT 3000 '95 - Low poly model" by Daniel Zhabotinsky: https://sketchfab.com/3d-models/lct-3000-95-low-poly-model-663a0953c038434a918cb85725c88ffa
+bus.glb      "Bus" by Milionna: https://sketchfab.com/3d-models/bus-2f06edc7e5544f33a40492e497f0f111
+bike.glb     "Old motorcycle" by Silversem: https://sketchfab.com/3d-models/old-motorcycle-b0d453e026b24d8496b14a2fa046f457
+scooter.glb  "Old Scooter" by Nadia Ribitis: https://sketchfab.com/3d-models/old-scooter-5e9b5072b2224ba982366490ad5f31d9
+cow.glb      "Zebu Bull" by Mily: https://sketchfab.com/3d-models/zebu-bull-8de29dda35fb4b4296a60908c9ff97c4
+
+Rebuild from the originals (kept on the GitHub release "models"): see promo/models/README.md.

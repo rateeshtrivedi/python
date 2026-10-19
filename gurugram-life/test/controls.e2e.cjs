@@ -11,6 +11,7 @@ async function open(browser, opts, name, noLock) {
   const ctx = await browser.newContext(opts); if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' })); await p.route('**/api/stations', r => r.fulfill({ json: { har: [], pun: [] } })); await p.route('**/radio-browser.info/**', r => r.abort());
   await p.route('**/js/game.js', r => r.fulfill({ body: fs.readFileSync(GAME_JS, 'utf8') + HOOK, contentType: 'application/javascript' }));
+  await p.route('**/models/rides/**', r => r.abort()); // input checks only: the box-built vehicles keep three software-rendered tabs fast enough
   if (noLock) await p.addInitScript(() => { HTMLCanvasElement.prototype.requestPointerLock = function () { setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 10); }; });
   await p.goto(URL); await p.waitForTimeout(1200); await p.fill('#nameIn', name).catch(() => {}); await p.click('#playBtn'); await p.waitForTimeout(500); if (await p.$('#cNext:visible')) await p.click('#cNext'); await p.waitForTimeout(300);
   await p.click('.splace >> text=Rajiv Chowk'); await p.waitForFunction(() => window.__t && window.__t.G.started, null, { timeout: 30000 }); await p.waitForTimeout(2500);

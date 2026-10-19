@@ -6,6 +6,7 @@ import { EXTRA } from './place-extra.js';
 import { IMAGES } from './images.js';
 import { HI_NAMES, HI_FAQ, HI_HOME, HI_HOW } from './hindi.js';
 import { DIST } from '../public/shared/data.js';
+import { CREDITS, CHANGED, LICENCES } from '../public/shared/credits.js';
 export const SITE = (process.env.SITE_URL || 'https://gurugramlife.com').replace(/\/+$/, ''); // the address the domain host serves (www redirects here)
 // When each page's content last really changed (sitemap <lastmod>). Bump the date when you edit a page; Google stops trusting
 // lastmod that changes on every request. Pages not listed use EDITED.
@@ -130,6 +131,7 @@ ${nb.length ? `<h2>Nearby on the map</h2><div class="grid">${nb.map(n => `<div c
 }
 // what changed in the game, newest first (keep adding to the top)
 export const UPDATES = [
+  ['2026-10-19', 'Real autos, cars, trucks, buses and cows', ['Traffic now uses detailed 3D models: a green-and-yellow auto rickshaw, hatchbacks, sedans, 4x4 jeeps, an orange truck with Horn OK Please and a city bus.', 'The Haryana Police jeep, the Bullet and the Scooty got real models too.', 'Cows on the road are now zebu bulls that graze and swish their tails.', 'New Credits screen in the game menu, and on the About page, naming every artist whose work is in the game.']],
   ['2026-10-19', 'Screenshots, Hindi pages and a trailer', ['Every place page now has real in-game screenshots, missions, earnings, tips and a real-vs-game comparison.', 'Hindi pages: गुरुग्राम लाइफ़ (/hi), कैसे खेलें and जगहें.', 'A 20-second gameplay trailer on the About page, and an RSS feed for these updates.', 'Fix: people right in front of a fast-moving camera now always show their realistic body.']],
   ['2026-10-19', 'A page for every place', ['Every Gurugram area in the game now has its own page with real-life background, things to do and nearby places.', 'New Updates page (this one).']],
   ['2026-10-18', 'Sound like GTA, street dogs and talking NPCs', ['Sound now starts with your first tap on phones.', 'Street fighters, drivers, race rivals and the Gali ke Don bosses speak their lines out loud in Hindi and Haryanvi.', 'Radio plays in vehicles, with RJ Bunty, station idents and funny ads for in-game businesses. New English Hits channel.', 'City sounds on foot: horns, autos, crows, koels, vendors calling and temple bells. Soft footsteps and punches.', 'Chase music that builds up as the police close in.', 'Desi street dogs that sniff around, bark and run away from speeding cars.']],
@@ -170,7 +172,7 @@ export const PAGES = {
 <h2>English, Hindi or Haryanvi</h2><p>Pick your language on the first screen. Hindi is written in Roman letters (Hinglish), the way people chat. Hindi and English players start with Bollywood radio, Haryanvi players with Haryanvi songs.</p>
 <p><i>Gurugram Life ek free 3D game hai jo asli Gurugram (Gurgaon) mein set hai. Phone ya laptop ke browser mein kholo aur khelo: paise kamao, gaadi lo, race karo, party karo aur Gali ke Don se lado.</i></p>
 <h2>Questions</h2>${FAQ.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}
-<h2>Credits</h2><p>People: Quaternius Universal Base Characters and Universal Animation Library (CC0). Street dogs: the Khronos "Fox" glTF sample, model by PixelMannen (CC0), rigging and animation by tomkranis, glTF conversion by @AsoboStudio and @scurest (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>), recoloured for the game. Radio songs come from live internet radio stations.</p>
+<h2>Credits</h2><p>Gurugram Life is built on free work shared by these artists. Thank you! The same list is in the game under Menu → Credits.</p><ul>${CREDITS.map(c => `<li>${esc(c.what)}: <a href="${esc(c.url)}" rel="nofollow">${esc(c.title)}</a> by ${esc(c.author)} (<a href="${LICENCES[c.lic]}" rel="license nofollow">${esc(c.lic)}</a>)</li>`).join('')}</ul><p>${esc(CHANGED)} Radio songs come from live internet radio stations.</p>
 <a class="play" href="/">Start playing Gurugram Life →</a>`,
     ld: [crumbs('/about', 'About'), TRAILER, { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }] }),
 
