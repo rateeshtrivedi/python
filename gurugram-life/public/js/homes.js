@@ -104,12 +104,13 @@ export function buildHome(K, id, o) {
 }
 
 // the footpath "home" next to Rajiv Chowk: a tarp, a bedroll, a bag and a steel glass
-export const CAMP = { x: 46, z: 63 };
+export const CAMP = { x: 45.6, z: 66.3 }; // on the pavement in front of the Rajiv Chowk shops (they end at z 64.5)
 export function buildCamp(K, parent) {
   const { bx, cyl } = K; const x = CAMP.x, z = CAMP.z; const g = new THREE.Group(); g.position.set(x, 0.2, z); parent.add(g);
   bx(g, 3.4, 0.06, 1.4, 0x6b6250, 0, 0.03, 0); bx(g, 2.2, 0.16, 0.9, 0x8a3b3b, -0.3, 0.12, 0); bx(g, 0.6, 0.2, 0.5, 0xe6dccb, -1.2, 0.22, 0);
   const tarp = bx(g, 3.6, 0.04, 2.2, 0x2563b8, 0, 1.6, -0.2); tarp.rotation.x = 0.35; for (const dx of [-1.7, 1.7]) cyl(g, 0.04, 1.8, 0x555555, dx, 0.9, 0.6);
   bx(g, 0.7, 0.5, 0.4, 0x3a5a2a, 1.3, 0.25, 0.2); cyl(g, 0.07, 0.18, 0xb9bec4, 1.0, 0.1, 0.6);
+  cyl(g, 0.12, 0.3, 0, 0.9, 0.17, 0.2, K.glow(0xffb347)); // a small lantern, so the camp shows at night
   K.sign(g, 'SAPNO KA SHEHAR', 'Aaj footpath, kal apna ghar', '#1b1410', '#f6c026', 2.6, 0.6, 0, 2.3, -1.0);
   return g;
 }

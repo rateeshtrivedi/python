@@ -7,8 +7,8 @@ const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
 const URL = process.env.URL || 'http://localhost:3000/'; const GAME_JS = path.join(__dirname, '..', 'public', 'js', 'game.js');
 const HOOK = '\nwindow.__t={G,FIGHTERS,REMOTES,PEDS,CROWD,DOORS,AKHARA,get P(){return P},get PV(){return playerVeh},get player(){return player}};';
 const results = []; const rec = (id, ok, info) => { results.push([id, ok, info]); console.log((ok ? 'PASS ' : 'FAIL ') + id + (info ? '  — ' + info : '')); };
-async function open(browser, opts, name, noLock) {
-  const ctx = await browser.newContext(opts); if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+async function open(browser, opts, name, noLock, film) {
+  const ctx = await browser.newContext(opts); if (!film) await ctx.addInitScript(() => localStorage.setItem('gl_intro', '1')); /* the intro film has its own check (F1) */ if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' })); await p.route('**/api/stations', r => r.fulfill({ json: { har: [], pun: [] } })); await p.route('**/radio-browser.info/**', r => r.abort());
   await p.route('**/js/game.js', r => r.fulfill({ body: fs.readFileSync(GAME_JS, 'utf8') + HOOK, contentType: 'application/javascript' }));
   await p.route('**/models/rides/**', r => r.abort()); // input checks only: the box-built vehicles keep three software-rendered tabs fast enough
@@ -19,7 +19,7 @@ async function open(browser, opts, name, noLock) {
   return p;
 }
 const E = (p, f, a) => p.evaluate(f, a);
-const st = p => E(p, () => { const G = window.__t.G; return { x: G.x, z: G.z, r: G.r, yaw: G.yaw, y: window.__t.player.position.y, veh: G.veh, hp: G.hp, modal: !document.getElementById('modal').hidden, map: !!G.map, chat: !document.getElementById('chatbar').hidden }; });
+const st = p => E(p, () => { const G = window.__t.G; return { x: G.x, z: G.z, r: G.r, yaw: G.yaw, y: window.__t.player.position.y, veh: G.veh, hp: G.hp, modal: !document.getElementById('modal').hidden, map: !!G.map, chat: !document.getElementById('chatbar').hidden, frozen: !!G.frozen }; });
 const place = (p, x, z, yaw) => E(p, ([x, z, yaw]) => { const G = window.__t.G; G.x = x; G.z = z; G.yaw = yaw; G.r = yaw; G.vs = 0; }, [x, z, yaw]);
 // a street chhora parked in front of the CAMERA, body turned away
 const chhora = (p, ahead = 1.7) => E(p, ahead => { const t = window.__t, G = t.G; const n = t.FIGHTERS.find(f => !f.pehl && !f.jack && !f.badla && f.state !== 'ko'); n.hp = n.max; n.state = 'wander'; n.x = G.x + Math.sin(G.yaw) * ahead; n.z = G.z + Math.cos(G.yaw) * ahead; n.tx = n.x; n.tz = n.z; n.hx = n.x; n.hz = n.z; G.r = G.yaw + 2.4; window.__n = n; return n.hp; }, ahead);
@@ -29,6 +29,11 @@ if (require.main === module) (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
   const NOLOCK = !!process.env.NOLOCK;
   // ---------------- desktop
+  // ---------------- intro film: a first-timer sees it once, Skip ends it and hands over the controls
+  { const q = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Film', false, true);
+    const seen = await q.waitForSelector('#film .skip', { timeout: 15000 }).then(() => true, () => false); await q.waitForTimeout(800); await q.click('#film .skip').catch(() => {}); await q.waitForTimeout(1500);
+    const after = await E(q, () => ({ gone: !document.getElementById('film'), frozen: window.__t.G.frozen, once: localStorage.getItem('gl_intro') }));
+    rec('F1 a first-timer sees the intro film and Skip ends it', seen && after.gone && !after.frozen && after.once === '1', JSON.stringify(after)); await q.context().close(); }
   const p = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Ek', NOLOCK);
   await place(p, 0, 20, 0); await p.waitForTimeout(300);
   let a = await st(p); await hold(p, 'KeyW', 1000); let c = await st(p); const walk = Math.hypot(c.x - a.x, c.z - a.z); rec('D1 W walks forward', walk > 2, 'moved ' + walk.toFixed(1));
@@ -65,7 +70,7 @@ if (require.main === module) (async () => {
   await p.keyboard.press('KeyM'); await p.waitForTimeout(600); rec('D17 M opens the 3D map', (await st(p)).map); await p.keyboard.press('KeyM'); await p.waitForTimeout(400); rec('D18 M closes the map', !(await st(p)).map);
   await p.keyboard.press('KeyT'); await p.waitForTimeout(300); rec('D19 T opens chat', (await st(p)).chat); a = await st(p); await p.keyboard.type('www ram ram'); c = await st(p); rec('D20 typing in chat does not move the player', Math.hypot(c.x - a.x, c.z - a.z) < 0.2);
   await p.keyboard.press('Enter'); await p.waitForTimeout(300); rec('D21 Enter sends and closes chat', !(await st(p)).chat);
-  a = await st(p); await hold(p, 'KeyW', 600); c = await st(p); rec('D22 W works again after chat', Math.hypot(c.x - a.x, c.z - a.z) > 1);
+  a = await st(p); await hold(p, 'KeyW', 600); c = await st(p); rec('D22 W works again after chat', Math.hypot(c.x - a.x, c.z - a.z) > 1, 'moved ' + Math.hypot(c.x - a.x, c.z - a.z).toFixed(1) + (c.frozen ? ' frozen' : ''));
   // ---------------- multiplayer: a second real player
   const q = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Do', NOLOCK);
   await place(q, 30, 30, Math.PI); await place(p, 30, 28.4, 0); await p.waitForTimeout(2500);
