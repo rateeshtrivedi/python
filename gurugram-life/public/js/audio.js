@@ -122,7 +122,7 @@ export function sfx(k, vol = 1) {
   else if (k === 'step') { noise(t, 0.05, 0.05 * v, 150 + Math.random() * 80, 1, 'lowpass', d); noise(t, 0.02, 0.012 * v, 2400, 1.5, 'bandpass', d); } // barely-there footsteps
   else if (k === 'stepwet') { noise(t, 0.08, 0.04 * v, 1700 + Math.random() * 400, 1.2, 'bandpass', d); noise(t, 0.05, 0.03 * v, 200, 1, 'lowpass', d); }
   else if (k === 'swing') noise(t, 0.1, 0.12, 1500, 1, 'bandpass', d);
-  else if (k === 'ko') { const o = osc('sawtooth', 400, t, 0.6, 0.2, d); o.frequency.exponentialRampToValueAtTime(80, t + 0.6); }
+  else if (k === 'ko') { noise(t, 0.18, 0.45, 260, 1, 'lowpass', d); const o = osc('sine', 80, t, 0.3, 0.35, d); o.frequency.exponentialRampToValueAtTime(45, t + 0.25); } // a body hitting the ground (the groan is a real voice)
   else if (k === 'level') [0, 4, 7, 12].forEach((n, i) => osc('triangle', mtof(72 + n), t + i * 0.09, 0.25, 0.25, d));
   else if (k === 'ok') { osc('triangle', 880, t, 0.1, 0.2, d); osc('triangle', 1320, t + 0.07, 0.12, 0.2, d); }
   else if (k === 'tick') osc('square', 1200, t, 0.04, 0.08, d);
@@ -208,6 +208,7 @@ export function setOnFoot(onFoot) {
 }
 export function setCarOnly(on) { Radio.carOnly = on; lsSet('gl_caronly', on); setOnFoot(Radio.foot); }
 
+const CLIP_VER = 3; // bump when the RJ/ad/vendor clips are regenerated under the same names (browsers cache /audio for a week)
 // ---- the RJ: station idents, spoof ads for the game's own businesses and a few jokes, talked over the song every few minutes
 const RJ = { on: false, el: null, next: performance.now() / 1000 + 75, recent: [], line: '' };
 const RJ_LINES = { desi: ['rj_id1', 'rj_id2', 'rj_id3', 'rj_id4', 'rj_wx', 'rj_sig'], ads: ['ad_motors', 'ad_sweets', 'ad_estate', 'ad_food', 'ad_gold', 'ad_police', 'ad_metro', 'ad_chaat', 'ad_ride'], eng: ['en_id1', 'en_id2', 'en_id3', 'en_ad1', 'en_ad2', 'en_ad3'] };
@@ -218,7 +219,7 @@ function rjStop() { if (RJ.el) { RJ.el.pause(); RJ.el = null; } if (RJ.on) { RJ.
 function rjTick() {
   const t = performance.now() / 1000, st = liveSt(), a = Radio.live;
   if (RJ.on || t < RJ.next || !Radio.playing || Radio.street || Theme.cur || st === 'mine' || Radio.override || !a || a.paused || a.readyState < 3) return;
-  const k = rjPick(st), el = new Audio('/audio/' + k + '.mp3'); RJ.el = el; RJ.on = true; RJ.line = k.includes('ad') ? 'Ad break' : 'RJ on air'; a.volume = radioVol(); hooks.label();
+  const k = rjPick(st), el = new Audio('/audio/' + k + '.mp3?v=' + CLIP_VER); RJ.el = el; RJ.on = true; RJ.line = k.includes('ad') ? 'Ad break' : 'RJ on air'; a.volume = radioVol(); hooks.label();
   el.volume = clamp(Music.vol * 2.4, 0.3, 1); const done = () => { if (RJ.el !== el) return; RJ.el = null; RJ.next = performance.now() / 1000 + 200 + Math.random() * 160; rjStop(); };
   el.addEventListener('ended', done); el.addEventListener('error', done); const p = el.play(); if (p && p.catch) p.catch(done);
 }
@@ -246,7 +247,7 @@ const C_EV = {
   koel(t) { const d = panned(0.2); for (let i = 0; i < 3; i++) { const s = t + i * 0.9, o = osc('sine', 700 + i * 90, s, 0.5, 0.12, d, 0.08); o.frequency.exponentialRampToValueAtTime(1100 + i * 120, s + 0.4); } },
   sparrow(t) { const d = panned(0.25); for (let i = 0; i < 3 + Math.floor(Math.random() * 4); i++) { const o = osc('sine', 3600 + Math.random() * 1500, t + i * 0.09, 0.05, 0.05, d); o.frequency.exponentialRampToValueAtTime(2800, t + i * 0.09 + 0.05); } },
   bell(t) { const d = panned(0.3); for (const [m, a] of [[1, 0.12], [2.76, 0.06], [5.4, 0.03], [8.93, 0.015]]) osc('sine', 520 * m, t, 2.6 / Math.sqrt(m), a, d, 0.003); },
-  vendor() { const ok = VENDORS.filter(k => !City.recentV.includes(k)); const k = ok[Math.floor(Math.random() * ok.length)]; City.recentV = [k, ...City.recentV].slice(0, 4); const el = new Audio('/audio/' + k + '.mp3'); el.volume = 0.25 + Math.random() * 0.3; try { const src = Music.ctx.createMediaElementSource(el); src.connect(panned(1)); } catch {} el.play().catch(() => {}); },
+  vendor() { const ok = VENDORS.filter(k => !City.recentV.includes(k)); const k = ok[Math.floor(Math.random() * ok.length)]; City.recentV = [k, ...City.recentV].slice(0, 4); const el = new Audio('/audio/' + k + '.mp3?v=' + CLIP_VER); el.volume = 0.25 + Math.random() * 0.3; try { const src = Music.ctx.createMediaElementSource(el); src.connect(panned(1)); } catch {} el.play().catch(() => {}); },
 };
 // mix = { out, veh, traffic, nature, market, temple, night } (0..1), from the game a few times a second
 export function setCity(m) {
@@ -269,12 +270,12 @@ export function stinger(kind) { if (!Music.ctx) return; const t = Music.ctx.curr
 // One line per speaker at a time and at most three at once, so a big fight doesn't turn into noise.
 const VOX = { cache: new Map(), live: [] };
 async function voxBuf(url) { if (!VOX.cache.has(url)) VOX.cache.set(url, fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(b => Music.ctx.decodeAudioData(b))); return VOX.cache.get(url); }
-export async function voice(url, who, vol, pan) {
+export async function voice(url, who, vol, pan, rate) {
   if (!Music.ctx) return false; const c = Music.ctx;
   for (const v of VOX.live.filter(v => v.who === who)) { try { v.src.stop(); } catch {} }
   VOX.live = VOX.live.filter(v => v.who !== who); if (VOX.live.length >= 3) return true; // busy: this line is skipped, not shown as text
   let buf; try { buf = await voxBuf(url); } catch { VOX.cache.delete(url); return false; }
-  const src = c.createBufferSource(); src.buffer = buf; const g = c.createGain(); g.gain.value = clamp(vol, 0, 1) * 1.7;
+  const src = c.createBufferSource(); src.buffer = buf; if (rate) src.playbackRate.value = rate; const g = c.createGain(); g.gain.value = clamp(vol, 0, 1) * 1.7;
   const p = c.createStereoPanner ? c.createStereoPanner() : null; if (p) { p.pan.value = clamp(pan, -0.85, 0.85); src.connect(p); p.connect(g); } else src.connect(g);
   g.connect(Music.sfx); const v = { src, who }; VOX.live.push(v); themeDuck(); src.onended = () => { VOX.live = VOX.live.filter(x => x !== v); themeDuck(); }; src.start(); return true;
 }

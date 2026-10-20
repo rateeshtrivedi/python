@@ -1,6 +1,6 @@
 // Everyone whose work is in the game. Shown in Menu → Credits and on /about. CC BY 4.0 asks for the title, the author,
 // a link to the source, the licence and a note that the work was changed, so all five are here.
-export const LICENCES = { 'CC BY 4.0': 'https://creativecommons.org/licenses/by/4.0/', CC0: 'https://creativecommons.org/publicdomain/zero/1.0/', 'Apache 2.0': 'https://www.apache.org/licenses/LICENSE-2.0' };
+export const LICENCES = { 'CC BY 4.0': 'https://creativecommons.org/licenses/by/4.0/', CC0: 'https://creativecommons.org/publicdomain/zero/1.0/', 'Apache 2.0': 'https://www.apache.org/licenses/LICENSE-2.0', 'Sarvam terms': 'https://www.sarvam.ai/terms-of-service' };
 export const CREDITS = [
   { what: 'Auto rickshaw', title: 'Autorikshaw - Indian Tuk Tuk', author: 'bhagathartworks', url: 'https://sketchfab.com/3d-models/autorikshaw-indian-tuk-tuk-5775d012693741008acff9dad410e92d', lic: 'CC BY 4.0' },
   { what: 'Chhotu Hatchback', title: "Ace '11 - Low Poly model", author: 'Daniel Zhabotinsky', url: 'https://sketchfab.com/3d-models/ace-11-low-poly-model-055ff8a21b8d4d279debca089e2fafcd', lic: 'CC BY 4.0' },
@@ -13,6 +13,9 @@ export const CREDITS = [
   { what: 'Cows on the road', title: 'Zebu Bull', author: 'Mily', url: 'https://sketchfab.com/3d-models/zebu-bull-8de29dda35fb4b4296a60908c9ff97c4', lic: 'CC BY 4.0' },
   { what: 'Street dogs', title: 'Fox (glTF sample)', author: 'PixelMannen (model, CC0), tomkranis (rig and animation), @AsoboStudio and @scurest (glTF)', url: 'https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/Fox', lic: 'CC BY 4.0' },
   { what: 'People and how they move', title: 'Universal Base Characters and Universal Animation Library', author: 'Quaternius', url: 'https://quaternius.com', lic: 'CC0' },
-  { what: 'Spoken lines of people and the RJ', title: 'Kokoro-82M text-to-speech', author: 'hexgrad', url: 'https://huggingface.co/hexgrad/Kokoro-82M', lic: 'Apache 2.0' },
+  { what: 'Spoken lines of people, the RJ and the intro narrator', title: 'Bulbul text-to-speech', author: 'Sarvam AI', url: 'https://www.sarvam.ai', lic: 'Sarvam terms' },
+  { what: 'Grunts and groans in fights (men)', title: 'Male Grunt/Yelling sounds', author: 'HaelDB', url: 'https://opengameart.org/content/male-gruntyelling-sounds', lic: 'CC0' },
+  { what: 'Grunts and groans in fights (men)', title: 'grunts of male death and pain', author: 'thebardofblasphemy', url: 'https://opengameart.org/content/grunts-male-death-and-pain', lic: 'CC0' },
+  { what: 'Grunts and groans in fights (women)', title: 'Female Hurt Grunts & Groans', author: 'AuraVoice (Nocturnal_Vanguard)', url: 'https://opengameart.org/content/female-hurt-grunts-groans', lic: 'CC0' },
 ];
-export const CHANGED = 'Changes: the 3D models were made lighter for phones (fewer triangles, smaller textures), turned and scaled to fit the game, and some were recoloured (cars, the truck, the dogs and the cows).';
+export const CHANGED = 'Changes: the 3D models were made lighter for phones (fewer triangles, smaller textures), turned and scaled to fit the game, and some were recoloured (cars, the truck, the dogs and the cows). The grunts were cut into single sounds and trimmed, and one woman\'s voice was also pitched up a little for a second voice.';

@@ -127,6 +127,7 @@ app.use((req, res, next) => { if (req.path.length > 1 && req.path.endsWith('/') 
 for (const [p, render] of Object.entries(PAGES)) app.get(p, (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.type('html').send(render(req)); });
 app.get('/updates.xml', (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.type('application/rss+xml').send(rss()); });
 app.get('/llms.txt', (req, res) => res.type('text/plain').send(llms()));
+app.get('/favicon.ico', (req, res) => res.redirect(301, '/img/favicon-32.png')); // browsers and feed readers ask for this path on their own
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(robots()));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(sitemap()));
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).

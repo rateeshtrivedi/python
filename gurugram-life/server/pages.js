@@ -65,7 +65,10 @@ footer{border-top:1px solid #3a2d24;padding:18px;text-align:center;color:#d9c7a3
 .gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}.gal figure{margin:0}table{width:100%;border-collapse:collapse;margin:8px 0 14px}th,td{border:1px solid #3a2d24;padding:8px 10px;text-align:left;vertical-align:top}th{background:#2a201a;color:#f6c026}
 video{width:100%;max-width:360px;border-radius:14px;display:block;margin:10px auto}`;
 // alt: the same page in the other language ({ hi: '/hi/...' } or { en: '/...' }); trail: visible breadcrumb [[path, name], ...]
+// search results cut titles after ~70 and descriptions after ~160 characters: end them on a whole word instead
+const clip = (s, n) => s.length <= n ? s : s.slice(0, s.lastIndexOf(' ', n - 1)).replace(/[\s,.;:·–-]+$/, '') + '…';
 function page(req, { path, title, desc, h1, body, ld, image, imageAlt, lang = 'en-IN', alt, trail }) {
+  title = clip(title, 70); desc = clip(desc, 158);
   const url = SITE + path, hi = lang === 'hi'; const lds = [].concat(ld || []).map(o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`).join('');
   const link = (p, t) => `<a href="${p}"${p === path ? ' aria-current="page"' : ''}>${t}</a>`;
   const og = SITE + (image || '/img/og-image.jpg');

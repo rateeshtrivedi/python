@@ -9,7 +9,7 @@ import * as RL from './realism.js';
 import * as DG from './dogs.js';
 import * as RD from './rides.js';
 import * as HM from './homes.js';
-import { VOICES } from './voices.js';
+import { VOICES, VOX_N, VOX_VER, GRUNTS } from './voices.js';
 import { CREDITS, CHANGED, LICENCES } from '../shared/credits.js';
 
 // ================================================================ UTIL
@@ -1191,9 +1191,9 @@ function punch() {
   for (const c of cands) { const dx = c.x - G.x, dz = c.z - G.z, d = Math.hypot(dx, dz); if (d > 3.1) continue; const a = Math.atan2(dx, dz);
     const off = Math.min(Math.abs(angDiff(a, G.yaw)), Math.abs(angDiff(a, G.r))); if (off > 1.2 && d > 1.7) continue; const sc = d + off * 1.2 + (c.kind === 'crowd' || c.kind === 'ped' ? 0.6 : 0); if (sc < bs) { bs = sc; best = c; } }
   if (!best) return; G.r = Math.atan2(best.x - G.x, best.z - G.z); A.sfx('punch'); G.lastFight = now(); const fx = Math.sin(G.r), fz = Math.cos(G.r);
-  if (best.kind === 'npc') { const n = best.o; const dmg = irnd(9, 14) + Math.min(6, Math.floor(P.respect / 100)); n.hp -= dmg; n.state = 'aggro'; n.hitT = 0.2; n.x += fx * 0.8; n.z += fz * 0.8; if (Math.random() < 0.4) say(n, pick(['Aaah!', 'Teri to!', 'Ruk ja!', 'Maar diya re!']), 1.5); if (n.hp <= 0) npcKO(n); }
+  if (best.kind === 'npc') { const n = best.o; const dmg = irnd(9, 14) + Math.min(6, Math.floor(P.respect / 100)); n.hp -= dmg; n.state = 'aggro'; n.hitT = 0.2; n.x += fx * 0.8; n.z += fz * 0.8; if (n.hp <= 0) return npcKO(n); grunt(n, 'hit'); if (Math.random() < 0.3) setTimeout(() => { if (n.state !== 'ko') say(n, pick(['Teri to!', 'Ruk ja!', 'Maar diya re!']), 1.5); }, 500); }
   else if (best.kind === 'ped') pedFight(best.o);
-  else if (best.kind === 'crowd') { const p = best.o; p.knock = 7; p.kx = fx * 3; p.kz = fz * 3; if (Math.random() < 0.5) toast(pick(['Arre! Bina baat ke maarega?', 'Police bulaunga!', 'Oye, hosh mein aa!']), 'bad'); }
+  else if (best.kind === 'crowd') { const p = best.o; grunt(p, 'hit'); p.knock = 7; p.kx = fx * 3; p.kz = fz * 3; if (Math.random() < 0.5) toast(pick(['Arre! Bina baat ke maarega?', 'Police bulaunga!', 'Oye, hosh mein aa!']), 'bad'); }
   else net.send('hit', { target: best.id });
 }
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
@@ -1201,14 +1201,14 @@ const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI;
 function pedFight(p) {
   const pos = p.mesh.position; const n = makeFighter(pick(['Raahgir', 'Sharma Uncle', 'Gym wala Bunty', 'Bhaiya ji', 'Delivery boy']), pos.x, pos.z, 40, 4, p.mesh.userData.torso ? p.mesh.userData.torso.material.color.getHex() : pick(D.SHIRTS));
   n.fromPed = p; n.state = 'aggro'; n.cd = 0.9; n.hp -= irnd(9, 14); n.hitT = 0.2; p.fighter = n; p.mesh.visible = false; FIGHTERS.push(n);
-  say(n, pick(['Oye! Mere te haath uthaya?', 'Bina baat ke? Aaja fir!', 'Ab dekh tu!']), 2.2);
+  grunt(n, 'hit'); setTimeout(() => { if (n.state !== 'ko') say(n, pick(['Oye! Mere te haath uthaya?', 'Bina baat ke? Aaja fir!', 'Ab dekh tu!']), 2.2); }, 550);
 }
 // a hit knocks you back AWAY from whoever threw it (not just backwards from where you face: with the attacker behind
 // you that pulled you into them, until you stood on the same spot and they spun round you)
-function takeHit(dmg, who, from) { G.lastFight = now(); if (G.hp <= 0) return; G.hp -= dmg; flashHit(); A.sfx('punch');
+function takeHit(dmg, who, from) { G.lastFight = now(); if (G.hp <= 0) return; G.hp -= dmg; flashHit(); A.sfx('punch'); player._vi = nameIdx(P.name); if (G.hp > 0) grunt(player, 'hit');
   const kx = from ? G.x - from.x : -Math.sin(G.r), kz = from ? G.z - from.z : -Math.cos(G.r), kd = Math.hypot(kx, kz); if (kd > 0.01) { G.x += kx / kd * 0.4; G.z += kz / kd * 0.4; } else { G.x -= Math.sin(G.r) * 0.4; G.z -= Math.cos(G.r) * 0.4; } G.dance = false; if (G.hp <= 0) playerKO(who); updateHUD(); }
 function playerKO(who) {
-  G.hp = 0; A.sfx('ko'); net.send('ko', {}); if (G.veh) dismount(); if (G.job) { endJob(); toast('Job cancel ho gaya.', 'bad'); }
+  G.hp = 0; A.sfx('ko'); grunt(player, 'ko'); net.send('ko', {}); if (G.veh) dismount(); if (G.job) { endJob(); toast('Job cancel ho gaya.', 'bad'); }
   fadeTo((who ? who + ' ne dhobi pachhad maar diya!' : 'Behosh ho gaya!') + ' Civil Hospital le ja rahe hain...', 2400, async () => { G.hp = 100; G.inside = null; setIndoor(false); G.x = HOSPITAL.x; G.z = HOSPITAL.z + 4; G.r = 0; G.yaw = 0; if (P.money > 0) { await buy('misc', 'ko_bill'); toast('Civil Hospital mein hosh aaya. Bill kat gaya.', 'bad'); } updateHUD(); });
 }
 const FIGHTERS = []; let PEHLWAN = null;
@@ -1219,12 +1219,12 @@ function spawnFighters() {
 }
 function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined, g: 'm' }); /* chhore, bosses and the pehlwan are men */ scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
-  if (n.donBoss) { n.state = 'ko'; n.t = 8; A.sfx('ko'); say(n, 'Bas kar... maan gaya tujhe!', 3); ev('npc_ko'); net.send('donko', { ch: n.donCh }); for (const h of DONF) if (h !== n && h.state !== 'ko') { h.state = 'ko'; h.t = 6; say(h, 'Bhaago!', 1.5); } bigText('CHAPTER ' + (n.donCh + 1) + ' POORA!', D.DON[n.donCh].boss + ' dhobi pachhad', 1.8); return; }
-  if (n.fromPed) { n.state = 'ko'; n.t = 4; A.sfx('ko'); say(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }
-  if (n.badla) { n.state = 'ko'; n.t = 6; A.sfx('ko'); ev('badla'); ev('npc_ko'); say(n, pick(['Maaf kar de! Usse bhi maafi maang lunga!', 'Galti ho gayi bhai...']), 3); bigText('BADLA POORA!', n.badla.friend + ' ka badla le liya', 1.8); return; }
-  if (n.jack) { n.state = 'ko'; n.t = 3; A.sfx('ko'); say(n, pick(['Le ja... le ja gaadi!', 'Police ko bataunga!', 'Mummy...!']), 2.5); ev('npc_ko'); return takeJacked(n.jack); }
-  if (n.story) { n.state = 'ko'; n.t = 99; A.sfx('ko'); say(n, 'Maaf kar de bhai! Galti ho gayi!', 2.5); ev('npc_ko'); earn('loot', 150, 'Monu ne haar maani'); return storyKO(); }
-  n.state = 'ko'; n.t = n.pehl ? 6 : 22; A.sfx('ko'); say(n, n.pehl ? 'Haar gaya... tu asli pehlwan se!' : pick(['Maaf kar de bhai!', 'Galti ho gayi!', 'Ab na karunga!']), 2.5);
+  if (n.donBoss) { n.state = 'ko'; n.t = 8; koSay(n, 'Bas kar... maan gaya tujhe!', 3); ev('npc_ko'); net.send('donko', { ch: n.donCh }); for (const h of DONF) if (h !== n && h.state !== 'ko') { h.state = 'ko'; h.t = 6; say(h, 'Bhaago!', 1.5); } bigText('CHAPTER ' + (n.donCh + 1) + ' POORA!', D.DON[n.donCh].boss + ' dhobi pachhad', 1.8); return; }
+  if (n.fromPed) { n.state = 'ko'; n.t = 4; koSay(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }
+  if (n.badla) { n.state = 'ko'; n.t = 6; ev('badla'); ev('npc_ko'); koSay(n, pick(['Maaf kar de! Usse bhi maafi maang lunga!', 'Galti ho gayi bhai...']), 3); bigText('BADLA POORA!', n.badla.friend + ' ka badla le liya', 1.8); return; }
+  if (n.jack) { n.state = 'ko'; n.t = 3; koSay(n, pick(['Le ja... le ja gaadi!', 'Police ko bataunga!', 'Mummy...!']), 2.5); ev('npc_ko'); return takeJacked(n.jack); }
+  if (n.story) { n.state = 'ko'; n.t = 99; koSay(n, 'Maaf kar de bhai! Galti ho gayi!', 2.5); ev('npc_ko'); earn('loot', 150, 'Monu ne haar maani'); return storyKO(); }
+  n.state = 'ko'; n.t = n.pehl ? 6 : 22; koSay(n, n.pehl ? 'Haar gaya... tu asli pehlwan se!' : pick(['Maaf kar de bhai!', 'Galti ho gayi!', 'Ab na karunga!']), 2.5);
   ev('npc_ko');
   if (n.pehl) { AKHARA.fight = false; earn('dangal', 1000, 'Dangal jeeta!'); } else earn('loot', irnd(40, 120), n.name + ' ne haar maani');
 }
@@ -1265,7 +1265,7 @@ function updateFighters(dt) {
     if ((n.jack || n.badla || n.fromPed || n.don) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && !n.don && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false;
-    if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
+    if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; if (n.hp > 0) { grunt(n, 'hit'); setTimeout(() => { if (n.state !== 'ko') say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); }, 450); } if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
     if (n.pehl && n.state === 'idle') { n.r += dt * 0.3; if (Math.random() < 0.002 && d < 20) say(n, 'Hai koi maa ka laal? Dangal karega?', 2); }
     else if (n.state === 'aggro' && !G.inside && !G.veh && G.hp > 0 && (n.pehl ? Math.hypot(G.x - AKHARA.x, G.z - AKHARA.z) < 12 : n.story || d < 30)) { if (d > 0.05) n.r = Math.atan2(dx, dz); if (d < 1.0 && d > 0.001) { n.x -= dx / d * (1.0 - d); n.z -= dz / d * (1.0 - d); } /* never stand inside the player */ if ((n.talkT = (n.talkT === undefined ? rnd(0.8, 2) : n.talkT) - dt) <= 0 && d < 14) { n.talkT = rnd(3, 5); say(n, pick(ANGRY_LINES), 2); } if (d > 1.6) { const sp = n.pehl ? 4 : 5; n.x += dx / d * sp * dt; n.z += dz / d * sp * dt; moving = true; } else if (n.cd <= 0) { n.cd = n.pehl ? 1.0 : 1.2; m.userData.punchT = 0.25; takeHit(n.dmg, n.name, n); if (Math.random() < 0.3) { n.talkT = rnd(2.5, 4); say(n, 'Le! Aur khayega?', 2); } } }
     else {
@@ -1395,10 +1395,24 @@ const VOX_P = new THREE.Vector3(), VOX_R = new THREE.Vector3();
 function say(obj, text, secs) { if (G.film) return; const v = VOICES[text]; if (v) return speak(obj, text, secs, v); bubble(obj, text, secs); }
 function speak(obj, text, secs, v) {
   const m = obj.mesh || obj; m.getWorldPosition(VOX_P); const d = VOX_P.distanceTo(camera.position); if (d > 45) return; // too far to hear
-  const u = m.userData || {}, g0 = (u.dress && u.dress.g) || u.voiceG || 'm', g = v[1].includes(g0) ? g0 : v[1][0];
+  const g0 = voxG(obj), g = v[1].includes(g0) ? g0 : v[1][0];
   VOX_R.set(1, 0, 0).applyQuaternion(camera.quaternion); const pan = VOX_P.sub(camera.position).normalize().dot(VOX_R);
-  A.voice('/audio/v/' + v[0] + '_' + g + '.mp3', obj, Math.min(1, 9 / Math.max(9, d)), pan).then(ok => { if (!ok) bubble(obj, text, secs); });
+  A.voice('/audio/v/' + v[0] + '_' + g + (voxIdx(obj) % VOX_N[g]) + '.mp3?v=' + VOX_VER, obj, Math.min(1, 9 / Math.max(9, d)), pan).then(ok => { if (!ok) bubble(obj, text, secs); });
 }
+// every person keeps one voice: the same index picks their recorded lines and their grunts (players: from the name, so everyone hears the same)
+const voxG = o => { const u = (o.mesh || o).userData || {}; return (u.dress && u.dress.g) || (o.dress && o.dress.g) || u.voiceG || 'm'; };
+const voxIdx = o => o._vi ?? (o._vi = Math.floor(Math.random() * 840));
+const nameIdx = s => { let h = 7; for (const c of s || '') h = (h * 31 + c.charCodeAt(0)) % 840; return h; };
+// a real grunt when hit, a groan when knocked out (recorded voice actors, a touch of pitch change each time so repeats don't sound copied)
+function grunt(obj, kind, gain) {
+  if (G.film) return; const m = obj.mesh || obj; if (m.getWorldPosition) m.getWorldPosition(VOX_P); else VOX_P.set(obj.x, 1.6, obj.z);
+  const d = VOX_P.distanceTo(camera.position); if (d > 45) return;
+  const set = GRUNTS[voxG(obj) === 'f' ? 'f' : 'm'], ks = Object.keys(set), v = ks[voxIdx(obj) % ks.length];
+  VOX_R.set(1, 0, 0).applyQuaternion(camera.quaternion); const pan = VOX_P.sub(camera.position).normalize().dot(VOX_R);
+  A.voice('/audio/g/' + v + '_' + kind + Math.floor(Math.random() * set[v][kind]) + '.mp3?v=' + VOX_VER, obj, Math.min(1, 9 / Math.max(9, d)) * (gain || 1), pan, 0.95 + Math.random() * 0.1);
+}
+// knocked out: the groan first, then the line once it has died down
+function koSay(n, text, secs) { A.sfx('ko'); grunt(n, 'ko'); setTimeout(() => say(n, text, secs), 1100); }
 function bubble(obj, text, secs) { const m = obj.mesh || obj; if (obj._bub) { disposeSprite(obj._bub.s); BUBBLES.splice(BUBBLES.indexOf(obj._bub), 1); } const s = labelSprite(text, { fs: 36, scale: 0.62, bg: 'rgba(255,244,216,.95)', fg: '#1b1410', border: '#d7331f' }); const sc = m.scale.x || 1; s.position.y = 3.6 / sc; s.scale.multiplyScalar(1 / sc); m.add(s); const b = { s, t: secs || 3, o: obj }; obj._bub = b; BUBBLES.push(b); }
 function updateBubbles(dt) { for (let i = BUBBLES.length - 1; i >= 0; i--) { const b = BUBBLES[i]; b.t -= dt; if (b.t <= 0) { disposeSprite(b.s); b.o._bub = null; BUBBLES.splice(i, 1); } } }
 
@@ -1670,7 +1684,8 @@ function applyInfo(m) {
 function updateSnapshot(list) {
   for (const e of list) {
     const R = ensureRemote(e[0]); if (e[1] === null) { R.visible = false; continue; }
-    const first = !R.visible; R.visible = !!R.info; R.tx = e[1]; R.tz = e[2]; R.tr = e[3]; R.a = e[4]; R.inn = e[6] || ''; R.hp = e[7]; R.fx = e[8];
+    const first = !R.visible; R.visible = !!R.info; R.tx = e[1]; R.tz = e[2]; R.tr = e[3]; R.a = e[4]; R.inn = e[6] || '';
+    if (!first && R.visible && e[7] < R.hp && R.hp > 0 && R.inn === (G.inside || '')) { R._vi = nameIdx(R.info.name); grunt(R, e[7] <= 0 ? 'ko' : 'hit'); } R.hp = e[7]; R.fx = e[8];
     const v = D.VEH[e[5]] ? e[5] : null; const vk = v ? v + '|' + JSON.stringify(R.info?.mods || {}) + '|' + (R.info?.plate || '') : '';
     if (vk !== R.vehKey) { R.vehKey = vk; if (R.vm) { scene.remove(R.vm); R.vm = null; } R.veh = v; if (v) { R.vm = makeVehicle(v, null, v === 'rent' ? {} : R.info?.mods, v === 'rent' ? null : R.info?.plate); scene.add(R.vm); R.vm.position.set(R.tx, 0.2, R.tz); } }
     if (first) { R.mesh.position.set(R.tx, 0, R.tz); if (R.vm) R.vm.position.set(R.tx, 0.2, R.tz); }
@@ -2291,9 +2306,10 @@ function enterHome() { fadeTo('Ghar…', 600, () => { if (!goInside(false)) toas
 // a door with the home's name where it stands in the city; on the footpath, the camp at Rajiv Chowk
 const HOME_DOOR = { g: null, key: '' };
 function updateHomeDoor() {
-  if (!P || HOME_DOOR.key === P.home) return; HOME_DOOR.key = P.home; if (HOME_DOOR.g) world.remove(HOME_DOOR.g); HOME_DOOR.g = null; if (P.home === 'street') return;
+  if (!P || HOME_DOOR.key === P.home) return; HOME_DOOR.key = P.home; if (HOME_DOOR.g) world.remove(HOME_DOOR.g); HOME_DOOR.g = null; if (HOME_DOOR.cb) HOME_DOOR.cb.h = -1; if (P.home === 'street') return;
   const p = homePos(), g = new THREE.Group(); g.position.set(p.x, 0.2, p.z - 1.5); world.add(g);
   bx(g, 2.6, 3.6, 0.4, 0x5a3a22, 0, 1.8, 0); bx(g, 3.4, 0.4, 0.6, 0xf6c026, 0, 3.8, 0, { mat: glow(0xf6c026) }); sign(g, 'GHAR', D.HOUSES[P.home].name, '#1b1410', '#f6c026', 4.4, 0.9, 0, 4.7, 0.25); HOME_DOOR.g = g;
+  const cb = { x0: p.x - 2.2, x1: p.x + 2.2, z0: p.z - 1.9, z1: p.z - 1.1, h: 5.2 }; if (HOME_DOOR.cb) Object.assign(HOME_DOOR.cb, cb); else CAM_BLOCK.push(HOME_DOOR.cb = cb); /* the camera stays in front of the door when you step out */
 }
 ZONES.push({ zone: 'out', get x() { return P ? homePos().x : 1e5; }, get z() { return P ? homePos().z : 1e5; }, r: 4, label: () => !P ? null : P.home === 'street' ? 'Footpath: thoda so le' : 'Apna ghar: andar jao', act: () => P.home === 'street' ? footpathSleep() : enterHome() });
 function footpathSleep() { fadeTo('Footpath pe raat… machhar, horn, aur sapne', 2400, () => { G.hp = Math.max(G.hp, 75); saveLocal(); toast('Kamar akad gayi. Aaj ke saare kaam poore kar: Sharma Aunty PG ka kamra degi!'); }); }
@@ -2376,7 +2392,7 @@ async function doShaadi() {
 // Rajiv Chowk with ₹500, a night on the footpath, then the dream with the player's own avatar (a farmhouse, a long car,
 // a shaadi, money and jewellery) and the title. Narrator and score: /audio/intro/intro.mp3 (promo/intro). Skip any time.
 const FILM = { on: false };
-let INTRO_BUF = null; const introPrefetch = () => INTRO_BUF || (INTRO_BUF = fetch('/audio/intro/intro.mp3').then(r => r.arrayBuffer()));
+let INTRO_BUF = null; const introPrefetch = () => INTRO_BUF || (INTRO_BUF = fetch('/audio/intro/intro.mp3?v=' + VOX_VER).then(r => r.arrayBuffer()));
 const FILM_LEN = 20.2;
 const lerpV = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
 const ease = k => k * k * (3 - 2 * k);
