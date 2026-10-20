@@ -273,6 +273,14 @@ function humanAnim(u, h, dt, mode, speedMul) {
   if (!h.punching) { const k = mode === 3 ? 'dance' : mode === 1 ? (speedMul > 1.4 ? 'run' : speedMul > 1.15 ? 'jog' : 'walk') : 'idle'; HU.play(h, k, 0.22, k === 'walk' ? Math.min(1.5, 1.05 * (speedMul || 1)) : 1); }
   h.mixer.update(dt); u.animF = HFRAME;
 }
+// riding a two-wheeler: hips on the seat, the driving pose (hands forward on the handlebars), leaning in a little
+const BOX_SEAT = { rent: { z: -0.25, y: 1.18 } }, PELVIS = { y: 0.76, z: -0.44 }; // the box-built e-scooter; hip bone in the sitting pose, from the feet
+function seatOf(type) { return (RD.has(type) && RD.SEAT[type]) || BOX_SEAT[type] || { z: -0.25, y: 1.1 }; }
+function rideChar(ch, type, x, z, r, y0) {
+  const s = seatOf(type), dz = s.z - PELVIS.z; ch.position.set(x + Math.sin(r) * dz, (y0 || 0) + s.y + 0.05 - PELVIS.y, z + Math.cos(r) * dz); ch.rotation.order = 'YXZ'; ch.rotation.y = r; ch.rotation.x = 0.24; ch.userData.lean = true;
+  const u = ch.userData; u.sit = true; if (u.human && u.human.cur !== 'drive') { HU.play(u.human, 'drive', 0.15); u.human.mixer.update(0.02); }
+  u.hipL.rotation.x = -1.2; u.hipR.rotation.x = -1.2; u.shL.rotation.x = -1.3; u.shR.rotation.x = -1.3; u.shL.rotation.z = 0; u.shR.rotation.z = 0;
+}
 function sitChar(ch) { const u = ch.userData; u.sit = true; if (u.human && u.human.cur !== 'sit') { HU.play(u.human, 'sit', 0.15); u.human.mixer.update(0.02); } u.hipL.rotation.x = -1.3; u.hipR.rotation.x = -1.3; u.shL.rotation.x = -0.9; u.shR.rotation.x = -0.9; u.shL.rotation.z = 0; u.shR.rotation.z = 0; }
 
 function plateMesh(text) { const t = new THREE.CanvasTexture(signCanvas(text, null, '#ffffff', '#111111', 256, 64)); return new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), new THREE.MeshBasicMaterial({ map: t })); }
@@ -1132,7 +1140,7 @@ function updatePlayer(dt) {
     moving = Math.abs(G.vs) > 0.5; const float = V.kind === 5 && dep > 0.25; playerVeh.position.set(G.x, float ? 0.05 + Math.min(dep, 1) * 0.35 + Math.sin(now() * 3) * 0.06 : 0.2, G.z); playerVeh.rotation.y = G.r; playerVeh.rotation.z = V.kind === 2 ? ix * -0.15 * clamp(G.vs / 10, 0, 1) : float ? Math.sin(now() * 2.2) * 0.05 - ix * 0.08 : 0;
     if (float && Math.abs(G.vs) > 4 && Math.random() < dt * 20) burst(G.x - Math.sin(G.r) * 2.4, 0.4, G.z - Math.cos(G.r) * 2.4, 0xe8f2f8, 2, { speed: 2.5, up: 1.5, life: 0.7 }); // wake
     if (V.kind === 5 && !float && Math.abs(G.vs) > 1 && (G.scrapeT || 0) < now()) { G.scrapeT = now() + 0.6; A.sfx('crash', 0.15); }
-    if (V.kind === 2) { player.position.set(G.x - Math.sin(G.r) * 0.25, 0.55, G.z - Math.cos(G.r) * 0.25); player.rotation.y = G.r; sitChar(player); }
+    if (V.kind === 2) rideChar(player, G.veh, G.x, G.z, G.r, playerVeh ? playerVeh.position.y - 0.2 : 0);
     if (V.kind === 5) { player.position.set(G.x - Math.sin(G.r) * 1.0, playerVeh.position.y + 0.35, G.z - Math.cos(G.r) * 1.0); player.rotation.y = G.r; sitChar(player); }
     checkBump(); driveThrills(dt, ix, iy);
   } else {
@@ -1142,7 +1150,7 @@ function updatePlayer(dt) {
     if (m > 0.1) { dx /= Math.max(1, m); dz /= Math.max(1, m); const run = keys.ShiftLeft || keys.ShiftRight || runBtn || Math.hypot(joyX, joyY) > 0.95; const sp = (run ? 11 : 6) * (L.hunger <= 0 ? 0.6 : 1) * slow; G.x += dx * sp * dt; G.z += dz * sp * dt; G.r = angLerp(G.r, Math.atan2(dx, dz), Math.min(1, dt * 12)); moving = true; G.running = run; if (G.dance) G.dance = false; }
     if (G.jumpReq && !(G.jy > 0)) { G.jv = 7.8; G.jy = 0.001; A.sfx('swing'); } G.jumpReq = false;
     if (G.jy > 0) { G.jv -= 24 * dt; G.jy = Math.max(0, G.jy + G.jv * dt); }
-    resolve(G, 0.6); player.position.set(G.x, (G.inside ? 0 : groundY(G.x, G.z)) + (G.jy || 0) - Math.min(dep, 1.1) * 0.75, G.z); if (G.jy > 0) { const u = player.userData; u.hipL.rotation.x = -0.9; u.hipR.rotation.x = -0.3; } player.rotation.y = G.r; animChar(player, dt, G.dance ? 3 : moving ? 1 : 0, G.running ? 1.5 : 1);
+    resolve(G, 0.6); if (player.userData.lean) { player.userData.lean = false; player.rotation.x = 0; } /* off the bike: upright again */ player.position.set(G.x, (G.inside ? 0 : groundY(G.x, G.z)) + (G.jy || 0) - Math.min(dep, 1.1) * 0.75, G.z); if (G.jy > 0) { const u = player.userData; u.hipL.rotation.x = -0.9; u.hipR.rotation.x = -0.3; } player.rotation.y = G.r; animChar(player, dt, G.dance ? 3 : moving ? 1 : 0, G.running ? 1.5 : 1);
     if (moving) { G.movedAcc = (G.movedAcc || 0) + Math.hypot(G.x - ox, G.z - oz); if (G.movedAcc > 12) tutEvent('moved'); }
   }
   G.moving = moving;
@@ -1672,8 +1680,9 @@ function removeRemote(id) { const R = REMOTES.get(id); if (!R) return; scene.rem
 function updateRemotes(dt) {
   const k = 1 - Math.exp(-dt * 10);
   for (const [, R] of REMOTES) {
+    if (!R.vm && R.mesh.userData.lean) { R.mesh.userData.lean = false; R.mesh.rotation.x = 0; } // got off a two-wheeler
     const vis = R.visible && (G.inside || '') === R.inn && R.inn !== 'home' && !G.film; /* everyone's home is their own; the intro film shows only you */ const m = R.mesh;
-    if (R.vm) { R.vm.visible = vis; R.vm.position.x += (R.tx - R.vm.position.x) * k; R.vm.position.z += (R.tz - R.vm.position.z) * k; R.vm.position.y = 0.2; R.vm.rotation.y = angLerp(R.vm.rotation.y, R.tr, k); m.position.set(R.vm.position.x, 0.55, R.vm.position.z); m.rotation.y = R.vm.rotation.y; sitChar(m); m.visible = vis && (D.VEH[R.veh].kind === 2 || D.VEH[R.veh].kind === 5); if (D.VEH[R.veh].kind === 5) { const wd = waterDepth(R.vm.position.x, R.vm.position.z); if (wd > 0.25) R.vm.position.y = 0.05 + Math.min(wd, 1) * 0.35; m.position.y = R.vm.position.y + 0.35; } if (R.label) R.label.visible = true;
+    if (R.vm) { R.vm.visible = vis; R.vm.position.x += (R.tx - R.vm.position.x) * k; R.vm.position.z += (R.tz - R.vm.position.z) * k; R.vm.position.y = 0.2; R.vm.rotation.y = angLerp(R.vm.rotation.y, R.tr, k); if (D.VEH[R.veh].kind === 2) rideChar(m, R.veh, R.vm.position.x, R.vm.position.z, R.vm.rotation.y, 0); else { m.position.set(R.vm.position.x, 0.55, R.vm.position.z); m.rotation.y = R.vm.rotation.y; sitChar(m); } m.visible = vis && (D.VEH[R.veh].kind === 2 || D.VEH[R.veh].kind === 5); if (D.VEH[R.veh].kind === 5) { const wd = waterDepth(R.vm.position.x, R.vm.position.z); if (wd > 0.25) R.vm.position.y = 0.05 + Math.min(wd, 1) * 0.35; m.position.y = R.vm.position.y + 0.35; } if (R.label) R.label.visible = true;
       if (vis && R.fx && Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) < 40) { R.bassT = (R.bassT || 0) - dt; if (R.bassT < 0) { R.bassT = 0.5; A.sfx('bass', 1 - Math.hypot(R.vm.position.x - G.x, R.vm.position.z - G.z) / 40); } } }
     else { m.visible = vis; m.position.x += (R.tx - m.position.x) * k; m.position.z += (R.tz - m.position.z) * k; m.position.y = R.hp <= 0 ? 0.4 : (R.inn ? 0 : groundY(m.position.x, m.position.z)); m.rotation.y = angLerp(m.rotation.y, R.tr, k); m.rotation.x = R.hp <= 0 ? -Math.PI / 2 : 0; animChar(m, dt, R.a === 3 ? 3 : R.a === 1 ? 1 : 0); }
   }
