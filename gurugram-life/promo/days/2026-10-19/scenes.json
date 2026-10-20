@@ -1,0 +1,8 @@
+[
+ {"sc": 0, "dur": 2.5, "pre": 1.5, "inside": true, "pov": "POV: Monday at TechNova Towers 🧑‍💻", "cap": "things my manager said 👇", "capAt": 0.8},
+ {"sc": 1, "dur": 2.6, "pre": 0.6, "inside": true, "time": "\"Quick 5-minute call\" 📞", "cap": "REALITY: 3 hours. Camera off. 💀", "capAt": 0.35},
+ {"sc": 2, "dur": 2.6, "pre": 1.4, "time": "\"Office is just 10 min away\" 🛺", "cap": "REALITY: 1 hour in an auto 🛺🐢", "capAt": 0.35},
+ {"sc": 3, "dur": 2.6, "pre": 1.0, "time": "\"Salary credited soon\" 💸", "cap": "REALITY: side hustle in the rain 🌧️🛵", "capAt": 0.35},
+ {"sc": 4, "dur": 2.6, "pre": 1.0, "time": "\"Log off on time today\" 🙏", "cap": "REALITY: night shift as a cab driver 🚕", "capAt": 0.35},
+ {"sc": 5, "dur": 3.1, "pre": 1.2, "inside": true, "time": "\"Keep grinding, you'll get there\" 🏠", "cap": "REALITY: footpath → penthouse 😎", "capAt": 0.4, "big": true, "filter": "saturate(1.2) contrast(1.05)"}
+]

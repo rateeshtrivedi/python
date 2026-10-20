@@ -35,7 +35,11 @@ def crowd(L=1.5): x = np.arange(int(L * SR)) / SR; return lpn(L, 10) * 3 * np.mi
 def scratch(L=0.45): x = np.arange(int(L * SR)) / SR; f = 900 * (1 - x / L) ** 2 + 120; ph = 2 * np.pi * np.cumsum(f) / SR; return (np.sign(np.sin(ph)) * 0.4 + lpn(L, 3) * 1.5) * np.minimum(1, x / 0.01) * np.minimum(1, (L - x) / 0.05)
 LIB = dict(punch=(punch, .4), thud=(thud, .4), horn=(horn, .06), carpass=(carpass, .12), siren=(siren, .05), engine=(engine, .12), keys=(keys, .25), chatter=(chatter, .05), clink=(clink, .12), pop=(pop, .2), moo=(moo, .3), rain=(rain, .03), crowd=(crowd, .2), scratch=(scratch, .22), whoosh=(whoosh, .16))
 for k in range(1, len(SC) + 1): add(whoosh(), starts[k] - 0.12, 0.14)
+def voice(name):  # 'vo:<clip>' plays one of the game's recorded NPC lines (public/audio/v/<clip>.mp3)
+    raw = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', os.path.join(os.environ.get('GAME', '/home/user/python/gurugram-life'), 'public/audio/v', name + '.mp3'), '-f', 's16le', '-ac', '1', '-ar', str(SR), '-'], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, dtype=np.int16).astype(float) / 32768
 for e in SD['sfx']:
+    if e[0].startswith('vo:'): add(voice(e[0][3:]), starts[e[1]] + e[2], 0.9 * (e[3] if len(e) > 3 else 1)); continue
     name, sc, at = e[0], e[1], e[2]; L = e[3] if len(e) > 3 else 0; f, gain = LIB[name]; sig = f(L) if L else f()
     add(sig, starts[sc] + at, gain * (e[4] if len(e) > 4 else 1))
 bp = os.path.join(DIR, 'beat.wav'); subprocess.run(['python3', os.path.join(KIT, 'bolly.py'), bp, str(total + 0.5), SD['beat'], str(SD.get('seed', 1))], check=True)
