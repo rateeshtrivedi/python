@@ -33,7 +33,9 @@ def moo(L=1.1): x = np.arange(int(L * SR)) / SR; f = 150 - 40 * x / L + 4 * np.s
 def rain(L=2.5): return rng.standard_normal(int(L * SR)) * 0.5
 def crowd(L=1.5): x = np.arange(int(L * SR)) / SR; return lpn(L, 10) * 3 * np.minimum(1, x / 0.15) * np.exp(-x / max(0.3, L / 2))
 def scratch(L=0.45): x = np.arange(int(L * SR)) / SR; f = 900 * (1 - x / L) ** 2 + 120; ph = 2 * np.pi * np.cumsum(f) / SR; return (np.sign(np.sin(ph)) * 0.4 + lpn(L, 3) * 1.5) * np.minimum(1, x / 0.01) * np.minimum(1, (L - x) / 0.05)
-LIB = dict(punch=(punch, .4), thud=(thud, .4), horn=(horn, .06), carpass=(carpass, .12), siren=(siren, .05), engine=(engine, .12), keys=(keys, .25), chatter=(chatter, .05), clink=(clink, .12), pop=(pop, .2), moo=(moo, .3), rain=(rain, .03), crowd=(crowd, .2), scratch=(scratch, .22), whoosh=(whoosh, .16))
+def navding(L=0): return np.concatenate([(tone(988, 0.16, 0.08) + 0.4 * tone(1976, 0.16, 0.05)) * 0.6, (tone(1319, 0.32, 0.12) + 0.4 * tone(2637, 0.32, 0.06)) * 0.6])  # a soft two-note GPS chime
+def splash(L=1.0): x = np.arange(int(L * SR)) / SR; s = lpn(L, 3) * 4 * np.exp(-x / 0.18) + lpn(L, 9) * 3 * np.exp(-x / 0.5) * (0.6 + 0.4 * np.sin(2 * np.pi * 7 * x)); return s * np.minimum(1, x / 0.01)  # a car hitting water
+LIB = dict(navding=(navding, .35), splash=(splash, .3), punch=(punch, .4), thud=(thud, .4), horn=(horn, .06), carpass=(carpass, .12), siren=(siren, .05), engine=(engine, .12), keys=(keys, .25), chatter=(chatter, .05), clink=(clink, .12), pop=(pop, .2), moo=(moo, .3), rain=(rain, .03), crowd=(crowd, .2), scratch=(scratch, .22), whoosh=(whoosh, .16))
 for k in range(1, len(SC) + 1): add(whoosh(), starts[k] - 0.12, 0.14)
 def voice(name):  # 'vo:<clip>' plays one of the game's recorded NPC lines (public/audio/v/<clip>.mp3)
     raw = subprocess.run(['ffmpeg', '-loglevel', 'error', '-i', os.path.join(os.environ.get('GAME', '/home/user/python/gurugram-life'), 'public/audio/v', name + '.mp3'), '-f', 's16le', '-ac', '1', '-ar', str(SR), '-'], capture_output=True, check=True).stdout
