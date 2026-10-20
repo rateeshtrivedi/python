@@ -12,14 +12,18 @@ URL = 'https://api.sarvam.ai/text-to-speech'
 # Bulbul speakers: men for the chhore, drivers, elders, cops and the RJ; women for the female lines. Tough lines get the deeper voices.
 ALL_MEN = 'aditya,ashutosh,rahul,rohan,amit,dev,ratan,varun,manan,sumit,kabir,aayan,shubh,advait,anand,tarun,sunny,mani,gokul,vijay,mohit,rehan,soham'.split(',')
 ALL_WOMEN = 'ritu,priya,neha,pooja,simran,kavya,ishita,shreya,roopa,tanya,shruti,suhani,kavitha,rupali'.split(',')
-MEN = os.environ.get('SARVAM_MEN', 'rahul,amit,varun').split(',')
-WOMEN = os.environ.get('SARVAM_WOMEN', 'priya,neha,pooja').split(',')
+# picked by measured pitch and liveliness: deep and expressive for the rowdy lines, mid for everyone else, the liveliest for the RJ
+ROWDY = os.environ.get('SARVAM_ROWDY', 'kabir,soham,rehan').split(',')
+MEN = os.environ.get('SARVAM_MEN', 'anand,amit,ratan').split(',')
+WOMEN = os.environ.get('SARVAM_WOMEN', 'priya,roopa,simran').split(',')
 RJ = os.environ.get('SARVAM_RJ', 'aditya')
+NARRATOR = os.environ.get('SARVAM_NARRATOR', 'anand')
 TOUGH = ('ang', 'hit', 'agg', 'give', 'run', 'ko', 'jack', 'peh', 'ch', 'bad', 'don', 'r9', 'r10', 'mo', 'ja', 'ro', 'cs')
 
 def tts(text, speaker, lang='hi-IN', pace=1.0):
     body = {'text': text, 'target_language_code': lang, 'speaker': speaker, 'model': MODEL, 'pace': pace, 'speech_sample_rate': 24000}
-    for attempt in range(4):
+    for attempt in range(9):
+        if attempt: time.sleep(min(60, 3 * 2 ** attempt))  # rate limits: back off up to a minute
         hd = {'Content-Type': 'application/json'}
         if KEY: hd['api-subscription-key'] = KEY
         req = urllib.request.Request(URL, data=json.dumps(body).encode(), headers=hd)
@@ -28,10 +32,13 @@ def tts(text, speaker, lang='hi-IN', pace=1.0):
             return b''.join(base64.b64decode(a) for a in d['audios'])
         except urllib.error.HTTPError as e:
             msg = e.read().decode(errors='replace')
-            if e.code == 429 or e.code >= 500: time.sleep(2 ** attempt); continue
+            if e.code == 429 or e.code >= 500: print('  Sarvam', e.code, '- waiting'); continue
             sys.exit(f'Sarvam said {e.code}: {msg[:600]}')
     sys.exit('Sarvam kept failing; try again later.')
 
+DONE = os.path.join(WORK, 'done.txt')  # clips made in an earlier run that stopped part-way, so a re-run resumes
+def done(out): return os.path.exists(DONE) and out in open(DONE).read().split('\n')
+def mark(out): open(DONE, 'a').write(out + '\n')
 def save_mp3(wav_bytes, out, radio=False, pre=None):
     os.makedirs(WORK, exist_ok=True); w = os.path.join(WORK, 'tmp.wav'); open(w, 'wb').write(wav_bytes)
     fx = ('highpass=f=140,lowpass=f=6500,acompressor=threshold=-20dB:ratio=4:attack=5:release=120,loudnorm=I=-16:TP=-1.5' if radio
@@ -49,9 +56,11 @@ def npc(only):
         k, who, roman, dev = line.rstrip('\n').split('\t')
         if only and k not in only: continue
         for g in who:
-            spk = (MEN[0] if k.startswith(TOUGH) else pick(MEN, k)) if g == 'm' else pick(WOMEN, k)
+            spk = (pick(ROWDY, k) if k.startswith(TOUGH) else pick(MEN, k)) if g == 'm' else pick(WOMEN, k)
             pace = 1.12 if k.startswith(('hit', 'ko', 'agg', 'jack', 'run')) else 1.0
-            save_mp3(tts(dev, spk, pace=pace), os.path.join(GAME, 'public/audio/v', f'{k}_{g}.mp3')); n += 1; print(k, g, spk, roman)
+            out = os.path.join(GAME, 'public/audio/v', f'{k}_{g}.mp3')
+            if done(out): continue
+            save_mp3(tts(dev, spk, pace=pace), out); mark(out); n += 1; print(k, g, spk, roman)
     print(n, 'NPC clips')
 
 def radio(only):
@@ -70,14 +79,16 @@ def radio(only):
         if only and k not in only: continue
         en = v['lang'] == 'en'; spk = RJ if k.startswith('rj') or en else (pick(WOMEN, k) if v.get('sid') in (3, 31, 32) else pick(MEN, k))
         is_radio = not k.startswith('v_'); pre = jingle if ('_id' in k or k.startswith('rj_')) else (ding if '_ad' in k or k.startswith('ad_') else None)
-        save_mp3(tts(v['text'], spk, 'en-IN' if en else 'hi-IN', pace=1.05), os.path.join(GAME, 'public/audio', f'{k}.mp3'), radio=is_radio, pre=pre); print(k, spk)
+        out = os.path.join(GAME, 'public/audio', f'{k}.mp3')
+        if done(out): continue
+        save_mp3(tts(v['text'], spk, 'en-IN' if en else 'hi-IN', pace=1.05), out, radio=is_radio, pre=pre); mark(out); print(k, spk)
 
 def intro(only):
     sys.path.insert(0, os.path.join(GAME, 'promo/intro'))
     lines = [('1', 'राजीव चौक। जेब में पाँच सौ रुपये।'), ('2', 'रात फ़ुटपाथ पे… आँखों में सपने।'), ('3', 'अपना आलीशान घर।'), ('4', 'लंबी गाड़ी।'), ('5', 'जीवनसाथी।'), ('6', 'पैसा। ज़ेवर। इज़्ज़त।'), ('7', 'सपनों का शहर। फ़ुटपाथ से फ़ार्महाउस तक।')]
     d = os.path.join(GAME, 'promo/intro')
     for k, t in lines:
-        open(os.path.join(d, f'vo{k}.wav'), 'wb').write(tts(t, RJ, pace=0.95)); print('intro', k)
+        open(os.path.join(d, f'vo{k}.wav'), 'wb').write(tts(t, NARRATOR, pace=0.95)); print('intro', k)
     subprocess.run(['python3', 'score.py'], cwd=d, check=True)
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', os.path.join(d, 'intro.wav'), '-af', 'highpass=f=40,loudnorm=I=-15:TP=-1.5', '-ac', '1', '-ar', '44100', '-b:a', '64k', os.path.join(GAME, 'public/audio/intro/intro.mp3')], check=True)
 
