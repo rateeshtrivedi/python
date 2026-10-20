@@ -31,10 +31,14 @@ export async function loadRides(base, onModel) {
 }
 
 // adds a copy of the model to g: shared geometry and textures, paint by colour (one material per colour)
+// the two-wheelers are built a little small for a 1.8 m rider: scale them up to real size next to a person
+const UPSCALE = { bike: 1.2, scooter: 1.15 };
+// where the rider's hips go on each two-wheeler, in game units from the vehicle's centre (z: + is forward), after UPSCALE
+export const SEAT = { dhakad: { z: -0.22, y: 1.1 }, scooty: { z: -0.48, y: 1.18 } }; // front of the saddle, so the hands reach the bars
 export function addModel(g, type, col) {
-  const f = MODEL_OF[type], m = SRC[f].clone();
+  const f = MODEL_OF[type], m = SRC[f].clone(), k = UPSCALE[f] || 1;
   if (col != null) m.traverse(o => { if (o.userData.paint) o.material = RL.paint(col); });
-  g.add(m); return DIM[f];
+  m.scale.setScalar(k); g.add(m); const d = DIM[f]; return k === 1 ? d : { Ln: d.Ln * k, Wd: d.Wd * k, H: d.H * k };
 }
 
 // ---------------------------------------------------------------- the cow (a zebu, as on Gurugram roads)
