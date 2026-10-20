@@ -22,8 +22,8 @@ NARRATOR = os.environ.get('SARVAM_NARRATOR', 'anand')
 MALE = os.environ.get('SARVAM_MALE', 'aryaman_hi_ads,kabir_hi_conversational,chirag_hi_social,vaibhav_hi_social').split(',')
 FEMALE = os.environ.get('SARVAM_FEMALE', 'simran_hi_social_excited,suhani_hi_social,kavya_hi_conversational').split(',')
 
-def tts(text, speaker, lang='hi-IN', pace=1.0):
-    body = {'text': text, 'target_language_code': lang, 'speaker': speaker, 'model': 'bulbul:v4-flash' if '_' in speaker else MODEL, 'pace': pace, 'speech_sample_rate': 24000}  # persona ids (name_lang_style) are v4
+def tts(text, speaker, lang='hi-IN', pace=1.0, sr=24000):
+    body = {'text': text, 'target_language_code': lang, 'speaker': speaker, 'model': 'bulbul:v4-flash' if '_' in speaker else MODEL, 'pace': pace, 'speech_sample_rate': sr}  # persona ids (name_lang_style) are v4
     for attempt in range(9):
         if attempt: time.sleep(min(60, 3 * 2 ** attempt))  # rate limits: back off up to a minute
         hd = {'Content-Type': 'application/json'}
@@ -49,6 +49,14 @@ def save_mp3(wav_bytes, out, radio=False, pre=None):
     else: cmd = ['ffmpeg', '-y', '-loglevel', 'error', '-i', w, '-af', fx, '-ac', '1', '-ar', '22050', '-b:a', '32k' if not radio else '48k', out]
     subprocess.run(cmd, check=True)
 
+# street voices keep the whole voice: 44.1 kHz, 64 kbps, no compressor, only a level match. The old 22 kHz / 32 kbps
+# encode cut the breath and air of the voice by 11 dB and the compressor flattened it, which is what made it sound robotic.
+def save_voice(wav_bytes, out):
+    import numpy as np
+    os.makedirs(os.path.join(WORK, 'raw'), exist_ok=True); w = os.path.join(WORK, 'raw', os.path.basename(out)[:-4] + '.wav'); open(w, 'wb').write(wav_bytes)
+    x = np.frombuffer(wav_bytes[44:], np.int16); gain = 20 * np.log10(0.89 * 32767 / max(1, int(np.abs(x).max())))
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', w, '-af', f'highpass=f=70,volume={gain:.2f}dB,apad=pad_dur=0.1', '-ac', '1', '-ar', '44100', '-b:a', '64k', out], check=True)
+
 def pick(lst, key): return lst[sum(map(ord, key)) % len(lst)]  # same speaker for a key every run
 
 def npc(only):
@@ -57,12 +65,11 @@ def npc(only):
         if line.startswith('#') or not line.strip(): continue
         k, who, roman, dev = line.rstrip('\n').split('\t')
         if only and k not in only: continue
-        pace = 1.1 if k.startswith(('hit', 'ko', 'agg', 'jack', 'run')) else 1.0
         for g in who:
             for i, spk in enumerate(MALE if g == 'm' else FEMALE):
                 out = os.path.join(GAME, 'public/audio/v', f'{k}_{g}{i}.mp3')
                 if done(out): continue
-                save_mp3(tts(dev, spk, pace=pace), out); mark(out); n += 1; print(k, g, i, spk, roman)
+                save_voice(tts(dev, spk, sr=48000), out); mark(out); n += 1; print(k, g, i, spk, roman)
     print(n, 'NPC clips')
 
 def radio(only):
