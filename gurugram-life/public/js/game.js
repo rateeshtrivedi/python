@@ -74,7 +74,7 @@ const LOWSPH = new THREE.IcosahedronGeometry(1, 1), LUMP = new THREE.Icosahedron
 const TORUS = new THREE.TorusGeometry(1, 0.18, 6, 16);
 const COL = { out: [] };
 function addCol(zone, x0, x1, z0, z1) { (COL[zone] || (COL[zone] = [])).push({ x0, x1, z0, z1 }); }
-function bx(parent, w, h, d, color, x, y, z, opt) { const m = new THREE.Mesh(BOX, (opt && opt.mat) || (typeof color === 'number' ? mat(color) : color)); m.scale.set(w, h, d); m.position.set(x, y, z); parent.add(m); if (opt && opt.col) addCol(opt.col, x - w / 2, x + w / 2, z - d / 2, z + d / 2); return m; }
+function bx(parent, w, h, d, color, x, y, z, opt) { const m = new THREE.Mesh(BOX, (opt && opt.mat) || (typeof color === 'number' ? mat(color) : color)); m.scale.set(w, h, d); m.position.set(x, y, z); parent.add(m); if (opt && opt.col) { addCol(opt.col, x - w / 2, x + w / 2, z - d / 2, z + d / 2); if (opt.col === 'out' && y + h / 2 > 2.5) CAM_BLOCK.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h: y + h / 2 }); } return m; }
 function cyl(parent, r, h, color, x, y, z, m2) { const m = new THREE.Mesh(CYL, m2 || mat(color)); m.scale.set(r, h, r); m.position.set(x, y, z); parent.add(m); return m; }
 function sph(parent, r, color, x, y, z, m2) { const m = new THREE.Mesh(SPH, m2 || mat(color)); m.scale.set(r, r, r); m.position.set(x, y, z); parent.add(m); return m; }
 function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
@@ -114,10 +114,27 @@ function facadeMat(style, rw, rh) {
   const glassy = ['glass', 'gold'].includes(style); // windows mirror the sky; curtain-wall towers most of all
   const m = new THREE.MeshLambertMaterial({ map: tx(f.c), emissive: 0xffffff, emissiveMap: tx(f.e), emissiveIntensity: 0, specularMap: tx(f.s), envMap: RL.envMap(), combine: THREE.MixOperation, reflectivity: glassy ? 0.62 : 0.4 }); NIGHT_MATS.push(m); BMATS[key] = m; return m;
 }
+// buildings the follow camera must not end up behind (outdoors): footprint and height
+const CAM_BLOCK = [];
+// how far along the line player → camera (0..1) the first building in the way starts; 1 = clear
+function camBlock(x0, z0, x1, z1, y) {
+  const dx = x1 - x0, dz = z1 - z0, pad = 0.45; let best = 1;
+  const minX = Math.min(x0, x1) - pad, maxX = Math.max(x0, x1) + pad, minZ = Math.min(z0, z1) - pad, maxZ = Math.max(z0, z1) + pad;
+  for (const b of CAM_BLOCK) {
+    if (b.x1 < minX || b.x0 > maxX || b.z1 < minZ || b.z0 > maxZ || b.h < y - 0.5) continue; // too far, or the camera passes over the roof
+    let t0 = 0, t1 = 1;
+    for (const [o, dd, lo, hi] of [[x0, dx, b.x0 - pad, b.x1 + pad], [z0, dz, b.z0 - pad, b.z1 + pad]]) {
+      if (Math.abs(dd) < 1e-6) { if (o < lo || o > hi) { t0 = 2; break; } continue; }
+      let a = (lo - o) / dd, c = (hi - o) / dd; if (a > c) [a, c] = [c, a]; t0 = Math.max(t0, a); t1 = Math.min(t1, c); if (t0 > t1) break;
+    }
+    if (t0 <= t1 && t0 < best) best = t0;
+  }
+  return best;
+}
 function building(parent, x, z, w, d, h, style, zone) {
   const mx = facadeMat(style, Math.max(1, Math.round(d / 7)), Math.max(1, Math.round(h / 4.5))), mz = facadeMat(style, Math.max(1, Math.round(w / 7)), Math.max(1, Math.round(h / 4.5))), top = mat(0x6d665c);
   const m = new THREE.Mesh(BOX, [mx, mx, top, top, mz, mz]); m.scale.set(w, h, d); m.position.set(x, h / 2, z); parent.add(m);
-  addCol(zone || 'out', x - w / 2, x + w / 2, z - d / 2, z + d / 2); if (h > 30) bx(parent, w * 0.3, 2.5, d * 0.3, 0x8a8a8a, x, h + 1.25, z); else if (h > 7 && !zone) cyl(parent, 0.8, 1.4, 0x1c1c1c, x + w * 0.3, h + 0.7, z - d * 0.3); return m; // black water tank on the roof
+  addCol(zone || 'out', x - w / 2, x + w / 2, z - d / 2, z + d / 2); if (!zone && h > 2.5) CAM_BLOCK.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h }); if (h > 30) bx(parent, w * 0.3, 2.5, d * 0.3, 0x8a8a8a, x, h + 1.25, z); else if (h > 7 && !zone) cyl(parent, 0.8, 1.4, 0x1c1c1c, x + w * 0.3, h + 0.7, z - d * 0.3); return m; // black water tank on the roof
 }
 
 // ================================================================ CHARACTERS & VEHICLES
@@ -1143,8 +1160,11 @@ function updateCamera(dt) {
   if (G.selfie) { const f = 5.5; camWant.set(G.x + Math.sin(G.r) * f, 2.6, G.z + Math.cos(G.r) * f); camera.position.lerp(camWant, Math.min(1, dt * 6)); camTarget.set(G.x, 2.0, G.z); camera.lookAt(camTarget); return; }
   const h = G.veh ? (D.VEH[G.veh].kind === 4 ? 2.2 : 1.8) : 1.9; const dist = G.veh ? G.dist + 3 : G.dist;
   let cx = G.x - Math.sin(G.yaw) * Math.cos(G.pitch) * dist, cz = G.z - Math.cos(G.yaw) * Math.cos(G.pitch) * dist, cy = h + Math.sin(G.pitch) * dist + 0.5;
+  let snap = false;
   if (G.inside) { const I = INTERIOR[G.inside]; cx = clamp(cx, I.ox - I.W / 2 + 0.8, I.ox + I.W / 2 - 0.8); cz = clamp(cz, I.oz - I.D / 2 + 0.8, I.oz + I.D / 2 - 0.8); cy = Math.min(cy, I.H - 0.5); }
-  camWant.set(cx, cy, cz); camera.position.lerp(camWant, Math.min(1, dt * 10));
+  else { // a building between you and the camera: slide the camera in front of it (and a little higher) so the walls never hide you
+    const k = camBlock(G.x, G.z, cx, cz, cy); if (k < 1) { const full = Math.hypot(cx - G.x, cz - G.z), want = Math.max(1.1, full * k - 0.35), f = want / full; cx = G.x + (cx - G.x) * f; cz = G.z + (cz - G.z) * f; cy = h + 0.5 + (cy - h - 0.5) * Math.max(f, 0.6) + (1 - f) * 0.8; if (want < 3) cy = h + 0.6; /* no room behind you (back to a wall, under a shop awning): a close over-the-shoulder view below the awnings */ snap = true; } }
+  camWant.set(cx, cy, cz); camera.position.lerp(camWant, snap ? Math.min(1, dt * 25) : Math.min(1, dt * 10));
   if (G.tipsy > now()) { camera.position.x += Math.sin(now() * 1.7) * 0.3; camera.position.y += Math.sin(now() * 2.1) * 0.2; }
   camTarget.set(G.x, h + 0.4, G.z); camera.lookAt(camTarget);
 }
@@ -1842,7 +1862,7 @@ function buildCityFill() {
       if (Math.random() < 0.12) continue; const W = rnd(8, 9.6), Dp = 7, H = rnd(5.5, 11); const along = t + rnd(-0.6, 0.6);
       const ry = [0, Math.PI, Math.PI / 2, -Math.PI / 2][side]; const x = side < 2 ? cx + along : cx + (side === 2 ? 61 : -61), z = side < 2 ? cz + (side === 0 ? 61 : -61) : cz + along;
       const w = side < 2 ? W : Dp, dd = side < 2 ? Dp : W; if (colHit(x - w / 2 - 0.6, x + w / 2 + 0.6, z - dd / 2 - 0.6, z + dd / 2 + 0.6) || zoneNear(x, z, 3)) continue;
-      addCol('out', x - w / 2, x + w / 2, z - dd / 2, z + dd / 2); shops.push({ x, z, W, H, ry, fx: Math.sin(ry), fz: Math.cos(ry), c: pick([0xe8c39e, 0xd98f6b, 0xc9d6a3, 0x9fc3d6, 0xe3a3b8, 0xf0d77a, 0xcfc6b4, 0xd6b38a, 0xa7c7a0]), a: pick([0xd7331f, 0x1a8a4a, 0x2563b8, 0xf6c026, 0xe07b10]), sign: irnd(0, SHOP_NAMES.length - 1), sc: irnd(0, SIGN_COLS.length - 1) });
+      addCol('out', x - w / 2, x + w / 2, z - dd / 2, z + dd / 2); CAM_BLOCK.push({ x0: x - w / 2, x1: x + w / 2, z0: z - dd / 2, z1: z + dd / 2, h: H }); shops.push({ x, z, W, H, ry, fx: Math.sin(ry), fz: Math.cos(ry), c: pick([0xe8c39e, 0xd98f6b, 0xc9d6a3, 0x9fc3d6, 0xe3a3b8, 0xf0d77a, 0xcfc6b4, 0xd6b38a, 0xa7c7a0]), a: pick([0xd7331f, 0x1a8a4a, 0x2563b8, 0xf6c026, 0xe07b10]), sign: irnd(0, SHOP_NAMES.length - 1), sc: irnd(0, SIGN_COLS.length - 1) });
     }
   }
   for (let i = TREES.length - 1; i >= 0; i--) if (colHit(TREES[i][0] - 0.5, TREES[i][0] + 0.5, TREES[i][1] - 0.5, TREES[i][1] + 0.5)) TREES.splice(i, 1);
