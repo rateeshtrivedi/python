@@ -6,20 +6,23 @@
 # usage: SARVAM_API_KEY=... python3 promo/voices/sarvam.py [npc|radio|intro|all] [--only key1,key2] [--probe]
 import os, sys, json, base64, wave, subprocess, urllib.request, urllib.error, random, time
 HERE = os.path.dirname(os.path.abspath(__file__)); GAME = os.path.dirname(os.path.dirname(HERE)); WORK = os.path.join(HERE, 'work')
-KEY = os.environ.get('SARVAM_API_KEY') or sys.exit('Set SARVAM_API_KEY (a Sarvam AI API key) in the environment first.')
-MODEL = os.environ.get('SARVAM_MODEL', 'bulbul:v2')
+KEY = os.environ.get('SARVAM_API_KEY')  # in Claude cloud sessions the network proxy adds the key for api.sarvam.ai, so this can be empty
+MODEL = os.environ.get('SARVAM_MODEL', 'bulbul:v3')
 URL = 'https://api.sarvam.ai/text-to-speech'
 # Bulbul speakers: men for the chhore, drivers, elders, cops and the RJ; women for the female lines. Tough lines get the deeper voices.
-MEN = os.environ.get('SARVAM_MEN', 'karun,hitesh,abhilash').split(',')
-WOMEN = os.environ.get('SARVAM_WOMEN', 'anushka,manisha,vidya,arya').split(',')
+ALL_MEN = 'aditya,ashutosh,rahul,rohan,amit,dev,ratan,varun,manan,sumit,kabir,aayan,shubh,advait,anand,tarun,sunny,mani,gokul,vijay,mohit,rehan,soham'.split(',')
+ALL_WOMEN = 'ritu,priya,neha,pooja,simran,kavya,ishita,shreya,roopa,tanya,shruti,suhani,kavitha,rupali'.split(',')
+MEN = os.environ.get('SARVAM_MEN', 'rahul,amit,varun').split(',')
+WOMEN = os.environ.get('SARVAM_WOMEN', 'priya,neha,pooja').split(',')
+RJ = os.environ.get('SARVAM_RJ', 'aditya')
 TOUGH = ('ang', 'hit', 'agg', 'give', 'run', 'ko', 'jack', 'peh', 'ch', 'bad', 'don', 'r9', 'r10', 'mo', 'ja', 'ro', 'cs')
 
-def tts(text, speaker, lang='hi-IN', pace=1.0, pitch=0.0, loud=1.2):
-    body = {'text': text, 'target_language_code': lang, 'speaker': speaker, 'model': MODEL, 'pace': pace, 'pitch': pitch, 'loudness': loud,
-            'speech_sample_rate': 24000, 'enable_preprocessing': True}
-    if MODEL.startswith('bulbul:v2') is False: body.pop('pitch'); body.pop('loudness')  # newer models take fewer knobs
+def tts(text, speaker, lang='hi-IN', pace=1.0):
+    body = {'text': text, 'target_language_code': lang, 'speaker': speaker, 'model': MODEL, 'pace': pace, 'speech_sample_rate': 24000}
     for attempt in range(4):
-        req = urllib.request.Request(URL, data=json.dumps(body).encode(), headers={'api-subscription-key': KEY, 'Content-Type': 'application/json'})
+        hd = {'Content-Type': 'application/json'}
+        if KEY: hd['api-subscription-key'] = KEY
+        req = urllib.request.Request(URL, data=json.dumps(body).encode(), headers=hd)
         try:
             with urllib.request.urlopen(req, timeout=60) as r: d = json.loads(r.read())
             return b''.join(base64.b64decode(a) for a in d['audios'])
@@ -65,7 +68,7 @@ def radio(only):
             os.makedirs(WORK, exist_ok=True); f = wave.open(p, 'wb'); f.setnchannels(1); f.setsampwidth(2); f.setframerate(24000); f.writeframes((np.clip(a, -1, 1) * 32767).astype('int16').tobytes()); f.close()
     for k, v in L.items():
         if only and k not in only: continue
-        en = v['lang'] == 'en'; spk = 'abhilash' if k.startswith('rj') or en else (pick(WOMEN, k) if v.get('sid') in (3, 31, 32) else pick(MEN, k))
+        en = v['lang'] == 'en'; spk = RJ if k.startswith('rj') or en else (pick(WOMEN, k) if v.get('sid') in (3, 31, 32) else pick(MEN, k))
         is_radio = not k.startswith('v_'); pre = jingle if ('_id' in k or k.startswith('rj_')) else (ding if '_ad' in k or k.startswith('ad_') else None)
         save_mp3(tts(v['text'], spk, 'en-IN' if en else 'hi-IN', pace=1.05), os.path.join(GAME, 'public/audio', f'{k}.mp3'), radio=is_radio, pre=pre); print(k, spk)
 
@@ -74,7 +77,7 @@ def intro(only):
     lines = [('1', 'राजीव चौक। जेब में पाँच सौ रुपये।'), ('2', 'रात फ़ुटपाथ पे… आँखों में सपने।'), ('3', 'अपना आलीशान घर।'), ('4', 'लंबी गाड़ी।'), ('5', 'जीवनसाथी।'), ('6', 'पैसा। ज़ेवर। इज़्ज़त।'), ('7', 'सपनों का शहर। फ़ुटपाथ से फ़ार्महाउस तक।')]
     d = os.path.join(GAME, 'promo/intro')
     for k, t in lines:
-        open(os.path.join(d, f'vo{k}.wav'), 'wb').write(tts(t, 'abhilash', pace=0.95)); print('intro', k)
+        open(os.path.join(d, f'vo{k}.wav'), 'wb').write(tts(t, RJ, pace=0.95)); print('intro', k)
     subprocess.run(['python3', 'score.py'], cwd=d, check=True)
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', os.path.join(d, 'intro.wav'), '-af', 'highpass=f=40,loudnorm=I=-15:TP=-1.5', '-ac', '1', '-ar', '44100', '-b:a', '64k', os.path.join(GAME, 'public/audio/intro/intro.mp3')], check=True)
 
@@ -83,7 +86,8 @@ if __name__ == '__main__':
     only = set(sys.argv[sys.argv.index('--only') + 1].split(',')) if '--only' in sys.argv else None
     if '--probe' in sys.argv:  # one test line per speaker, to hear them before regenerating everything
         os.makedirs(os.path.join(WORK, 'probe'), exist_ok=True)
-        for s in MEN + WOMEN: save_mp3(tts('अरे भाई, साइड हो जा! गाड़ी निकालनी है।', s), os.path.join(WORK, 'probe', f'{s}.mp3')); print('probe', s)
+        for s in ALL_MEN: save_mp3(tts(f'मैं {s}. ओए! मेरे ते हाथ उठाया? बिना बात के? आजा फिर!', s), os.path.join(WORK, 'probe', f'm_{s}.mp3')); print('probe', s)
+        for s in ALL_WOMEN: save_mp3(tts(f'मैं {s}. आ गए? खाना लग गया है! चाय बना दूँ?', s), os.path.join(WORK, 'probe', f'f_{s}.mp3')); print('probe', s)
         sys.exit()
     if what in ('npc', 'all'): npc(only)
     if what in ('radio', 'all'): radio(only)
