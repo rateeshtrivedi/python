@@ -1,0 +1,123 @@
+# key	who(m=one male voice, mf=male+female)	roman text exactly as in the game	devanagari for the voice
+hit1	m	Aaah!	आह!
+hit2	m	Teri to!	तेरी तो!
+hit3	m	Ruk ja!	रुक जा!
+hit4	m	Maar diya re!	मार दिया रे!
+agg1	m	Oye! Mere te haath uthaya?	ओए! मेरे ते हाथ उठाया?
+agg2	m	Bina baat ke? Aaja fir!	बिना बात के? आजा फिर!
+agg3	m	Ab dekh tu!	अब देख तू!
+give1	m	Bas kar... maan gaya tujhe!	बस कर... मान गया तुझे!
+run1	m	Bhaago!	भागो!
+ko1	m	Bas kar bhai!	बस कर भाई!
+ko2	m	Maaf kar de!	माफ़ कर दे!
+ko3	m	Aaj ka din hi kharab se...	आज का दिन ही खराब से...
+ko4	m	Galti ho gayi bhai...	गलती हो गई भाई...
+ko5	m	Le ja... le ja gaadi!	ले जा... ले जा गाड़ी!
+ko6	m	Police ko bataunga!	पुलिस को बताऊँगा!
+ko7	m	Mummy...!	मम्मी...!
+ko8	m	Maaf kar de bhai! Galti ho gayi!	माफ़ कर दे भाई! गलती हो गई!
+ko9	m	Haar gaya... tu asli pehlwan se!	हार गया... तू असली पहलवान से!
+ko10	m	Maaf kar de bhai!	माफ़ कर दे भाई!
+ko11	m	Galti ho gayi!	गलती हो गई!
+ko12	m	Ab na karunga!	अब ना करूँगा!
+ko13	m	Maaf kar de! Usse bhi maafi maang lunga!	माफ़ कर दे! उससे भी माफ़ी माँग लूँगा!
+jack1	m	Meri gaadi? Pehle mujhse nipat!	मेरी गाड़ी? पहले मुझसे निपट!
+jack2	m	Utar ke dikhata hoon tujhe!	उतर के दिखाता हूँ तुझे!
+jack3	m	Gaadi chheenega? Tera baap bhi na le sake!	गाड़ी छीनेगा? तेरा बाप भी ना ले सके!
+jack4	m	Ruk ja, abhi batata hoon!	रुक जा, अभी बताता हूँ!
+jack5	m	Darpok! Bhaag gaya?	डरपोक! भाग गया?
+jack6	m	Aaah! Gaadi se maarega?	आह! गाड़ी से मारेगा?
+jack7	m	Teri to...!	तेरी तो...!
+peh1	m	Aaja chhore, dekh le Haryana ka dum!	आजा छोरे, देख ले हरियाणा का दम!
+peh2	m	Hai koi maa ka laal? Dangal karega?	है कोई माँ का लाल? दंगल करेगा?
+ch1	m	Ke dekhe se lattu?	के देखे से लट्टू?
+ch2	m	Aaja, haath dekh mere	आजा, हाथ देख मेरे
+ch3	m	Teri to... rehn de!	तेरी तो... रहन दे!
+ch4	m	Dalal ka chhora se main!	दलाल का छोरा से मैं!
+ch5	m	Bhaag ja, warna kut jaega	भाग जा, वरना कुट जाएगा
+ch6	m	Chaudhar na jhaad	चौधर ना झाड़
+ch7	m	Ke bolya? Aaja fir!	के बोल्या? आजा फिर!
+ch8	m	Mere te panga?	मेरे ते पंगा?
+ch9	m	Ruk tu, batata hoon	रुक तू, बताता हूँ
+bad1	m	Haan maine peeta! Ke karega?	हाँ मैंने पीटा! के करेगा?
+don1	m	Phone chahiye? Pehle mujhe hara!	फ़ोन चाहिए? पहले मुझे हरा!
+don2	m	Mere bhai ko maara? Ab dekh!	मेरे भाई को मारा? अब देख!
+don3	m	Chhore, galat gali mein aa gaya!	छोरे, गलत गली में आ गया!
+don4	m	Hafta de, warna dukaan band!	हफ़्ता दे, वरना दुकान बंद!
+don5	m	Aaja Gali ke Don... aaj dekhte se kaun asli!	आजा गली के डॉन... आज देखते से कौन असली!
+np1	mf	Ram Ram!	राम राम!
+np2	mf	Aaj to garmi ghani se	आज तो गर्मी घणी से
+np3	mf	Bhai metro kit se?	भाई मेट्रो कित से?
+np4	mf	Gaadi side mein laga!	गाड़ी साइड में लगा!
+np5	mf	Ke bolya?	के बोल्या?
+np6	mf	Chai pi le bhai	चाय पी ले भाई
+np7	mf	Iffco Chowk pe jam lag rya	इफ़को चौक पे जाम लग रया
+np8	mf	Rent fir badh gaya	रेंट फिर बढ़ गया
+np9	mf	Kati jaa rya se?	कित जा रया से?
+np10	mf	Oye hoye, ke swag se!	ओए होए, के स्वैग से!
+np11	mf	AQI 400 se, mask laga le	ए क्यू आई चार सौ से, मास्क लगा ले
+car1	m	Pee pee! Side ho ja!	पीं पीं! साइड हो जा!
+car2	m	Abe hatt, bhai!	अबे हट, भाई!
+car3	m	Horn OK Please!	हॉर्न ओके प्लीज़!
+car4	m	Gaay ko hata bhai!	गाय को हटा भाई!
+car5	m	Abe andhe! Gaadi thok di!	अबे अंधे! गाड़ी ठोक दी!
+car6	m	Insurance tera baap bharega?	इंश्योरेंस तेरा बाप भरेगा?
+car7	m	Ruk ja, utar neeche!	रुक जा, उतर नीचे!
+car8	m	Kahan se licence liya?	कहाँ से लाइसेंस लिया?
+pl1	mf	Garam chai! Garam chai!	गरम चाय! गरम चाय!
+pl2	mf	Gurugram ke gaddhe!	गुरुग्राम के गड्ढे!
+pl3	mf	Gaadi ka suspension gaya!	गाड़ी का सस्पेंशन गया!
+pl4	mf	MCG kahan hai?	एम सी जी कहाँ है?
+r1	mf	Chal!	चल!
+r2	mf	Pakad ke dikha!	पकड़ के दिखा!
+r3	mf	Bye bye!	बाय बाय!
+r4	mf	NOS!	नोस!
+r5	mf	Abe hat!	अबे हट!
+r6	mf	Side de!	साइड दे!
+r7	mf	Traffic ne maar diya!	ट्रैफ़िक ने मार दिया!
+r8	mf	Main jeet gaya!	मैं जीत गया!
+r9	m	Cheating kari se tune! Utar neeche!	चीटिंग करी से तूने! उतर नीचे!
+r10	m	Haar gaya? Chal chai pila, warna...	हार गया? चल चाय पिला, वरना...
+r11	mf	Pehle baaki racers ko hara, fir aaiyo	पहले बाकी रेसर्स को हरा, फिर आइयो
+mo1	m	Oye naye! Race lagegi? Haar gaya to chai tere taraf se!	ओए नए! रेस लगेगी? हार गया तो चाय तेरी तरफ़ से!
+mo2	m	Chal dekh lete hain kitna dum se tere mein	चल देख लेते हैं कितना दम से तेरे में
+mo3	m	Arre! Beginner's luck se yeh. Rematch kar!	अरे! बिगिनर्स लक से ये। रीमैच कर!
+mo4	m	Theek se, agli baar dekh lunga	ठीक से, अगली बार देख लूँगा
+mo5	m	Ghar ja ke cycle chala, chhore!	घर जा के साइकिल चला, छोरे!
+mo6	m	Chai tere taraf se. Rematch?	चाय तेरी तरफ़ से। रीमैच?
+ja1	m	Golf Course Road meri se, paaji. Aaja!	गोल्फ़ कोर्स रोड मेरी से, पाजी। आजा!
+ja2	m	Thar di power dekhega?	थार दी पावर देखेगा?
+ja3	m	Oye hoye! Changa chalaya	ओए होए! चंगा चलाया
+ja4	m	Lucky si tu, rematch kar	लकी सी तू, रीमैच कर
+ja5	m	Balle balle! Mera road, meri race	बल्ले बल्ले! मेरा रोड, मेरी रेस
+ja6	m	Hor practice kar, paaji	होर प्रैक्टिस कर, पाजी
+pi1	f	Office se pehle ek loop? Haarne ke liye ready?	ऑफ़िस से पहले एक लूप? हारने के लिए रेडी?
+pi2	f	Corners pe brake lagana seekh le pehle	कॉर्नर्स पे ब्रेक लगाना सीख ले पहले
+pi3	f	Hmm, not bad. Kal phir	हम्म, नॉट बैड। कल फिर
+pi4	f	Ok ok, maan gayi	ओके ओके, मान गई
+pi5	f	Corners pe dheela pad gaya!	कॉर्नर्स पे ढीला पड़ गया!
+pi6	f	Bye bye, slowpoke	बाय बाय, स्लोपोक
+ro1	m	Seedhi sadak, full race. NOS hai tere paas?	सीधी सड़क, फ़ुल रेस। नोस है तेरे पास?
+ro2	m	Highway ka raja main hoon	हाईवे का राजा मैं हूँ
+ro3	m	Kaise?! NOS mein kya daala tha?	कैसे?! नोस में क्या डाला था?
+ro4	m	Rematch, abhi ke abhi!	रीमैच, अभी के अभी!
+ro5	m	Highway pe bachche nahi chalte	हाईवे पे बच्चे नहीं चलते
+ro6	m	Drift karke NOS bhar, fir aaiyo	ड्रिफ़्ट करके नोस भर, फिर आइयो
+cs1	m	Gurugram ka street king banna se? Pehle mujhe hara	गुरुग्राम का स्ट्रीट किंग बनना से? पहले मुझे हरा
+cs2	m	Badshahpur mera ilaaka se, chhore	बादशाहपुर मेरा इलाका से, छोरे
+cs3	m	Aaj se tu Gurugram ka Street King. Ram Ram!	आज से तू गुरुग्राम का स्ट्रीट किंग। राम राम!
+cs4	m	Jeet gaya... par kal fir aaunga	जीत गया... पर कल फिर आऊँगा
+cs5	m	Abhi bachcha se tu	अभी बच्चा से तू
+cs6	m	Street King ka taj itna sasta nahi	स्ट्रीट किंग का ताज इतना सस्ता नहीं
+ang1	m	Aaja, aaja!	आजा, आजा!
+ang2	m	Bas itna hi dum se?	बस इतना ही दम से?
+ang3	m	Maar dunga tujhe!	मार दूँगा तुझे!
+ang4	m	Tu to gaya aaj!	तू तो गया आज!
+ang5	m	Ek aur aa jaa!	एक और आ जा!
+ang6	m	Hosh mein aa ja, chhore!	होश में आ जा, छोरे!
+ang7	m	Teri aisi ki taisi!	तेरी ऐसी की तैसी!
+ang8	m	Chhodunga nahi tujhe!	छोड़ूँगा नहीं तुझे!
+ang9	m	Le! Aur khayega?	ले! और खाएगा?
+ang10	m	Dekh ke maar, andhe!	देख के मार, अंधे!
+ang11	m	Haath to chala, darpok!	हाथ तो चला, डरपोक!
+ang12	m	Abhi bataata hoon tujhe kaun se main!	अभी बताता हूँ तुझे कौन से मैं!
