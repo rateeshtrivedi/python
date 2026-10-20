@@ -1,6 +1,6 @@
 # Human-sounding voices for every spoken line in the game, from Sarvam AI's Bulbul text-to-speech (Indian Hindi/English voices).
-# Replaces the clips under the same names, so the game needs no other change:
-#   NPC and fight lines  -> public/audio/v/<key>_<m|f>.mp3   (npc_lines.tsv; the roman text is how the game looks a line up)
+#   NPC and fight lines  -> public/audio/v/<key>_<m|f><n>.mp3 (npc_lines.tsv; the roman text is how the game looks a line up), every line in
+#                           each of the MALE / FEMALE voices so a person keeps one voice for all their lines (the game picks n per person)
 #   radio RJ, ads, vendors -> public/audio/<key>.mp3         (radio_lines.json; jingles/dings added as before)
 #   intro film narrator    -> promo/intro/vo<N>.wav, then score.py remixes public/audio/intro/intro.mp3
 # usage: SARVAM_API_KEY=... python3 promo/voices/sarvam.py [npc|radio|intro|all] [--only key1,key2] [--probe]
@@ -12,16 +12,18 @@ URL = 'https://api.sarvam.ai/text-to-speech'
 # Bulbul speakers: men for the chhore, drivers, elders, cops and the RJ; women for the female lines. Tough lines get the deeper voices.
 ALL_MEN = 'aditya,ashutosh,rahul,rohan,amit,dev,ratan,varun,manan,sumit,kabir,aayan,shubh,advait,anand,tarun,sunny,mani,gokul,vijay,mohit,rehan,soham'.split(',')
 ALL_WOMEN = 'ritu,priya,neha,pooja,simran,kavya,ishita,shreya,roopa,tanya,shruti,suhani,kavitha,rupali'.split(',')
-# picked by measured pitch and liveliness: deep and expressive for the rowdy lines, mid for everyone else, the liveliest for the RJ
-ROWDY = os.environ.get('SARVAM_ROWDY', 'kabir,soham,rehan').split(',')
+# radio voices, picked by measured pitch and liveliness: mid for the vendors and ads, the liveliest for the RJ
 MEN = os.environ.get('SARVAM_MEN', 'anand,amit,ratan').split(',')
 WOMEN = os.environ.get('SARVAM_WOMEN', 'priya,roopa,simran').split(',')
 RJ = os.environ.get('SARVAM_RJ', 'aditya')
 NARRATOR = os.environ.get('SARVAM_NARRATOR', 'anand')
-TOUGH = ('ang', 'hit', 'agg', 'give', 'run', 'ko', 'jack', 'peh', 'ch', 'bad', 'don', 'r9', 'r10', 'mo', 'ja', 'ro', 'cs')
+# street people: Bulbul v4 Flash personas, far livelier than the v3 voices (measured pitch range 13-27 semitones vs 6-11) and
+# checked with speech-to-text. The order is the voice index the game uses; keep VOX_N in public/js/voices.js in step.
+MALE = os.environ.get('SARVAM_MALE', 'aryaman_hi_ads,kabir_hi_conversational,chirag_hi_social,vaibhav_hi_social').split(',')
+FEMALE = os.environ.get('SARVAM_FEMALE', 'simran_hi_social_excited,suhani_hi_social,kavya_hi_conversational').split(',')
 
 def tts(text, speaker, lang='hi-IN', pace=1.0):
-    body = {'text': text, 'target_language_code': lang, 'speaker': speaker, 'model': MODEL, 'pace': pace, 'speech_sample_rate': 24000}
+    body = {'text': text, 'target_language_code': lang, 'speaker': speaker, 'model': 'bulbul:v4-flash' if '_' in speaker else MODEL, 'pace': pace, 'speech_sample_rate': 24000}  # persona ids (name_lang_style) are v4
     for attempt in range(9):
         if attempt: time.sleep(min(60, 3 * 2 ** attempt))  # rate limits: back off up to a minute
         hd = {'Content-Type': 'application/json'}
@@ -55,12 +57,12 @@ def npc(only):
         if line.startswith('#') or not line.strip(): continue
         k, who, roman, dev = line.rstrip('\n').split('\t')
         if only and k not in only: continue
+        pace = 1.1 if k.startswith(('hit', 'ko', 'agg', 'jack', 'run')) else 1.0
         for g in who:
-            spk = (pick(ROWDY, k) if k.startswith(TOUGH) else pick(MEN, k)) if g == 'm' else pick(WOMEN, k)
-            pace = 1.12 if k.startswith(('hit', 'ko', 'agg', 'jack', 'run')) else 1.0
-            out = os.path.join(GAME, 'public/audio/v', f'{k}_{g}.mp3')
-            if done(out): continue
-            save_mp3(tts(dev, spk, pace=pace), out); mark(out); n += 1; print(k, g, spk, roman)
+            for i, spk in enumerate(MALE if g == 'm' else FEMALE):
+                out = os.path.join(GAME, 'public/audio/v', f'{k}_{g}{i}.mp3')
+                if done(out): continue
+                save_mp3(tts(dev, spk, pace=pace), out); mark(out); n += 1; print(k, g, i, spk, roman)
     print(n, 'NPC clips')
 
 def radio(only):
