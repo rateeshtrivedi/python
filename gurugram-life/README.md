@@ -113,7 +113,7 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 ## Testing
 
-`npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock. `GL_LANG=hi` or `GL_LANG=en` runs it with the game translated.
+`npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock. `GL_LANG=hi` or `GL_LANG=en` runs it with the game translated. `npm run test:regress` (server on a fresh `DATA_DIR`) plays the whole game as a new player: sign-up, avatar, the intro film, Day 1, every Menu app, every action spot in the city, rides, fights, a race, the map, chat, every interior, moving home, language switch and the screen layout, with a screenshot per step; `PHONE=1` does the same on a 390×844 touch phone.
 
 ## How it's built
 

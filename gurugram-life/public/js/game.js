@@ -2291,9 +2291,10 @@ function enterHome() { fadeTo('Ghar…', 600, () => { if (!goInside(false)) toas
 // a door with the home's name where it stands in the city; on the footpath, the camp at Rajiv Chowk
 const HOME_DOOR = { g: null, key: '' };
 function updateHomeDoor() {
-  if (!P || HOME_DOOR.key === P.home) return; HOME_DOOR.key = P.home; if (HOME_DOOR.g) world.remove(HOME_DOOR.g); HOME_DOOR.g = null; if (P.home === 'street') return;
+  if (!P || HOME_DOOR.key === P.home) return; HOME_DOOR.key = P.home; if (HOME_DOOR.g) world.remove(HOME_DOOR.g); HOME_DOOR.g = null; if (HOME_DOOR.cb) HOME_DOOR.cb.h = -1; if (P.home === 'street') return;
   const p = homePos(), g = new THREE.Group(); g.position.set(p.x, 0.2, p.z - 1.5); world.add(g);
   bx(g, 2.6, 3.6, 0.4, 0x5a3a22, 0, 1.8, 0); bx(g, 3.4, 0.4, 0.6, 0xf6c026, 0, 3.8, 0, { mat: glow(0xf6c026) }); sign(g, 'GHAR', D.HOUSES[P.home].name, '#1b1410', '#f6c026', 4.4, 0.9, 0, 4.7, 0.25); HOME_DOOR.g = g;
+  const cb = { x0: p.x - 2.2, x1: p.x + 2.2, z0: p.z - 1.9, z1: p.z - 1.1, h: 5.2 }; if (HOME_DOOR.cb) Object.assign(HOME_DOOR.cb, cb); else CAM_BLOCK.push(HOME_DOOR.cb = cb); /* the camera stays in front of the door when you step out */
 }
 ZONES.push({ zone: 'out', get x() { return P ? homePos().x : 1e5; }, get z() { return P ? homePos().z : 1e5; }, r: 4, label: () => !P ? null : P.home === 'street' ? 'Footpath: thoda so le' : 'Apna ghar: andar jao', act: () => P.home === 'street' ? footpathSleep() : enterHome() });
 function footpathSleep() { fadeTo('Footpath pe raat… machhar, horn, aur sapne', 2400, () => { G.hp = Math.max(G.hp, 75); saveLocal(); toast('Kamar akad gayi. Aaj ke saare kaam poore kar: Sharma Aunty PG ka kamra degi!'); }); }
