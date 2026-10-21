@@ -26,9 +26,9 @@ const extra = `\nwindow.__g = { goInside: typeof goInside === 'function' ? goIns
   const shot = async () => { const buf = await p.screenshot({ type: 'jpeg', quality: 90 }); if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r)); };
   for (let i = 0; i < SC.length; i++) {
     if (ONLY && !ONLY.includes(i + 1)) continue; const s = SC[i]; const n = Math.round(s.dur * 30);
-    await p.evaluate(i => window.__R.setup(i), i); for (let k = 0; k < Math.round((s.pre || 0.6) * 30); k++) await p.evaluate(i => { window.__R.tick(i, -1); window.__step(1000 / 30); }, i);
+    await p.evaluate(i => { window.__speed = 1; window.__R.setup(i); }, i); /* a scene can set window.__speed for slow motion */ for (let k = 0; k < Math.round((s.pre || 0.6) * 30); k++) await p.evaluate(i => { window.__R.tick(i, -1); window.__step(1000 / 30); }, i);
     const TH = process.env.THUMB ? process.env.THUMB.split(':').map(Number) : null; // THUMB=scene:frame saves a clean frame (no text) as bg.jpg for the thumbnail
-    for (let f = 0; f < n; f++) { await p.evaluate(([i, f]) => { window.__R.tick(i, f / 30); window.__step(1000 / 30); }, [i, f]);
+    for (let f = 0; f < n; f++) { await p.evaluate(([i, f]) => { window.__R.tick(i, f / 30); window.__step(1000 / 30 * (window.__speed || 1)); }, [i, f]);
       if (TH && TH[0] === i + 1 && TH[1] === f) { await p.evaluate(() => { document.getElementById('reelOv').style.display = 'none'; }); await p.screenshot({ path: path.join(DIR, 'bg.jpg'), type: 'jpeg', quality: 92 }); await p.evaluate(() => { document.getElementById('reelOv').style.display = ''; }); }
       await shot(); }
     console.log('scene', i + 1, 'done', n, 'frames', JSON.stringify(await p.evaluate(() => window.__R.info())));

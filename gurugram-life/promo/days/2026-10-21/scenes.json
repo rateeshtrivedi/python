@@ -1,0 +1,8 @@
+[
+ {"sc": 0, "dur": 3.0, "pre": 1.0, "pov": "POV: The Gali ke Don just called you 📞", "cap": "\"Main Dalal Bhai bol rya hoon...\"", "capAt": 1.2},
+ {"sc": 1, "dur": 2.6, "pre": 0.4, "time": "RINKU CHHAPRI · PHONE CHOR", "cap": "Boss 1: stole Golu's phone 📱", "capAt": 0.4},
+ {"sc": 2, "dur": 2.6, "pre": 0.3, "time": "ROUND 1 · SADAR BAZAAR", "cap": "K.O. 💥", "capAt": 1.5, "big": true},
+ {"sc": 3, "dur": 2.4, "pre": 0.4, "time": "LALIT LAMBU · RINKU KA BHAI", "cap": "came for badla, brought a chela 😤", "capAt": 0.4},
+ {"sc": 4, "dur": 2.4, "pre": 0.4, "time": "SANDY GUNDA · RIGHT HAND", "cap": "\"Chhore, galat gali mein aa gaya!\" 💀", "capAt": 0.4},
+ {"sc": 5, "dur": 2.8, "pre": 0.4, "time": "DALAL BHAI 👑", "cap": "Finale: you vs the Don 🔥", "capAt": 0.7, "big": true, "filter": "saturate(1.25) contrast(1.15) brightness(0.92) sepia(0.15)"}
+]
