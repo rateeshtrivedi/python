@@ -212,6 +212,8 @@ body.touch #chatlog{left:170px;width:calc(100% - 420px)}
 #speedo .nos{grid-column:1/-1;height:8px;border-radius:5px;background:#3a2d24;overflow:hidden;margin-top:4px}#speedo .nos i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2a8cff,#7ee0ff);border-radius:5px}
 #speedo em{grid-column:1/-1;font:800 10px var(--display);letter-spacing:.2em;color:#7ee0ff;font-style:normal;text-align:center}
 #speedo.on{box-shadow:0 0 0 3px #2a8cff,0 0 24px #2a8cff}
+#speedo .fuel{grid-column:1/-1;display:flex;align-items:center;gap:5px;margin-top:3px}#speedo .fuel span{font-size:12px}#speedo .fuel div{flex:1;height:7px;border-radius:4px;background:#3a2d24;overflow:hidden}#speedo .fuel i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#f6c026,#7ed957);border-radius:4px}#speedo .fuel.low i{background:#e0342a}#speedo .fuel.low span{animation:blink .7s infinite alternate}
+@keyframes blink{to{opacity:.25}}
 #raceres{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,calc(100% - 32px));background:var(--cream);color:var(--ink);border-radius:18px;padding:16px 18px;border:4px solid var(--lal);box-shadow:0 14px 40px rgba(0,0,0,.5);animation:pop .3s ease-out;z-index:5}
 #raceres .k{font:700 12px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--lal)}
 #raceres h2{font:800 44px/1 var(--display);margin:2px 0 8px}#raceres h2.win{color:#1a8a4a}#raceres h2.lose{color:var(--lal)}
@@ -385,3 +387,10 @@ body.film #hud,body.film .toast,body.film #toasts,body.film #feed,body.film #tut
   .plate .body{padding:10px 18px 14px;gap:8px}.langpick .lang{padding:4px 6px}.langpick .lang small{display:none}
   .plate input{font-size:17px;padding:6px 12px}
 }
+
+/* weapons: what you're holding, and the touch button to switch */
+#weap{position:absolute;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(27,20,16,.85);color:#ffd36b;font:800 15px var(--display);padding:6px 14px 3px;border-radius:12px;border:2px solid #7a1f15;white-space:nowrap;pointer-events:none}
+body:has(#speedo:not([hidden])) #weap{display:none}
+#bGun{background:rgba(70,20,15,.6)}#bPunch.gun{background:rgba(160,40,20,.75)!important;border-color:#ffd36b!important}
+body.touch #weap{display:none}
+.tchart{display:flex;align-items:flex-end;gap:6px;height:70px;padding:6px 4px;background:rgba(0,0,0,.06);border-radius:10px;margin:4px 0 8px}.tchart i{flex:1;background:#8a5a1b;border-radius:4px 4px 0 0;min-height:8%}

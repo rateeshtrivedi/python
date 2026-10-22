@@ -118,6 +118,8 @@ export async function removeSong(id) {
 export function sfx(k, vol = 1) {
   if (!Music.ctx) return; const t = Music.ctx.currentTime, d = Music.sfx; const v = clamp(vol, 0, 1.5);
   if (k === 'cash') { osc('triangle', 1320, t, 0.12, 0.25 * v, d); osc('triangle', 1980, t + 0.08, 0.2, 0.25 * v, d); }
+  else if (k === 'gun' || k === 'dunali') { const big = k === 'dunali'; noise(t, big ? 0.12 : 0.06, (big ? 0.9 : 0.7) * v, 2600, 0.7, 'highpass', d); noise(t, big ? 0.55 : 0.32, (big ? 0.55 : 0.38) * v, 650, 1, 'lowpass', d); const o = osc('sine', big ? 72 : 115, t, big ? 0.3 : 0.16, (big ? 0.7 : 0.45) * v, d); o.frequency.exponentialRampToValueAtTime(38, t + 0.22); } // a desi katta crack / a dunali boom
+  else if (k === 'click') noise(t, 0.025, 0.25 * v, 3200, 2, 'bandpass', d); // an empty gun
   else if (k === 'punch') { noise(t, 0.1, 0.3 * v, 320, 1, 'lowpass', d); osc('sine', 95, t, 0.12, 0.28 * v, d); } // a low, soft thud
   else if (k === 'step') { noise(t, 0.05, 0.05 * v, 150 + Math.random() * 80, 1, 'lowpass', d); noise(t, 0.02, 0.012 * v, 2400, 1.5, 'bandpass', d); } // barely-there footsteps
   else if (k === 'stepwet') { noise(t, 0.08, 0.04 * v, 1700 + Math.random() * 400, 1.2, 'bandpass', d); noise(t, 0.05, 0.03 * v, 200, 1, 'lowpass', d); }
@@ -247,18 +249,27 @@ const C_EV = {
   koel(t) { const d = panned(0.2); for (let i = 0; i < 3; i++) { const s = t + i * 0.9, o = osc('sine', 700 + i * 90, s, 0.5, 0.12, d, 0.08); o.frequency.exponentialRampToValueAtTime(1100 + i * 120, s + 0.4); } },
   sparrow(t) { const d = panned(0.25); for (let i = 0; i < 3 + Math.floor(Math.random() * 4); i++) { const o = osc('sine', 3600 + Math.random() * 1500, t + i * 0.09, 0.05, 0.05, d); o.frequency.exponentialRampToValueAtTime(2800, t + i * 0.09 + 0.05); } },
   bell(t) { const d = panned(0.3); for (const [m, a] of [[1, 0.12], [2.76, 0.06], [5.4, 0.03], [8.93, 0.015]]) osc('sine', 520 * m, t, 2.6 / Math.sqrt(m), a, d, 0.003); },
+  dog(t) { const d = panned(0.35 + Math.random() * 0.3), n = 1 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) { const s = t + i * (0.28 + Math.random() * 0.15); noise(s, 0.12, 0.5, 900, 1.2, 'bandpass', d); const o = osc('sawtooth', 420, s, 0.12, 0.1, d, 0.004); o.frequency.exponentialRampToValueAtTime(260, s + 0.11); } }, // a street dog
+  cooker(t) { const d = panned(0.12 + Math.random() * 0.1); for (let i = 0; i < (Math.random() < 0.5 ? 1 : 2); i++) { const s = t + i * 1.6; noise(s, 1.1, 0.35, 2600, 6, 'bandpass', d); osc('sine', 2600, s + 0.05, 1, 0.04, d, 0.15); } }, // a pressure cooker in some kitchen
+  drill(t) { const d = panned(0.15), g = Music.ctx.createGain(); g.gain.value = 1; g.connect(d); const L0 = 1.5 + Math.random() * 2.5; for (let i = 0; i < L0 / 0.05; i++) noise(t + i * 0.05, 0.03, 0.22, 1600, 1, 'bandpass', g); }, // construction, somewhere
+  bike(t) { const d = panned(0.45), g = Music.ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6, t + 1.1); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4); g.connect(d); for (let i = 0; i < 26; i++) { osc('square', 46, t + i * 0.09, 0.05, 0.08, g); noise(t + i * 0.09, 0.04, 0.12, 180, 1, 'lowpass', g); } }, // a Bullet going dug-dug past
+  whistle(t) { const d = panned(0.18); for (let i = 0; i < 2; i++) { const o = osc('sine', 3100, t + i * 0.32, 0.22, 0.09, d, 0.01); o.frequency.setValueAtTime(3300, t + i * 0.32 + 0.1); } }, // traffic police
+  chowkidar(t) { const d = panned(0.15); osc('sine', 2900, t, 0.5, 0.07, d, 0.02); for (let i = 0; i < 3; i++) noise(t + 0.9 + i * 0.6, 0.04, 0.35, 900, 3, 'bandpass', d); }, // "jaagte raho": whistle and lathi taps at night
+  pigeon(t) { const d = panned(0.18); for (let i = 0; i < 3; i++) { const o = osc('sine', 380, t + i * 0.32, 0.26, 0.09, d, 0.05); o.frequency.exponentialRampToValueAtTime(300, t + i * 0.32 + 0.24); } },
   vendor() { const ok = VENDORS.filter(k => !City.recentV.includes(k)); const k = ok[Math.floor(Math.random() * ok.length)]; City.recentV = [k, ...City.recentV].slice(0, 4); const el = new Audio('/audio/' + k + '.mp3?v=' + CLIP_VER); el.volume = 0.25 + Math.random() * 0.3; try { const src = Music.ctx.createMediaElementSource(el); src.connect(panned(1)); } catch {} el.play().catch(() => {}); },
 };
 // mix = { out, veh, traffic, nature, market, temple, night } (0..1), from the game a few times a second
 export function setCity(m) {
   if (!Music.ctx) return; if (!City.bus) cityInit(); const c = Music.ctx, t = c.currentTime, on = City.on && m.out;
   City.bus.gain.setTargetAtTime(on ? 1.6 * (Theme.cur ? 0.5 : 1) * (m.veh ? 0.55 : 1) : 0, t, 0.6);
-  City.rumble.gain.setTargetAtTime(0.09 * m.traffic, t, 0.8); City.crick.gain.setTargetAtTime(0.01 * m.night * (0.4 + m.nature), t, 1);
-  City.murmur.gain.setTargetAtTime(0.03 * m.market * (0.6 + Math.random() * 0.6) * (1 - 0.6 * m.night), t, 0.3);
+  City.rumble.gain.setTargetAtTime(0.12 * m.traffic, t, 0.8); City.crick.gain.setTargetAtTime(0.016 * m.night * (0.4 + m.nature), t, 1);
+  City.murmur.gain.setTargetAtTime(0.045 * m.market * (0.6 + Math.random() * 0.6) * (1 - 0.6 * m.night), t, 0.3);
   const dt = Math.min(1, c.currentTime - (City.last || c.currentTime)); City.last = c.currentTime; if (!on || !dt) return;
   const roll = (rate, ev) => { if (Math.random() < rate * dt) C_EV[ev](t + Math.random() * 0.2); }, day = 1 - m.night;
-  roll(0.45 * m.traffic * (0.5 + 0.5 * day), 'horn'); roll(0.05 * m.traffic, 'auto'); roll((0.1 * m.nature + 0.03 * m.market) * day, 'crow'); roll(0.025 * m.nature * day, 'koel');
+  roll(0.6 * m.traffic * (0.5 + 0.5 * day), 'horn'); roll(0.05 * m.traffic, 'auto'); roll((0.1 * m.nature + 0.03 * m.market) * day, 'crow'); roll(0.025 * m.nature * day, 'koel');
   roll(0.25 * m.nature * day, 'sparrow'); roll(0.07 * m.temple + 0.003, 'bell'); if (!m.veh) roll(0.05 * m.market * (0.3 + 0.7 * day), 'vendor');
+  roll(0.05 * (0.4 + m.nature) * (0.5 + m.night), 'dog'); roll(0.012 * day * (1 - m.market), 'cooker'); roll(0.014 * day * m.traffic, 'drill'); roll(0.09 * m.traffic, 'bike');
+  roll(0.03 * m.traffic * day, 'whistle'); roll(0.025 * m.night, 'chowkidar'); roll(0.04 * day * (m.market + m.nature), 'pigeon'); // more of Gurugram's street noise
 }
 
 // ---- stingers when a chase ends: you got away, or you got caught

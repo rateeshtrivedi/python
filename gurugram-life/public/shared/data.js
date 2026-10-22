@@ -29,21 +29,71 @@ export const HOUSES = {
   kothi: { name: 'Kothi, Golf Course Extension', price: 900000, daily: 2500, at: [-2, 1] },
   farm:  { name: 'Farmhouse, Bhondsi',          price: 1200000, daily: 4000, at: [1, 2] },
 };
-// Sapno ka Shehar, the main story: you get off the bus with a bag and ₹500 and sleep on the footpath. Every day you
-// finish all of today's kaam, the next home up this ladder is yours, free. Bigger homes can also be bought sooner.
+// Sapno ka Shehar, the main story: you get off the bus with a bag, an empty pocket and a night on the footpath. Every Bada Kaam
+// (BADE below) you pull off moves you one home up this ladder, free. Bigger homes can also be bought sooner.
 export const LADDER = ['street', 'pg', 'room', 'flat', 'pent', 'kothi', 'farm'];
 export const homeRank = p => Math.max(0, ...(p.houses || []).map(h => LADDER.indexOf(h)));
-export const START_MONEY = 500;
+export const START_MONEY = 0; // khaali jeb: the first rupee comes from work
+// one game day (sun up to sun up, and one set of aaj ke kaam) is 15 real minutes, timed by the server so everyone shares it
+export const DAY_SECS = 900;
+export const gameDay = (ms = Date.now()) => Math.floor(ms / 1000 / DAY_SECS);
+export const dayFrac = (ms = Date.now()) => (ms / 1000 % DAY_SECS) / DAY_SECS; // 0 = midnight, 0.5 = noon
 // chapter n is played on the way to LADDER[n]; the last chapter's prize is the diamond set
 export const CHAPTERS = [
-  { title: 'Bus Adda', intro: 'Haryana Roadways ki bus ne Rajiv Chowk pe utaar diya. Jeb mein ₹500, haath mein ek bag, aankhon mein sapne. Aaj ki raat footpath pe.', prize: 'Sharma PG ka kamra' },
+  { title: 'Bus Adda', intro: 'Haryana Roadways ki bus ne Rajiv Chowk pe utaar diya. Jeb khaali, haath mein ek bag, aankhon mein sapne. Aaj ki raat footpath pe.', prize: 'Sharma PG ka kamra' },
   { title: 'Pehli Chhat', intro: 'Sir pe chhat aa gayi! Par PG mein chhe log aur ek bathroom. Apna kamra chahiye.', prize: '1BHK, Sector 14' },
   { title: 'Apna Kamra', intro: 'Apna darwaza, apni chaabi. Ab ghar waale bhi aana chahte hain: bada ghar chahiye.', prize: '2BHK flat, Sushant Lok' },
   { title: 'Ghar Basao', intro: 'Sushant Lok ka 2BHK. Mausi ji ne rishte ki baat chhed di. Ab sapna aasmaan ka: penthouse!', prize: 'Penthouse, Golf Course Road' },
   { title: 'Aasmaan Chhoo', intro: 'Golf Course Road ki 30vi manzil se poora Gurugram dikhta se. Par asli rutba kothi waalon ka.', prize: 'Kothi, Golf Course Extension' },
   { title: 'Kothi Waale', intro: 'Lawn, jhoomar, garage. Log ab Saab bolte hain. Bas ek sapna baaki: Bhondsi ka farmhouse.', prize: 'Farmhouse, Bhondsi' },
-  { title: 'Gurugram ka Chaudhary', intro: 'Footpath se farmhouse tak. Aaj ka kaam poora kar, aur heeron ka haar tera.', prize: 'Heeron ka haar' },
+  { title: 'Gurugram ka Chaudhary', intro: 'Footpath se farmhouse tak. Ek aakhri Bada Kaam: Dalal Bhai. Jeet, aur heeron ka haar tera.', prize: 'Heeron ka haar' },
 ];
+// Bade Kaam: the story missions. Mission n is played on the way to LADDER[n + 1] (the last one's prize is the diamond set),
+// and some open up new things to do: guns (Bittu Hathiyaar wala), a gang of your own, and land deals.
+export const BADE = [
+  { id: 'pump', title: 'Pehli Kamai', giver: 'Chaudhary Saab, Chaudhary Filling Station', pay: 1500,
+    brief: 'Khaali jeb. Chaudhary Filling Station pe kaam mil sakta se: gaadiyon mein petrol bharo, aur jo bina paise bhaage usse vasool karo.' },
+  { id: 'vasooli', title: 'Udhaar Vasooli', giver: 'Sharma ji, Galleria Market', pay: 5000, unlock: 'guns',
+    brief: 'Pappu Paaji ne Sharma ji ke ₹20,000 dabaa rakhe hain. Sector 14 Market mein usse aur uske chelon se vasool kar, police se bach ke laut.' },
+  { id: 'thar', title: 'Chori ki Thar', giver: 'Bittu Hathiyaar wala, Sohna Road', pay: 15000, unlock: 'gang',
+    brief: 'Cyber Hub ki parking mein ek kaali Desert King khadi se. Uthaa, police ko chakma de, aur NH-48 ke Jugaad Garage pahuncha. 3 minute.' },
+  { id: 'kabza', title: 'Pump pe Kabza', giver: 'Chaudhary Saab', pay: 25000, unlock: 'land', gang: 1,
+    brief: 'Kallu Kaanpur ke aadmi pump pe kabza karne aa rahe hain, do ke paas katta. Apni gang le ke aa aur pump bacha.' },
+  { id: 'sauda', title: 'Zameen ka Sauda', giver: 'Bansal ji, Yadav Estates', pay: 30000, plot: 'sohna',
+    brief: 'Bansal ji ko gaadi mein Sohna Road ke plot tak le ja. Wahan Sandy Gunda ke shooter baithe hain: Bansal ji ko kuch nahi hona chahiye.' },
+  { id: 'chanda', title: 'Chunav ka Chanda', giver: 'Netaji, Old Gurgaon', pay: 50000,
+    brief: 'Netaji ka nakad bhara bag Bhondsi farmhouse pahunchana se, 4 minute mein. Raste mein police ke naake: unse door reh, pakda gaya to bag gaya.' },
+  { id: 'dalal', title: 'Dalal Bhai ka Khatma', giver: 'Poora Gurugram', pay: 100000, gang: 2,
+    brief: 'Dalal Bhai ne tere pump aur zameen pe nazar daali se. Badshahpur ke godown pe uske shooter. Gang le, hathiyaar le, aur khel khatam kar.' },
+];
+export const UNLOCK_AT = { guns: 2, gang: 3, land: 4 }; // Bade Kaam done before each opens up
+export const unlocked = (p, what) => (p.bk || 0) >= UNLOCK_AT[what];
+// Haryanvi hathiyaar: sold by Bittu Hathiyaar wala once Udhaar Vasooli is done. Firing in public brings the police.
+export const GUNS = {
+  katta:  { name: 'Desi Katta', price: 12000, dmg: 38, cd: 0.8, range: 26, round: 'goli', roundPrice: 60 },
+  dunali: { name: 'Dunali (12 bore)', price: 40000, dmg: 70, cd: 1.4, range: 15, round: 'kartoos', roundPrice: 150 },
+};
+// your gang: chhore from Bhola Pehlwan's akhara who follow you, fight with you and are seen by everyone
+export const GANG_NAMES = ['Bunty', 'Sonu', 'Lucky', 'Rocky', 'Pintu', 'Deepu', 'Vicky', 'Bablu', 'Titu', 'Happy', 'Ankit', 'Sandeep', 'Mohit', 'Kala', 'Sheru'];
+export const gangMax = p => unlocked(p, 'gang') ? Math.min(6, 1 + Math.floor((p.level || 1) / 3) + Math.max(0, (p.bk || 0) - UNLOCK_AT.gang)) : 0;
+export const gangCost = p => 3000 + 2000 * ((p.gang || []).length);
+// land: plots for sale around the city. Prices move every game day (the same for everyone); buy low, sell high.
+export const PLOTS = [
+  { id: 'sohna', name: 'Plot 7, Sohna Road', at: [1, 0], base: 160000, ph: 0.4 },
+  { id: 'badshah', name: 'Kheti ki zameen, Badshahpur', at: [1, 1], base: 90000, ph: 2.1 },
+  { id: 'gcx', name: 'Corner plot, Golf Course Extension', at: [-2, 1], base: 420000, ph: 4.0 },
+  { id: 'manesar', name: 'Industrial plot, IMT Manesar', at: [2, 1], base: 260000, ph: 1.2 },
+  { id: 'sec14', name: 'Dukaan plot, Sector 14 Market', at: [-1, 1], base: 140000, ph: 5.3 },
+  { id: 'bhondsi', name: 'Farm plot, Bhondsi', at: [1, 2], base: 120000, ph: 3.2 },
+  { id: 'phase3', name: 'Residential plot, DLF Phase 3', at: [-2, -1], base: 380000, ph: 0.9 },
+  { id: 'sadar', name: 'Godown plot, Sadar Bazaar', at: [2, 0], base: 110000, ph: 2.7 },
+];
+export const plotPrice = (pl, day = gameDay()) => Math.round(pl.base * (1 + 0.22 * Math.sin(day * 0.9 + pl.ph) + 0.1 * Math.sin(day * 2.3 + pl.ph * 2)) / 1000) * 1000;
+export const plotRent = pl => Math.round(pl.base * 0.004 / 10) * 10; // paid every game day you own it
+// petrol: every motor vehicle has a tank; fill up at a petrol pump
+export const PETROL_RATE = 100; // ₹ a litre
+export const TANK = { scooty: 6, dhakad: 13, chhotu: 30, desert: 50, cruiser: 60, auto: 8, bus: 120, truck: 160, naav: 20 };
+export const FUEL_RANGE = { 2: 2600, 4: 2100, 5: 1800 }; // game units on a full tank, by vehicle kind
 export const SPOUSE_NAMES = { f: ['Simran', 'Pooja', 'Neha', 'Anjali', 'Kavya', 'Riya', 'Priya'], m: ['Rohit', 'Aman', 'Vikram', 'Karan', 'Arjun', 'Rahul', 'Sahil'] };
 export const SHAADI_COST = 25000;
 // rishta steps: Mausi ji calls (home 2BHK or better + a car) → meet at Cyber Hub → long drive to Leisure Valley → ring from Goyal Jewellers → shaadi
@@ -110,7 +160,7 @@ export const FOOD_SHOPS = {
 export const MISC = {
   movie: ['Movie ticket', 250], lucky: ['Lucky draw scratch card', 200], metro: ['Rapid Metro ticket', 30], rent: ['Bhaago e-scooter rental', 50],
   hospital: ['Civil Hospital treatment', 100], shirt: ['New shirt', 600], toll: ['Kherki Daula toll', 50],
-  challan: ['Drunk-driving challan', 2000], challan_big: ['Challan after argument', 4000], challan_chase: ['Challan after chase', 5000], challan_film: ['Black film challan', 1000],
+  challan: ['Drunk-driving challan', 2000], challan_big: ['Challan after argument', 4000], challan_chase: ['Challan after chase', 5000], arrest: ['Jurmana (arrest)', 1500], challan_film: ['Black film challan', 1000],
   bottle: ['Bottle service for the whole club', 15000], notes: ['Note udao at the baraat', 1000], party: ['Host a farmhouse party', 20000],
   firework: ['Diwali rocket', 200], don_auto: ['Auto to the Gali ke Don fight', 50], dangal: ['Dangal entry', 100], plate: ['Random HR26 number plate', RANDOM_PLATE_PRICE], ko_bill: ['Hospital bill', 200],
 };
@@ -125,7 +175,7 @@ export const EARN = {
 // Aaj ke kaam: seven tasks a day (one from each slot), the same all day, new at midnight Gurugram time.
 // Roughly 30-40 minutes of play; {n} is filled from the player's level. go = where the task's GPS points.
 export const DAILY = {
-  kamai:  [{ k: 'earned', t: 'Aaj {n} kamao: kaam, race, delivery, sab chalega', n: l => 2500 + 900 * Math.min(l, 12), money: 1, r: 600 }],
+  kamai:  [{ k: 'earned', t: 'Aaj {n} kamao: kaam, race, delivery, sab chalega', n: l => 800 + 300 * Math.min(l, 12), money: 1, r: 400 }],
   badla:  [{ k: 'badla', t: '{enemy} ne tere dost {friend} ko {place} pe peeta! Dhoond ke sabak sikha', n: () => 1, r: 900, go: 'badla' }],
   shop:   [{ k: 'mallbuy', t: 'Ambience Mall se naye kapde ya topi le', n: () => 1, r: 400, go: 'mall' }],
   club:   [{ k: 'dance', t: 'Neon Nights, Sector 29 pe 1 minute naacho', n: () => 3, r: 500, go: 'club' },
@@ -136,15 +186,16 @@ export const DAILY = {
   thrill: [{ k: 'race_wins', t: 'Ek street race jeeto', n: () => 1, r: 700, go: 'races' },
            { k: 'wrestle', t: 'Leisure Valley akhare mein dangal jeeto', n: () => 1, r: 1000, min: 3, go: 'akhara' },
            { k: 'jacks', t: 'Sadak pe kisi ki gaadi chheeno (E dabao)', n: () => 1, r: 600 },
-           { k: 'npc_ko', t: 'Gali ke do chhore dhobi pachhad karo', n: () => 2, r: 500 }],
+           { k: 'npc_ko', t: 'Gali ke do chhore dhobi pachhad karo', n: () => 2, r: 500 },
+           { k: 'badla', t: '{enemy} ne tere dost {friend} ko {place} pe peeta! Dhoond ke sabak sikha', n: () => 1, r: 900, go: 'badla' }],
   food:   [{ k: 'eat_dhaba', t: 'Sher-e-Haryana Dhaba pe khana khao', n: () => 1, r: 300, go: 'dhaba' },
            { k: 'eat_market', t: 'Galleria ya Sadar Bazaar mein chaat-mithai khao', n: () => 1, r: 300, go: 'market' }],
 };
-export const DAILY_SLOTS = ['kamai', 'badla', 'job', 'shop', 'thrill', 'club', 'food'];
+export const DAILY_SLOTS = ['job', 'thrill', 'kamai']; // a game day is 15 minutes: three quick kaam (two open the next level); the story moves through Bade Kaam
 export const BADLA_ENEMY = ['Rinku Chhapri', 'Lalit Lambu', 'Sandy Gunda', 'Bittu Bawli', 'Kallu Kaanpur', 'Pintu Pataka', 'Sonu Supari'];
 export const BADLA_FRIEND = ['Golu', 'Monu', 'Deepu', 'Happy', 'Sunny', 'Neha', 'Pinky'];
 export const BADLA_SPOTS = [[300, 0, 'Sadar Bazaar'], [-150, 0, 'Galleria Market'], [-150, 150, 'Sector 14 Market'], [150, -150, 'Sector 29'], [150, 150, 'Badshahpur'], [300, 150, 'Old Gurgaon']]; // street chhora corners
-export const dailyBonus = (lvl, streak) => Math.round((1500 + 400 * Math.min(lvl, 12)) * (1 + 0.25 * Math.min(streak, 4)));
+export const dailyBonus = (lvl, streak) => Math.round((600 + 150 * Math.min(lvl, 12)) * (1 + 0.25 * Math.min(streak, 4)));
 
 // District grid: i,j in -2..2; block centre = (i*150, j*150). Place names are real Gurugram localities.
 export const DIST = [
