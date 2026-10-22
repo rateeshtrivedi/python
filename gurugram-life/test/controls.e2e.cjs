@@ -85,7 +85,8 @@ if (require.main === module) (async () => {
   for (let round = 0; round < 2 && !ai; round++) for (const [x, z] of spots) { await place(p, x, z, 0); await p.waitForTimeout(1500); ai = await E(p, () => { for (const [id, R] of window.__t.REMOTES) if (R.info && /\(AI\)/.test(R.info.name) && !R.veh && R.visible && R.hp > 0) return { id, name: R.info.name }; return null; }); if (ai) break; }
   if (ai) { let hp0 = null, hp = null; for (let i = 0; i < 40; i++) { const s = await E(p, id => { const R = window.__t.REMOTES.get(id), G = window.__t.G; if (!R) return null; const q = R.mesh.position; G.x = q.x + 1.4; G.z = q.z; G.yaw = -Math.PI / 2; G.hp = Math.max(G.hp, 30); return R.hp; }, ai.id); if (s == null) break; if (hp0 == null) hp0 = s; hp = s; if (i > 2) await p.keyboard.press('KeyQ'); await p.waitForTimeout(550); if (hp0 - hp >= 20) break; }
     rec('M3 punching an (AI) player works', hp < hp0, ai.name + ' hp ' + hp0 + ' -> ' + hp); } else rec('M3 punching an (AI) player works', false, 'no AI on foot found');
-  // ---------------- phone
+  // ---------------- phone (the two laptop tabs close first: three software-rendered games at once starve the phone tab; their error lists are kept)
+  await p.context().close(); await q.context().close();
   const m = await open(b, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, 'Tester Teen', false);
   const tapEl = async sel => { const bx = await m.locator(sel).boundingBox(); await m.touchscreen.tap(bx.x + bx.width / 2, bx.y + bx.height / 2); };
   await place(m, 0, 20, 0); a = await st(m); const jb = await m.locator('#joy').boundingBox(); const cx = jb.x + jb.width / 2, cy = jb.y + jb.height / 2;
