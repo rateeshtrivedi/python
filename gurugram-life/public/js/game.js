@@ -1310,7 +1310,7 @@ function gunFx(x, y, z, tx, ty, tz) {
   setTimeout(() => { scene.remove(f); scene.remove(ln); geo.dispose(); }, 70);
 }
 function shoot() {
-  const id = WEAPONS[G.weapon], g = D.GUNS[id]; if ((G.gunCD || 0) > now() || G.frozen || G.selfie) return; G.gunCD = now() + g.cd;
+  const id = WEAPONS[G.weapon], g = D.GUNS[id]; if (!g) { G.weapon = 0; weaponHUD(); return punch(); } /* the gun is gone (sold, or a fresh profile): fists */ if ((G.gunCD || 0) > now() || G.frozen || G.selfie) return; G.gunCD = now() + g.cd;
   if (!(((P.ammo || {})[id] || 0) > 0)) { A.sfx('click'); toast(g.round + ' khatam! Bittu Hathiyaar wala (Sohna Road) se le', 'bad'); return; }
   P.ammo[id]--; G.dance = false; player.userData.punchT = 0.12; A.sfx(id === 'dunali' ? 'dunali' : 'gun');
   const cone = id === 'dunali' ? 0.55 : 0.3, out = !G.inside, cands = [];

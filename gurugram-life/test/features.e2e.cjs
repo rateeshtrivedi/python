@@ -60,11 +60,11 @@ const results = []; let errs = [];
     const B = await E(() => window.__t.BITTU); await at(B.x, B.z + 6); await W(1200);
     return { ok: r.bittu && r.plots >= 5 && /Udhaar Vasooli/.test(g) && /Pump pe Kabza/.test(z), info: JSON.stringify(r) }; });
   await step('guns: draw a katta, shoot a chhora down, people run, police come', async () => {
-    const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); P.guns = ['katta']; P.ammo = { katta: 8 }; t.weaponHUD(); t.setWeapon(1);
+    const r = await E(async () => { const t = window.__t, G = t.G; let P = t.P; t.teleport(10, 40, 0); P.guns = ['katta']; P.ammo = { katta: 8 }; t.weaponHUD(); t.setWeapon(1); const keep = setInterval(() => { const Q = t.P; if (!Q.guns.includes('katta')) { Q.guns = ['katta']; Q.ammo = { katta: P.ammo.katta }; P = Q; G.weapon = 1; t.weaponHUD(); } }, 50); /* a server profile push (a new game day) would take the test gun away */
       const n = t.makeFighter('Test Chhora', G.x, G.z + 8, 60, 3, 0x555555); n.state = 'wander'; t.FIGHTERS.push(n); G.r = G.yaw = 0; let shots = 0;
       for (let k = 0; k < 8 && n.state !== 'ko'; k++) { G.gunCD = 0; G.r = G.yaw = Math.atan2(n.x - G.x, n.z - G.z); t.shoot(); shots++; await new Promise(r => setTimeout(r, 350)); }
       const panic = t.CROWD.concat(t.PEDS).filter(p => p.panic > performance.now() / 1000).length; await new Promise(r => setTimeout(r, 3200));
-      return { ko: n.state === 'ko', shots, ammo: P.ammo.katta, gun: !!t.gunMesh, hud: document.getElementById('weap').textContent, panic, police: !!G.chase }; });
+      clearInterval(keep); return { ko: n.state === 'ko', shots, ammo: t.P.ammo.katta, gun: !!t.gunMesh, hud: document.getElementById('weap').textContent, panic, police: !!G.chase }; });
     await E(() => { const t = window.__t; if (t.G.chase) t.G.chase.until = 0; t.setWeapon(0); }); await W(600); await closeCards();
     return { ok: r.ko && r.gun && r.ammo < 8 && /Desi Katta/.test(r.hud) && r.police, info: JSON.stringify(r) }; });
   await step('an enemy with a katta keeps his distance and fires', async () => {
@@ -72,10 +72,10 @@ const results = []; let errs = [];
       for (let k = 0; k < 40 && G.hp >= 100; k++) await new Promise(r => setTimeout(r, 500)); /* about half his shots land */ const d = Math.hypot(n.x - G.x, n.z - G.z); n.state = 'ko'; n.t = 0.01; return { hp: G.hp, d: +d.toFixed(1) }; });
     return { ok: r.hp < 100 && r.d > 2.4, info: JSON.stringify(r) }; });
   await step('the gang follows you and joins the fight', async () => {
-    const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); G.hp = 100; P.gang = [{ name: 'Bunty', shirt: 2, g: 'm' }, { name: 'Sonu', shirt: 5, g: 'm' }]; t.syncGang();
+    const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); G.hp = 100; const crew = [{ name: 'Bunty', shirt: 2, g: 'm' }, { name: 'Sonu', shirt: 5, g: 'm' }]; P.gang = crew; t.syncGang(); const keep = setInterval(() => { if (t.P.gang.length < 2) { t.P.gang = crew; t.syncGang(); } }, 50); /* the gang lives on the server: hold the test one */
       await new Promise(r => setTimeout(r, 600)); G.x += 12; await new Promise(r => setTimeout(r, 3500)); const follow = t.GANG.map(m => +Math.hypot(m.x - G.x, m.z - G.z).toFixed(1));
       const n = t.makeFighter('Gunda', G.x + 4, G.z + 4, 80, 2, 0x444444); n.state = 'aggro'; t.FIGHTERS.push(n); const h0 = n.hp; await new Promise(r => setTimeout(r, 6000));
-      return { follow, enemyHp: [h0, n.hp], state: n.state, visible: t.GANG.every(m => m.mesh.visible) }; });
+      clearInterval(keep); return { follow, enemyHp: [h0, n.hp], state: n.state, visible: t.GANG.every(m => m.mesh.visible) }; });
     return { ok: r.follow.every(d => d < 7) && r.enemyHp[1] < r.enemyHp[0] && r.visible, info: JSON.stringify(r) }; });
   await E(() => { const t = window.__t; t.P.gang = []; t.syncGang(); t.P.guns = []; t.weaponHUD(); for (const n of t.FIGHTERS) if (n.name === 'Gunda' || n.name === 'Test Chhora') { n.state = 'ko'; } });
   // Bada Kaam 1, played: the pump job, three cars, the runner, back to Chaudhary Saab
