@@ -99,7 +99,8 @@ function storyPrize(c) {
 function bkDone(c, m) {
   const p = c.p, i = Math.floor(num(m.i, -1)), B = D.BADE[i];
   if (!B || i !== (p.bk || 0)) return { ok: false, error: 'Yeh kaam abhi nahi' };
-  if (!c.bk || c.bk.i !== i || now() - c.bk.at < 50) return { ok: false, error: 'Kaam poora nahi hua' };
+  if (!c.bk || c.bk.i !== i) return { ok: false, error: 'Kaam poora nahi hua' };
+  if (now() - c.bk.at < 50) return { ok: false, error: 'Kaam poora nahi hua', wait: 50 - (now() - c.bk.at) }; // too quick: the client waits this long and asks again
   if (B.gang && p.gang.length < B.gang) return { ok: false, error: 'Is kaam ke liye gang chahiye' };
   c.bk = null; p.bk = i + 1; credit(c, B.pay, 'Bada Kaam: ' + B.title); p.respect += 25 + i * 10; addXP(c, 150 + 50 * i); track(c, 'bade');
   if (B.plot && !db.plots[B.plot]) db.plots[B.plot] = p.id;

@@ -1328,7 +1328,7 @@ function shoot() {
   else if (hit && best.kind === 'ped') { const p = best.o; p.knock = 6; p.kx = fx * 3; p.kz = fz * 3; grunt(p, 'hit'); }
   else if (hit && best.kind === 'crowd') { const p = best.o; p.knock = 7; p.kx = fx * 3; p.kz = fz * 3; grunt(p, 'hit'); }
   net.send('shot', { gun: id, target: hit && best.kind === 'peer' ? best.id : null }); weaponHUD();
-  crowdPanic(G.x, G.z); if (out && !(BK.on && BK.noCops)) gunHeat(hit && (best.kind === 'ped' || best.kind === 'crowd'));
+  crowdPanic(G.x, G.z); if (out && !(BK.on && BK.noCops)) gunHeat(hit && (best.kind === 'ped' || best.kind === 'crowd' || (best.kind === 'npc' && best.o.state === 'ko' && !best.o.bk))); /* hitting a passer-by or gunning someone down brings 112 at once */
 }
 // gunshots in the street: people run, and enough of it brings the police
 function crowdPanic(x, z) { const t = now() + 9; for (const p of CROWD) if (!p.still && Math.abs(p.x - x) < 40 && Math.abs(p.z - z) < 40) { p.panic = t; p.wait = 0; } for (const p of PEDS) if (Math.hypot(p.mesh.position.x - x, p.mesh.position.z - z) < 40) { p.panic = t; p.wait = 0; } }
@@ -1575,7 +1575,9 @@ function bkCleanup() {
 }
 function bkFail(why) { if (!BK.on) return; const i = BK.i, B = D.BADE[i]; bkCleanup(); A.sfx('err');
   setTimeout(() => showCard('Kaam fail: ' + B.title, why + '. Dobara koshish kar, Gurugram mein haar se kuch nahi rukta.', [['Dobara 💥', () => { $('raceres').hidden = true; bkStart(i); }], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]), 900); }
-async function bkWin() { const i = BK.i, B = D.BADE[i]; bkCleanup(); const r = await net.req('bkdone', { i }); if (!r.ok) return toast(r.error || 'Kuch gadbad', 'bad');
+async function bkWin() { const i = BK.i, B = D.BADE[i]; const r = await net.req('bkdone', { i });
+  if (!r.ok && r.wait && BK.on && BK.i === i) { toast('Chaudhary hisaab laga raha se... ' + Math.ceil(r.wait) + ' sec ruk', 'info'); setTimeout(() => { if (BK.on && BK.i === i) bkWin(); }, r.wait * 1000 + 400); return; } /* done faster than the server's minimum: wait it out, don't lose the kaam */
+  bkCleanup(); if (!r.ok) return toast(r.error || 'Kuch gadbad', 'bad');
   bigText('BADA KAAM POORA! 💥', B.title + ' · ' + fmt(B.pay), 3); A.sfx('cheer'); A.stinger && A.stinger('escape'); for (let k = 0; k < 4; k++) setTimeout(() => burst(G.x, 2.4, G.z, pick([0xf6c026, 0xffffff, 0xd7331f]), 24, { speed: 5 }), k * 200); }
 function updateBade(dt) {
   if (!BK.on) return; const st = MISSIONS[BK.i].steps[BK.step]; if (!st) return;

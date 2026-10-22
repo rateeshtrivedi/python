@@ -45,8 +45,6 @@ try {
   a.send('hit', { target: wb.id }); const dmg = await b.wait(m => m.t === 'dmg'); check(dmg.d >= 9 && dmg.by === wa.id, 'punch in range delivers damage');
   b.send('st', { x: 50, z: 0, r: 0, a: 0, v: null, in: '', hp: 90 }); await new Promise(r => setTimeout(r, 450)); const before = b.inbox.filter(m => m.t === 'dmg').length;
   a.send('hit', { target: wb.id }); await new Promise(r => setTimeout(r, 300)); check(b.inbox.filter(m => m.t === 'dmg').length === before, 'punch out of range is rejected');
-  const food = await a.req('buy', { kind: 'food', id: 'd_lassi', shop: 'dhaba' }); check(food.ok && food.price === 50, 'buy food at the dhaba');
-  const wrong = await a.req('buy', { kind: 'food', id: 't_whisky', shop: 'dhaba' }); check(!wrong.ok, 'cannot buy theka items at the dhaba');
   const car = await a.req('buy', { kind: 'vehicle', id: 'cruiser' }); check(!car.ok, 'cannot buy a ₹4 lakh car with starter money');
   const scooty = await a.req('buy', { kind: 'vehicle', id: 'scooty' }); check(!scooty.ok || scooty.price === 8000, 'scooty purchase validated');
   // Gali ke Don: chapter 1 only counts next to the boss, once a day
@@ -69,6 +67,9 @@ try {
   const e1 = await a.req('earn', { reason: 'delivery', amount: 999999 }); check(e1.ok && e1.amount === 700, 'earning is capped by the server');
   const mp = await a.wait(m => (m.t === 'mprog' && m.k === 'earned') || (m.t === 'profile' && m.p.missions.active.find(t => t.k === 'earned').done)); check(mp.t === 'profile' || mp.v >= 700, 'earning counts towards the kamai task (live progress, or done already)');
   const e2 = await a.req('earn', { reason: 'delivery', amount: 300 }); check(!e2.ok, 'earning cooldown enforced');
+  // the dhaba, once there is money in the pocket (a new player starts with ₹0)
+  const food = await a.req('buy', { kind: 'food', id: 'd_lassi', shop: 'dhaba' }); check(food.ok && food.price === 50, 'buy food at the dhaba' + (food.ok && food.price === 50 ? '' : ' ' + JSON.stringify(food)));
+  const wrong = await a.req('buy', { kind: 'food', id: 't_whisky', shop: 'dhaba' }); check(!wrong.ok, 'cannot buy theka items at the dhaba');
   const crew = await b.req('buy', { kind: 'crew', id: 'new', name: 'Sector 29 Sher', tag: 's29' }); check(!crew.ok, 'crew needs ₹25,000');
   // guns, gang and land open only with Bade Kaam; police take a fine, not the car; petrol is sold by the litre
   const gun = await b.req('buy', { kind: 'gun', id: 'katta' }); check(!gun.ok && /Udhaar Vasooli/.test(gun.error), 'no katta before Bada Kaam 2');

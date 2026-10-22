@@ -69,7 +69,7 @@ const results = []; let errs = [];
     return { ok: r.ko && r.gun && r.ammo < 8 && /Desi Katta/.test(r.hud) && r.police, info: JSON.stringify(r) }; });
   await step('an enemy with a katta keeps his distance and fires', async () => {
     const r = await E(async () => { const t = window.__t, G = t.G; t.teleport(10, 40, 0); G.hp = 100; const n = t.makeFighter('Shooter', G.x, G.z + 14, 60, 4, 0x222222); n.gun = 'katta'; n.state = 'aggro'; t.FIGHTERS.push(n);
-      await new Promise(r => setTimeout(r, 7000)); const d = Math.hypot(n.x - G.x, n.z - G.z); n.state = 'ko'; n.t = 0.01; return { hp: G.hp, d: +d.toFixed(1) }; });
+      for (let k = 0; k < 24 && G.hp >= 100; k++) await new Promise(r => setTimeout(r, 500)); /* about half his shots land */ const d = Math.hypot(n.x - G.x, n.z - G.z); n.state = 'ko'; n.t = 0.01; return { hp: G.hp, d: +d.toFixed(1) }; });
     return { ok: r.hp < 100 && r.d > 2.4, info: JSON.stringify(r) }; });
   await step('the gang follows you and joins the fight', async () => {
     const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); G.hp = 100; P.gang = [{ name: 'Bunty', shirt: 2, g: 'm' }, { name: 'Sonu', shirt: 5, g: 'm' }]; t.syncGang();
