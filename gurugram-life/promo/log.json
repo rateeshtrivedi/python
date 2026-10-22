@@ -43,6 +43,36 @@
    "beat": "edm seed 19",
    "song": "Badtameez Dil (Yeh Jawaani Hai Deewani)",
    "backup": "Kar Gayi Chull (Kapoor & Sons)"
+  },
+  {
+   "date": "2026-10-20",
+   "day": 4,
+   "pov": "POV: Google Maps said \"fastest route\"",
+   "format": "navigation banner instruction vs REALITY",
+   "scenes": "wrong-way truck on NH-48 (hook), Iffco Chowk mahajam, Kherki Daula toll, footpath walk to Rapid Metro in the heat, flooded underpass by Huda City Centre, arriving by boat",
+   "beat": "action seed 20 (plus GPS chimes, splashes and the game's Sarvam street voices)",
+   "song": "Dhoom Machale (Dhoom)",
+   "backup": "Zinda Banda (Jawan)"
+  },
+  {
+   "date": "2026-10-21",
+   "day": 5,
+   "pov": "POV: The Gali ke Don just called you",
+   "format": "phone-call cold open, gangster-film boss name cards, slow motion",
+   "scenes": "unknown-number call at Rajiv Chowk (Sarvam Don voice through a phone filter), Rinku Chhapri walk-up in Sadar Bazaar, round 1 slow-mo K.O., Lalit Lambu + goon at Galleria Market, Sandy Gunda + 2 goons in Old Gurgaon, Dalal Bhai silhouette charge on Sohna Road",
+   "beat": "gangster seed 21 (plus ring, name-card hits, real grunts and the game's Don voice lines)",
+   "song": "Malhari (Bajirao Mastani)",
+   "backup": "Jhoome Jo Pathaan (Pathaan)"
+  },
+  {
+   "date": "2026-10-22",
+   "day": 6,
+   "pov": "POV: A baraat blocked Golf Course Road",
+   "format": "'if you can't beat them, join them' six-level escalation (LEVEL tags)",
+   "scenes": "stuck in the car nose to nose with the band (hook), top-down wait, getting out to complain, dancing at the dhol, ₹1,000 notes over the dulha, fireworks beside the ghodi",
+   "beat": "baraat seed 22 (plus horns, crowd and fireworks)",
+   "song": "London Thumakda (Queen)",
+   "backup": "Nachde Ne Saare (Baar Baar Dekho)"
   }
  ]
 }

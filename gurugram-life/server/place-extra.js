@@ -34,7 +34,7 @@ export const EXTRA = {
   'rajiv-chowk': {
     missions: [['Start the game and take a selfie at the GURUGRAM sign', 'share it with friends'], ['Diwali night fireworks', 'rockets from ₹200, and the event rush pays the first three'], ['Gali ke Don boss fights', 'bosses sometimes come to the nearest corner']],
     earn: 'Rajiv Chowk is the meeting point of the city rather than a money spot. Most new players start here at the giant GURUGRAM sign and fountain, so it is the best place to find people for a race or a crew. On Diwali night the sky above the chowk fills with fireworks.',
-    tips: ['New players: open Menu → Aaj ke kaam for today\'s seven daily tasks, then follow the GPS arrow.', 'Use the selfie button at the sign: the card shows your name, level and money.', 'Iffco Chowk is just to the north. Go there when a mahajam starts to sell chai.'],
+    tips: ['New players: open Menu → Bade Kaam and start Pehli Kamai at Chaudhary Filling Station, then follow the GPS arrow.', 'Use the selfie button at the sign: the card shows your name, level and money.', 'Iffco Chowk is just to the north. Go there when a mahajam starts to sell chai.'],
     compare: [['Busy roundabout junction in central Gurugram', 'The central plaza with a fountain'], ['Main roads meeting from every side', 'Roads to every part of the game city'], ['A local landmark everyone knows', 'The giant GURUGRAM sign where most players start']] },
   'huda-city-centre': {
     missions: [['Rapid Metro ride across the city', '₹30 a ticket'], ['Water-crossing task in the monsoon', 'up to ₹1,200'], ['Cab rides from the station', 'up to ₹1,100 a ride']],
@@ -79,7 +79,7 @@ export const EXTRA = {
   'ambience-island': {
     missions: [['Pehla Din, the first story', 'starts here for new players'], ['Ambience Mall Sprint against Monu Dahiya', '₹600, the first race'], ['Buy new clothes or a cap', 'daily task worth ₹400'], ['Lucky draw scratch card', '₹200, win up to ₹5,000']],
     earn: 'Ambience Mall (the one real business in the game) is the shopping stop: clothes, cricket caps (₹300), pagdis (₹900), safas (₹1,200) and sunglasses for your avatar. There is a food court (chole bhature ₹120, momos ₹90, cutting chai ₹20), Reel Star Cinema for ₹250, and a lucky draw counter with a spinning wheel. The first race of the ladder starts at the mall gate.',
-    tips: ['New players: pick Ambience Mall as your start to play the Pehla Din story.', 'A movie refills a little hunger and passes time while your car is impounded.', 'Beat Monu Dahiya here first: every race win unlocks the next rival.'],
+    tips: ['New players: pick Ambience Mall as your start to play the Pehla Din story.', 'A movie refills a little hunger and passes the time.', 'Beat Monu Dahiya here first: every race win unlocks the next rival.'],
     compare: [['Ambience Mall, one of Gurugram\'s largest malls, on NH-48', 'Ambience Mall with clothes shops, a food court and a cinema'], ['Residential complex around the mall', 'Towers around the mall'], ['Weekend shopping crowds', 'The start of the Pehla Din story and the first street race']] },
   'nh-48-auto-mile': {
     missions: [['Buy a vehicle at Chaudhary Motors', 'from an ₹8,000 Scooty to the ₹4,00,000 Chaudhary Cruiser'], ['NH-48 Drag race against Rocky Gujjar', '₹2,000'], ['Car mods', 'underglow, bull bar, black film and stickers'], ['Kherki Daula toll', '₹50 every time you drive through']],

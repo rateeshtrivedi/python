@@ -29,14 +29,14 @@ try {
   const a = player('A'), b = player('B'); await a.open(); await b.open();
   a.send('hello', { name: 'Bunty', color: 1 }); const wa = await a.wait(m => m.t === 'welcome');
   b.send('hello', { name: 'Pinky', color: 3 }); const wb = await b.wait(m => m.t === 'welcome');
-  check(wa.profile.money > 500 && wa.daily && wa.profile.home === 'street', 'new player starts on the footpath with ₹500 + daily reward');
+  check(wa.profile.money === 0 && !wa.daily && wa.profile.home === 'street' && wa.profile.bk === 0, 'new player starts on the footpath with an empty pocket (no first-day reward)');
   check(!!wa.token && !('token' in wa.profile), 'token returned separately, not in public profile');
   const tasks = wa.profile.missions.active; const bad = tasks.find(t => t.k === 'badla');
-  check(wa.profile.missions.v === 2 && tasks.length === 7 && new Set(tasks.map(t => t.slot)).size === 7, 'seven daily tasks, one per slot');
-  check(!!bad && bad.enemy && Number.isFinite(bad.x) && bad.t.includes(bad.enemy) && !bad.t.includes('{'), 'badla task names the goon, the friend and the place');
+  check(wa.profile.missions.v === 2 && tasks.length === 3 && new Set(tasks.map(t => t.slot)).size === 3 && Number.isInteger(wa.profile.missions.day), 'three kaam per 15-minute game day, one per slot');
+  check(!bad || (bad.enemy && Number.isFinite(bad.x) && bad.t.includes(bad.enemy) && !bad.t.includes('{')), 'a badla task (when the day has one) names the goon, the friend and the place');
   check(tasks.every(t => t.n > 0 && t.r > 0 && !t.done), 'every task has a target and a reward');
-  a.send('ev', { k: 'badla' }); const kp = await a.wait(m => m.t === 'toast' && /Kaam poora/.test(m.text)); const pr = await a.wait(m => m.t === 'profile' && m.p.missions.active.find(t => t.k === 'badla').done);
-  check(!!kp && !!pr && pr.p.money > wa.profile.money, 'beating the badla goon completes the task and pays');
+  { const th = tasks.find(t => t.slot === 'thrill');  if (['badla', 'npc_ko', 'jacks'].includes(th.k)) { for (let k = 0; k < th.n; k++) { if (k) await new Promise(r => setTimeout(r, 4300)); a.send('ev', { k: th.k }); } const kp = await a.wait(m => m.t === 'toast' && /Kaam poora/.test(m.text)); const pr = await a.wait(m => m.t === 'profile' && m.p.missions.active.find(t => t.slot === 'thrill').done);
+    check(!!kp && !!pr && pr.p.money > wa.profile.money, 'finishing the thrill kaam (' + th.k + ') completes it and pays'); } else check(true, 'thrill kaam today is ' + th.k + ' (a race or dangal: played in the browser)'); }
   await a.wait(m => m.t === 'pi' && m.id === wb.id); check(true, 'A sees B appear');
   a.send('st', { x: 0, z: 0, r: 0, a: 0, v: null, in: '', hp: 100 }); b.send('st', { x: 1.5, z: 0, r: 0, a: 0, v: null, in: '', hp: 100 });
   const snap = await b.wait(m => m.t === 's' && m.p.some(e => e[0] === wa.id && e[1] === 0)); check(!!snap, 'positions broadcast in snapshots');
@@ -45,8 +45,6 @@ try {
   a.send('hit', { target: wb.id }); const dmg = await b.wait(m => m.t === 'dmg'); check(dmg.d >= 9 && dmg.by === wa.id, 'punch in range delivers damage');
   b.send('st', { x: 50, z: 0, r: 0, a: 0, v: null, in: '', hp: 90 }); await new Promise(r => setTimeout(r, 450)); const before = b.inbox.filter(m => m.t === 'dmg').length;
   a.send('hit', { target: wb.id }); await new Promise(r => setTimeout(r, 300)); check(b.inbox.filter(m => m.t === 'dmg').length === before, 'punch out of range is rejected');
-  const food = await a.req('buy', { kind: 'food', id: 'd_lassi', shop: 'dhaba' }); check(food.ok && food.price === 50, 'buy food at the dhaba');
-  const wrong = await a.req('buy', { kind: 'food', id: 't_whisky', shop: 'dhaba' }); check(!wrong.ok, 'cannot buy theka items at the dhaba');
   const car = await a.req('buy', { kind: 'vehicle', id: 'cruiser' }); check(!car.ok, 'cannot buy a ₹4 lakh car with starter money');
   const scooty = await a.req('buy', { kind: 'vehicle', id: 'scooty' }); check(!scooty.ok || scooty.price === 8000, 'scooty purchase validated');
   // Gali ke Don: chapter 1 only counts next to the boss, once a day
@@ -67,9 +65,21 @@ try {
   check(!!won && !!over, 'first player to the money bag takes it and the event ends');
   a.send('st', { x: 300, z: 2, r: 0, a: 0, v: null, in: '', hp: 100 });
   const e1 = await a.req('earn', { reason: 'delivery', amount: 999999 }); check(e1.ok && e1.amount === 700, 'earning is capped by the server');
-  const mp = await a.wait(m => m.t === 'mprog' && m.k === 'earned'); check(mp.v >= 700, 'earning shows live progress on the kamai task');
+  const mp = await a.wait(m => (m.t === 'mprog' && m.k === 'earned') || (m.t === 'profile' && m.p.missions.active.find(t => t.k === 'earned').done)); check(mp.t === 'profile' || mp.v >= 700, 'earning counts towards the kamai task (live progress, or done already)');
   const e2 = await a.req('earn', { reason: 'delivery', amount: 300 }); check(!e2.ok, 'earning cooldown enforced');
+  // the dhaba, once there is money in the pocket (a new player starts with ₹0)
+  const food = await a.req('buy', { kind: 'food', id: 'd_lassi', shop: 'dhaba' }); check(food.ok && food.price === 50, 'buy food at the dhaba' + (food.ok && food.price === 50 ? '' : ' ' + JSON.stringify(food)));
+  const wrong = await a.req('buy', { kind: 'food', id: 't_whisky', shop: 'dhaba' }); check(!wrong.ok, 'cannot buy theka items at the dhaba');
   const crew = await b.req('buy', { kind: 'crew', id: 'new', name: 'Sector 29 Sher', tag: 's29' }); check(!crew.ok, 'crew needs ₹25,000');
+  // guns, gang and land open only with Bade Kaam; police take a fine, not the car; petrol is sold by the litre
+  const gun = await b.req('buy', { kind: 'gun', id: 'katta' }); check(!gun.ok && /Udhaar Vasooli/.test(gun.error), 'no katta before Bada Kaam 2');
+  const gm = await b.req('buy', { kind: 'gang', id: 'x' }); check(!gm.ok && /Thar/.test(gm.error), 'no gang before Bada Kaam 3');
+  const pl = await b.req('buy', { kind: 'plot', id: 'sohna' }); check(!pl.ok && /Kabza/.test(pl.error), 'no land deals before Bada Kaam 4');
+  const plots = await b.req('plots', {}); check(plots.ok && plots.plots.length >= 6 && plots.plots.every(x => x.price > 0), 'plot market lists today\'s prices');
+  const bkEarly = await b.req('bkdone', { i: 0 }); check(!bkEarly.ok, 'a Bada Kaam cannot be finished without starting it');
+  const bkWrong = await b.req('bkstart', { i: 2 }); check(!bkWrong.ok, 'Bade Kaam go in order');
+  const fuel = await a.req('buy', { kind: 'fuel', id: 'x', n: 3 }); check(fuel.ok && fuel.price === 300, 'petrol: 3 litres at ₹100');
+  const fine = await a.req('buy', { kind: 'misc', id: 'arrest' }); check(fine.ok && fine.price > 0, 'arrest: a fine from what you have');
   const lb = await a.req('lb', {}); check(lb.ok && Array.isArray(lb.lb.rich), 'leaderboards available');
   const bid = await a.req('bid', { amount: 5 }); check(!bid.ok, 'bad bid rejected');
   // reconnect with token keeps the same account

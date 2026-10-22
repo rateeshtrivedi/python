@@ -1,0 +1,8 @@
+[
+ {"sc": 0, "dur": 2.6, "pre": 0.9, "pov": "POV: Google Maps said \"fastest route\" 📍", "time": "⬆ Stay in your lane", "cap": "REALITY: the truck didn't 🚛😱", "capAt": 0.7},
+ {"sc": 1, "dur": 2.6, "pre": 1.2, "time": "⬆ Fastest route · 12 min", "cap": "REALITY: Iffco Chowk mahajam 🚗🚗🐢", "capAt": 0.35},
+ {"sc": 2, "dur": 2.6, "pre": 1.0, "time": "↗ Toll ahead · keep FASTag ready", "cap": "REALITY: Kherki Daula queue 🧾⏳", "capAt": 0.35},
+ {"sc": 3, "dur": 2.6, "pre": 0.6, "time": "🚇 Faster by Rapid Metro", "cap": "REALITY: 2 km walk in 40°C 🥵", "capAt": 0.35},
+ {"sc": 4, "dur": 2.6, "pre": 0.5, "time": "↰ Turn left at the underpass", "cap": "REALITY: the underpass is a lake 🌊", "capAt": 0.35},
+ {"sc": 5, "dur": 2.533, "pre": 1.0, "time": "🏁 You have arrived", "cap": "REALITY: by boat 🚤😂", "capAt": 0.45, "big": true, "filter": "saturate(1.2) contrast(1.05)"}
+]
