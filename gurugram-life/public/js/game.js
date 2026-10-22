@@ -1096,7 +1096,9 @@ window.addEventListener('touchstart', () => document.body.classList.add('touch')
 for (const t of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(t, () => { if (!A.audioRunning() || A.Radio.blocked) A.unlock(); }, { capture: true, passive: true });
 window.addEventListener('keydown', e => { if (/^(Key[WASD]|Arrow(Up|Down|Left|Right))$/.test(e.code) && !(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) document.body.classList.remove('touch'); });
 if (matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches) document.body.classList.add('touch');
-const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); if (G.started) fn(); });
+const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); G.tapAt = performance.now(); if (G.started) fn(); });
+// a touch still sends its click where the finger lifts: swallow it so a button that opens a modal doesn't also press what opened under it
+$('modal').addEventListener('click', e => { if (performance.now() - (G.tapAt || 0) < 450) { e.stopPropagation(); e.preventDefault(); } }, true);
 $('stat').addEventListener('click', e => { if (document.body.classList.contains('touch') && !e.target.closest('button')) $('stat').classList.toggle('open'); }); // phones: tap the small stats card for the full panel
 tap('bAct', doAction); tap('bPunch', attack); tap('bGun', cycleWeapon); tap('bVeh', toggleVehicle); tap('bMenu', openPhone);
 $('bRun').addEventListener('pointerdown', e => { e.preventDefault(); if (G.veh) { nosHeld = true; return; } G.jumpReq = true; }); // Jump on foot, hold for NOS in a car
