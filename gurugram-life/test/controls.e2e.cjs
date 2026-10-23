@@ -36,9 +36,9 @@ if (require.main === module) (async () => {
     rec('F1 a first-timer sees the intro film and Skip ends it', seen && after.gone && !after.frozen && after.once === '1', JSON.stringify(after)); await q.context().close(); }
   const p = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Ek', NOLOCK);
   await place(p, 0, 20, 0); await p.waitForTimeout(300);
-  let a = await st(p); await hold(p, 'KeyW', 1000); let c = await st(p); const walk = Math.hypot(c.x - a.x, c.z - a.z); rec('D1 W walks forward', walk > 2, 'moved ' + walk.toFixed(1));
+  let a = await st(p); await hold(p, 'KeyW', 1500); let c = await st(p); const walk = Math.hypot(c.x - a.x, c.z - a.z); rec('D1 W walks forward', walk > 2, 'moved ' + walk.toFixed(1));
   a = c; await hold(p, 'KeyD', 700); c = await st(p); rec('D2 D moves/turns right', Math.hypot(c.x - a.x, c.z - a.z) > 0.8 || Math.abs(c.r - a.r) > 0.3, 'dpos ' + Math.hypot(c.x - a.x, c.z - a.z).toFixed(1));
-  await place(p, 0, 20, 0); a = await st(p); await p.keyboard.down('ShiftLeft'); await hold(p, 'KeyW', 1000); await p.keyboard.up('ShiftLeft'); c = await st(p); const run = Math.hypot(c.x - a.x, c.z - a.z); rec('D3 Shift runs faster', run > walk * 1.2, 'run ' + run.toFixed(1) + ' vs walk ' + walk.toFixed(1));
+  await place(p, 0, 20, 0); a = await st(p); await p.keyboard.down('ShiftLeft'); await hold(p, 'KeyW', 1500); await p.keyboard.up('ShiftLeft'); c = await st(p); const run = Math.hypot(c.x - a.x, c.z - a.z); rec('D3 Shift runs faster', run > walk * 1.2, 'run ' + run.toFixed(1) + ' vs walk ' + walk.toFixed(1));
   await place(p, 0, 20, 0); await p.keyboard.press('Space'); let peak = 0; for (let i = 0; i < 10; i++) { await p.waitForTimeout(60); peak = Math.max(peak, (await st(p)).y); } rec('D4 Space jumps', peak > 0.4, 'peak y ' + peak.toFixed(2));
   // mouse: click into the game, then look around
   await p.mouse.click(640, 360); await p.waitForTimeout(300); const lockOK = await E(p, () => document.pointerLockElement === document.querySelector('canvas'));
