@@ -560,6 +560,16 @@ function handle(c, m) {
     }
     case 'gangfire': { const i = Math.floor(num(m.i, -1)); if (p.gang[i]) { p.gang.splice(i, 1); dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'plots': reply({ ok: true, day: D.gameDay(), plots: D.PLOTS.map(pl => ({ id: pl.id, price: D.plotPrice(pl), prev: D.plotPrice(pl, D.gameDay() - 1), owner: db.plots[pl.id] ? (db.profiles[db.plots[pl.id]]?.name || '?') : null, mine: db.plots[pl.id] === p.id })) }); break;
+    case 'npcdrop': { // an NPC went down: his wallet falls with a small, server-picked amount (bosses carry more, at most once a minute)
+      if (!rateOk(c, 'npcdrop', 2.5)) { reply({ ok: false }); break; }
+      const big = !!m.big && rateOk(c, 'npcdropbig', 60), r = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+      const amt = big ? r(D.DROP.big[0], D.DROP.big[1]) : r(D.DROP.min, D.DROP.max) + Math.min(60, (p.level || 1) * D.DROP.perLevel);
+      c.drops = (c.drops || []).filter(d => now() - d.at < D.DROP.keep).slice(-4); const id = rid(6); c.drops.push({ id, amt, at: now() }); reply({ ok: true, id, amt }); break; }
+    case 'pickdrop': { const d = (c.drops || []).find(x => x.id === m.id && now() - x.at < D.DROP.keep); if (!d) { reply({ ok: false, error: 'Batua gaya' }); break; }
+      c.drops = c.drops.filter(x => x !== d); credit(c, d.amt, m.purse ? 'Purse se nikle' : 'Batue se nikle'); track(c, 'wallets'); sendProfile(c); reply({ ok: true, amt: d.amt }); break; }
+    case 'robbed': { // knocked down by an NPC: he takes a little from your pocket
+      if (!rateOk(c, 'robbed', 20)) { reply({ ok: false }); break; }
+      const amt = D.robAmount(p.money); if (amt > 0) { p.money -= amt; dirty = true; track(c, 'robbed'); sendProfile(c); } reply({ ok: true, amt }); break; }
     case 'sellplot': { const pl = D.PLOTS.find(x => x.id === m.id); if (!pl || db.plots[pl.id] !== p.id) { reply({ ok: false, error: 'Yeh plot tera nahi' }); break; }
       const price = Math.round(D.plotPrice(pl) * 0.97); delete db.plots[pl.id]; credit(c, price, pl.name + ' bech diya (3% dalali kat ke)'); p.respect += 5; track(c, 'plotsold');
       if (price >= 200000) announce(p.name + ' ne ' + pl.name + ' ' + fmt(price) + ' mein bech diya!', 'showoff'); sendProfile(c); reply({ ok: true, price }); break; }

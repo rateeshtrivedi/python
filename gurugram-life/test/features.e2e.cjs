@@ -5,7 +5,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright'); const fs = require('fs'); const path = require('path'); const os = require('os');
 const PHONE = !!process.env.PHONE, DEV = PHONE ? 'phone' : 'desk', ROOT = process.env.OUT || path.join(os.tmpdir(), 'gl-features'), OUT = path.join(ROOT, DEV); fs.mkdirSync(OUT, { recursive: true });
 const URL = process.env.URL || 'http://localhost:3000/';
-const HOOK = `\nwindow.__t={G,L,D,BK,DAY,FIGHTERS,CROWD,PEDS,ZONES,PUMPS,THANA,PLOT_AT,BITTU,GANG,PEHLWAN:()=>PEHLWAN,mount,dismount,teleport,startChase,closeModal,openBade,syncGang,weaponHUD,setWeapon,shoot,makeFighter,fuelLeft,pumpLabel,pumpAct,appGuns,appGang,appZameen,plotDeal,updateZones,
+const HOOK = `\nwindow.__t={G,L,D,BK,DAY,FIGHTERS,DROPS,get ROB(){return ROB},npcKO,takeHit,CROWD,PEDS,ZONES,PUMPS,THANA,PLOT_AT,BITTU,GANG,PEHLWAN:()=>PEHLWAN,mount,dismount,teleport,startChase,closeModal,openBade,syncGang,weaponHUD,setWeapon,shoot,makeFighter,fuelLeft,pumpLabel,pumpAct,appGuns,appGang,appZameen,plotDeal,updateZones,
   get nearZone(){return nearZone},get P(){return P},get player(){return player},get gunMesh(){return gunMesh}};`;
 const results = []; let errs = [];
 (async () => {
@@ -78,6 +78,21 @@ const results = []; let errs = [];
       clearInterval(keep); return { follow, enemyHp: [h0, n.hp], state: n.state, visible: t.GANG.every(m => m.mesh.visible) }; });
     return { ok: r.follow.every(d => d < 7) && r.enemyHp[1] < r.enemyHp[0] && r.visible, info: JSON.stringify(r) }; });
   await E(() => { const t = window.__t; t.P.gang = []; t.syncGang(); t.P.guns = []; t.weaponHUD(); for (const n of t.FIGHTERS) if (n.name === 'Gunda' || n.name === 'Test Chhora') { n.state = 'ko'; } });
+  await step('a knocked-down chhora drops his batua; walking over it takes the cash', async () => {
+    const r = await E(async () => { const t = window.__t, G = t.G; t.teleport(30, 40, 0); for (const d of t.DROPS) if (d.m.parent) d.m.parent.remove(d.m); t.DROPS.length = 0; /* earlier fights' batue */ await new Promise(r => setTimeout(r, 2600)); const m0 = t.P.money;
+      const n = t.makeFighter('Chhora Batua', G.x, G.z + 3, 60, 0, 0x555555); n.state = 'aggro'; t.FIGHTERS.push(n); n.hp = 0; t.npcKO(n);
+      for (let k = 0; k < 20 && !t.DROPS.length; k++) await new Promise(r => setTimeout(r, 200)); const d = t.DROPS[0]; if (!d) return { err: 'no batua' };
+      const seen = { amt: d.amt, visible: d.m.visible && !!d.m.parent }; G.x = d.x; G.z = d.z;
+      for (let k = 0; k < 30 && (t.DROPS.includes(d) || t.P.money === m0); k++) await new Promise(r => setTimeout(r, 200));
+      n.t = 0.01; return { ...seen, gone: !t.DROPS.includes(d), got: t.P.money - m0 }; });
+    return { ok: r.amt > 0 && r.visible && r.gone && r.got === r.amt, info: JSON.stringify(r) }; });
+  await step('knocked down by a chhora: he grabs your batua before the ambulance comes', async () => {
+    const r = await E(async () => { const t = window.__t, G = t.G; t.teleport(30, 60, 0); await new Promise(r => setTimeout(r, 2600)); G.hp = 100; const m0 = t.P.money;
+      const n = t.makeFighter('Chhora Chor', G.x, G.z + 2, 60, 0, 0x333333); n.state = 'aggro'; t.FIGHTERS.push(n); t.takeHit(200, n.name, n);
+      const rob = !!t.ROB; let picked = false; for (let k = 0; k < 20; k++) { await new Promise(r => setTimeout(r, 150)); if (t.ROB && !t.ROB.m.parent) picked = true; }
+      for (let k = 0; k < 60 && G.hp <= 0; k++) await new Promise(r => setTimeout(r, 200)); await new Promise(r => setTimeout(r, 1500)); n.state = 'ko'; n.t = 0.01;
+      return { rob, picked, lost: m0 - t.P.money, want: t.D.robAmount(m0), hp: G.hp, toast: [...document.querySelectorAll('#toasts > *')].map(e => e.textContent).join(' | ') }; });
+    return { ok: r.rob && r.picked && r.lost >= r.want && r.hp > 0, info: JSON.stringify(r) }; }); // lost = his share + the hospital bill
   // Bada Kaam 1, played: the pump job, three cars, the runner, back to Chaudhary Saab
   await step('Bada Kaam 1: the menu lists 7 missions and starts the first', async () => { await E(() => window.__t.openBade()); await W(500); const rows = await E(() => document.querySelectorAll('#mBody .item').length);
     await E(() => [...document.querySelectorAll('#mBody .item button')].find(b => /Shuru/.test(b.textContent)).click()); await W(1500); const card = await E(() => document.querySelector('#raceres h2')?.textContent);

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import WebSocket from 'ws';
 import http from 'node:http';
+import * as D from '../public/shared/data.js';
 
 const PORT = 3999;
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gl-'));
@@ -67,6 +68,12 @@ try {
   const e1 = await a.req('earn', { reason: 'delivery', amount: 999999 }); check(e1.ok && e1.amount === 700, 'earning is capped by the server');
   const mp = await a.wait(m => (m.t === 'mprog' && m.k === 'earned') || (m.t === 'profile' && m.p.missions.active.find(t => t.k === 'earned').done)); check(mp.t === 'profile' || mp.v >= 700, 'earning counts towards the kamai task (live progress, or done already)');
   const e2 = await a.req('earn', { reason: 'delivery', amount: 300 }); check(!e2.ok, 'earning cooldown enforced');
+  // batua: a knocked-down NPC's wallet holds a server-picked amount, taken once; an NPC who knocks you down takes a little
+  const dr = await a.req('npcdrop', {});
+  const pk = await a.req('pickdrop', { id: dr.id }); const pk2 = await a.req('pickdrop', { id: dr.id }); const fake = await a.req('pickdrop', { id: 'nahi' });
+  check(dr.ok && dr.amt >= D.DROP.min && dr.amt <= D.DROP.max + 60 && pk.ok && pk.amt === dr.amt && !pk2.ok && !fake.ok, 'a fallen NPC\'s batua pays once, a made-up one never');
+  const mb = a.inbox.filter(m => m.t === 'profile').pop().p.money; const rb = await a.req('robbed', {}); const ma = a.inbox.filter(m => m.t === 'profile').pop().p.money;
+  check(rb.ok && rb.amt === D.robAmount(mb) && ma === mb - rb.amt && !(await a.req('robbed', {})).ok, 'knocked down by an NPC: he takes ' + rb.amt + ' (6%, at least ₹50), not twice in a row');
   // the dhaba, once there is money in the pocket (a new player starts with ₹0)
   const food = await a.req('buy', { kind: 'food', id: 'd_lassi', shop: 'dhaba' }); check(food.ok && food.price === 50, 'buy food at the dhaba' + (food.ok && food.price === 50 ? '' : ' ' + JSON.stringify(food)));
   const wrong = await a.req('buy', { kind: 'food', id: 't_whisky', shop: 'dhaba' }); check(!wrong.ok, 'cannot buy theka items at the dhaba');

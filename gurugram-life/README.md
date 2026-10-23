@@ -103,6 +103,8 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 **Petrol**: four pumps (Chaudhary Filling Station, Jai Hanuman Petroleum, Haryana Highway Fuels, Bhagwati Petrol Pump) stand on block edges facing the road, on the map under Gaadi. Every motor vehicle has a tank (`D.TANK`, `D.FUEL_RANGE`; not in races); the speedo shows a fuel bar, which blinks when low. Drive onto the forecourt and press E to fill what you can afford at ₹100 a litre. Empty: the car crawls, or ₹500 brings the petrol-wala bhaiya with 5 litres.
 
+**Batua**: knock someone down in a fight and their wallet (or a woman's purse) falls with a little cash (₹40–160 plus a bit per level; Bade Kaam enemies and Don bosses carry ₹300–900). Walk or drive over it within two minutes to take it; the server picks the amount and pays it once. If an NPC knocks you down, he grabs your batua before the ambulance comes: 6% of your money (at least ₹50, at most ₹3,000), on top of the hospital bill.
+
 **Police**: a chase no longer ends when you get out (the havaldar runs after you). If they catch you, you are arrested, taken to the Sector 29 thana and fined (₹1,500 + 8% of your money, or a night in the hawalaat if you are broke); your car is never taken.
 
 **Street life**: walkers and passers-by stop at shops, wait, and turn back instead of lapping the block; the akhara pehlwan looks around instead of spinning on the spot. More street sound: stray dogs, pressure cookers, construction drills, a Bullet going past, traffic-police whistles, the night chowkidar and pigeons, over louder traffic and market hum, with less grey haze in the daytime sky.
