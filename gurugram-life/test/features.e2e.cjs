@@ -85,7 +85,7 @@ const results = []; let errs = [];
       const seen = { amt: d.amt, visible: d.m.visible && !!d.m.parent }; G.x = d.x; G.z = d.z;
       for (let k = 0; k < 30 && (t.DROPS.includes(d) || t.P.money === m0); k++) await new Promise(r => setTimeout(r, 200));
       n.t = 0.01; return { ...seen, gone: !t.DROPS.includes(d), got: t.P.money - m0 }; });
-    return { ok: r.amt > 0 && r.visible && r.gone && r.got === r.amt, info: JSON.stringify(r) }; });
+    return { ok: r.amt > 0 && r.visible && r.gone && r.got >= r.amt, info: JSON.stringify(r) }; }); // the knockdown can also finish the day's 'beat two chhore' kaam, which pays on top
   await step('knocked down by a chhora: he grabs your batua before the ambulance comes', async () => {
     const r = await E(async () => { const t = window.__t, G = t.G; t.teleport(30, 60, 0); await new Promise(r => setTimeout(r, 2600)); G.hp = 100; const m0 = t.P.money;
       const n = t.makeFighter('Chhora Chor', G.x, G.z + 2, 60, 0, 0x333333); n.state = 'aggro'; t.FIGHTERS.push(n); t.takeHit(200, n.name, n);
