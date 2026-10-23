@@ -1096,9 +1096,10 @@ window.addEventListener('touchstart', () => document.body.classList.add('touch')
 for (const t of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(t, () => { if (!A.audioRunning() || A.Radio.blocked) A.unlock(); }, { capture: true, passive: true });
 window.addEventListener('keydown', e => { if (/^(Key[WASD]|Arrow(Up|Down|Left|Right))$/.test(e.code) && !(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) document.body.classList.remove('touch'); });
 if (matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches) document.body.classList.add('touch');
-const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); G.tap = { t: performance.now(), x: e.clientX, y: e.clientY }; if (G.started) fn(); });
+const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); G.tap = { t: e.timeStamp, x: e.clientX, y: e.clientY }; if (G.started) fn(); });
 // a touch still sends its click where the finger lifts: swallow that one click (same spot, right after) so a button that opens a modal doesn't also press what opened under it
-$('modal').addEventListener('click', e => { const t = G.tap; if (t && performance.now() - t.t < 700 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 30) { G.tap = null; e.stopPropagation(); e.preventDefault(); } }, true);
+$('modal').addEventListener('click', e => { const t = G.tap; if (t && e.timeStamp - t.t < 2500 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 30) /* no new finger since the button: this is its leftover click */ { G.tap = null; e.stopPropagation(); e.preventDefault(); } }, true);
+$('modal').addEventListener('pointerdown', () => { G.tap = null; }, true); // a real tap inside the modal: let its click through
 $('stat').addEventListener('click', e => { if (document.body.classList.contains('touch') && !e.target.closest('button')) $('stat').classList.toggle('open'); }); // phones: tap the small stats card for the full panel
 tap('bAct', doAction); tap('bPunch', attack); tap('bGun', cycleWeapon); tap('bVeh', toggleVehicle); tap('bMenu', openPhone);
 $('bRun').addEventListener('pointerdown', e => { e.preventDefault(); if (G.veh) { nosHeld = true; return; } G.jumpReq = true; }); // Jump on foot, hold for NOS in a car
