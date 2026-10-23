@@ -1245,10 +1245,9 @@ function updateDrops(dt) {
     if (t > d.t || G.inside) { dropGone(d); continue; } d.m.rotation.y += dt * 1.6; d.m.position.y = groundY(d.x, d.z) + 0.05 + Math.sin(t * 4) * 0.04;
     if (!d.busy && G.hp > 0 && Math.hypot(G.x - d.x, G.z - d.z) < (G.veh ? 2.4 : 1.5)) { d.busy = true; net.req('pickdrop', { id: d.id, purse: d.purse }).then(r => { dropGone(d); if (r.ok) { popText('+' + fmt(r.amt), 'gold'); burst(d.x, 0.6, d.z, 0x7fbf7f, 14, { note: true, speed: 2, up: 2, life: 1.2 }); } }); }
   }
-  if (ROB) { const n = ROB.n, dx = ROB.x - n.x, dz = ROB.z - n.z, d = Math.hypot(dx, dz);
-    if (d > 0.5) { n.x += dx / d * Math.min(d, 4.5 * dt); n.z += dz / d * Math.min(d, 4.5 * dt); n.r = Math.atan2(dx, dz); }
-    else if (ROB.m.parent) { scene.remove(ROB.m); n.mesh.userData.punchT = 0.25; say(n, pick(['Tera batua ab mera!', 'Chai-paani ho gaya, shukriya!', 'Agli baar sambhal ke chaliyo!']), 2.2); }
-    if (t > ROB.t + 2) { if (ROB.m.parent) scene.remove(ROB.m); ROB = null; } }
+  if (ROB) { const n = ROB.n;
+    if (Math.hypot(ROB.x - n.x, ROB.z - n.z) <= 0.55 && ROB.m.parent) { scene.remove(ROB.m); n.mesh.userData.punchT = 0.25; say(n, pick(['Tera batua ab mera!', 'Chai-paani ho gaya, shukriya!', 'Agli baar sambhal ke chaliyo!']), 2.2); }
+    if (t > ROB.t + 4.5) { if (ROB.m.parent) scene.remove(ROB.m); ROB = null; } }
 }
 const FIGHTERS = []; let PEHLWAN = null;
 function spawnFighters() {
@@ -1303,6 +1302,7 @@ function updateFighters(dt) {
   const gone = [];
   for (const n of FIGHTERS) {
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
+    if (ROB && ROB.n === n && n.state !== 'ko') { const rx = ROB.x - n.x, rz = ROB.z - n.z, rd = Math.hypot(rx, rz), mv = rd > 0.5; if (mv) { n.x += rx / rd * Math.min(rd, 4.5 * dt); n.z += rz / rd * Math.min(rd, 4.5 * dt); n.r = Math.atan2(rx, rz); } m.position.set(n.x, groundY(n.x, n.z), n.z); m.rotation.y = n.r; animChar(m, dt, mv ? 1 : 0, 1.3); continue; } // the robber walks to your batua, nothing else
     if ((n.jack || n.badla || n.fromPed || n.don) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && !n.don && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false, gm = null;

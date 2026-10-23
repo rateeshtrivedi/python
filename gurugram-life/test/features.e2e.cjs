@@ -46,7 +46,7 @@ const results = []; let errs = [];
     const r = await E(async pm => { const t = window.__t, G = t.G; t.teleport(pm.x + pm.fx * 30, pm.z + pm.fz * 30, Math.atan2(pm.fx, pm.fz)); t.mount('chhotu'); const f0 = t.fuelLeft(); G.vs = 20; await new Promise(r => setTimeout(r, 2500)); const f1 = t.fuelLeft();
       G.x = pm.x + pm.fx * 1.5; G.z = pm.z + pm.fz * 1.5; G.vs = 0; t.updateZones(); return { f0: +f0.toFixed(2), f1: +f1.toFixed(2), label: t.nearZone && t.nearZone.label() }; }, pm);
     return { ok: r.f1 < r.f0 && /Petrol bharwao|Tanki full/.test(r.label || ''), info: JSON.stringify(r) }; });
-  await step('an empty tank crawls and offers the petrol-wala bhaiya', async () => { const r = await E(async () => { const t = window.__t, G = t.G; t.L.fuel._tmp = 0.01; G.vs = 20; await new Promise(r => setTimeout(r, 5000)); return { vs: +Math.abs(G.vs).toFixed(1), card: document.querySelector('#raceres h2')?.textContent }; });
+  await step('an empty tank crawls and offers the petrol-wala bhaiya', async () => { const r = await E(async () => { const t = window.__t, G = t.G; t.L.fuel._tmp = 0.01; G.vs = 20; for (let k = 0; k < 24 && (k < 6 || Math.abs(G.vs) >= 3); k++) await new Promise(r => setTimeout(r, 500)); /* slows to a push, however slow the renderer */ return { vs: +Math.abs(G.vs).toFixed(1), card: document.querySelector('#raceres h2')?.textContent }; });
     await closeCards(); await E(() => window.__t.dismount()); return { ok: r.vs < 3 && /Petrol khatam/.test(r.card || ''), info: JSON.stringify(r) }; });
   await step('police catch you: arrest at the thana and a fine, the car stays yours', async () => {
     await E(() => { const t = window.__t, G = t.G; t.teleport(30, 40, 0); t.mount('chhotu'); G.loaner = true; t.startChase({ near: true, secs: 30 }); G.chase.wait = 0; G.chase.x = G.x + 1; G.chase.z = G.z; }); await W(9000);
@@ -73,7 +73,7 @@ const results = []; let errs = [];
     return { ok: r.hp < 100 && r.d > 2.4, info: JSON.stringify(r) }; });
   await step('the gang follows you and joins the fight', async () => {
     const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); G.hp = 100; const crew = [{ name: 'Bunty', shirt: 2, g: 'm' }, { name: 'Sonu', shirt: 5, g: 'm' }]; P.gang = crew; t.syncGang(); const keep = setInterval(() => { if (t.P.gang.length < 2) { t.P.gang = crew; t.syncGang(); } }, 50); /* the gang lives on the server: hold the test one */
-      await new Promise(r => setTimeout(r, 600)); G.x += 12; await new Promise(r => setTimeout(r, 3500)); const follow = t.GANG.map(m => +Math.hypot(m.x - G.x, m.z - G.z).toFixed(1));
+      await new Promise(r => setTimeout(r, 600)); G.x += 12; for (let k = 0; k < 16 && (k < 7 || t.GANG.some(m => Math.hypot(m.x - G.x, m.z - G.z) >= 7)); k++) await new Promise(r => setTimeout(r, 500)); const follow = t.GANG.map(m => +Math.hypot(m.x - G.x, m.z - G.z).toFixed(1));
       const n = t.makeFighter('Gunda', G.x + 4, G.z + 4, 80, 2, 0x444444); n.state = 'aggro'; t.FIGHTERS.push(n); const h0 = n.hp; await new Promise(r => setTimeout(r, 6000));
       clearInterval(keep); return { follow, enemyHp: [h0, n.hp], state: n.state, visible: t.GANG.every(m => m.mesh.visible) }; });
     return { ok: r.follow.every(d => d < 7) && r.enemyHp[1] < r.enemyHp[0] && r.visible, info: JSON.stringify(r) }; });
@@ -89,7 +89,7 @@ const results = []; let errs = [];
   await step('knocked down by a chhora: he grabs your batua before the ambulance comes', async () => {
     const r = await E(async () => { const t = window.__t, G = t.G; t.teleport(30, 60, 0); await new Promise(r => setTimeout(r, 2600)); G.hp = 100; const m0 = t.P.money;
       const n = t.makeFighter('Chhora Chor', G.x, G.z + 2, 60, 0, 0x333333); n.state = 'aggro'; t.FIGHTERS.push(n); t.takeHit(200, n.name, n);
-      const rob = !!t.ROB; let picked = false; for (let k = 0; k < 20; k++) { await new Promise(r => setTimeout(r, 150)); if (t.ROB && !t.ROB.m.parent) picked = true; }
+      const rob = !!t.ROB; let picked = false; for (let k = 0; k < 40 && !picked; k++) { await new Promise(r => setTimeout(r, 150)); if (t.ROB && !t.ROB.m.parent) picked = true; }
       for (let k = 0; k < 60 && G.hp <= 0; k++) await new Promise(r => setTimeout(r, 200)); await new Promise(r => setTimeout(r, 1500)); n.state = 'ko'; n.t = 0.01;
       return { rob, picked, lost: m0 - t.P.money, want: t.D.robAmount(m0), hp: G.hp, toast: [...document.querySelectorAll('#toasts > *')].map(e => e.textContent).join(' | ') }; });
     return { ok: r.rob && r.picked && r.lost >= r.want && r.hp > 0, info: JSON.stringify(r) }; }); // lost = his share + the hospital bill
