@@ -131,6 +131,8 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 `npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock. `GL_LANG=hi` or `GL_LANG=en` runs it with the game translated. `npm run test:regress` (server on a fresh `DATA_DIR`) plays the whole game as a new player: sign-up, avatar, the intro film, Day 1, every Menu app, every action spot in the city, rides, fights, a race, the map, chat, every interior, moving home, language switch and the screen layout, with a screenshot per step; `PHONE=1` does the same on a 390×844 touch phone. `npm run test:features` checks the newer systems in the browser: the empty-pocket start, the 15-minute day, pumps and petrol, arrests, guns, the gang, Bada Kaam 1 played end to end, and street people who stop and turn.
 
+For the browser suites, start the server with `GL_WEATHER=0` so the weather stays clear: rain floods roads and slows walking and driving, which makes the movement checks flaky.
+
 ## How it's built
 
 - `server/index.js`: Express serves the page; a WebSocket server runs the world. The server owns money, purchases, missions, leaderboards, auctions, crews, turf, the belt, battles and events. It checks every purchase against the shared price list, limits how much and how often each job pays, checks punch range and rate-limits messages.

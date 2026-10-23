@@ -155,7 +155,8 @@ let worldEvent = null; // {type,start,end,data}
 const W_PICK = () => { const r = Math.random(); return r < 0.58 ? 0 : r < 0.74 ? 1 : r < 0.86 ? 2 : r < 0.95 ? 3 : 4; }; // mostly dry, rain often enough to matter
 const W_SPELL = lvl => Math.min(1200, (lvl >= 3 ? 50 + Math.random() * 400 : 70 + Math.random() * 830) * (0.6 + Math.random() * 0.8));
 // the server often starts fresh when the first player joins (free hosting sleeps), so the opening weather is clear most of the time
-let weather = (() => { const r = Math.random(), lvl = r < 0.7 ? 0 : r < 0.85 ? 1 : W_PICK(), t = now(); return { lvl, since: t, until: t + W_SPELL(lvl) * (0.4 + 0.6 * Math.random()) }; })();
+const FIXED_WX = (globalThis.process && globalThis.process.env && globalThis.process.env.GL_WEATHER) || ''; // tests pin the weather (GL_WEATHER=0 is clear skies)
+let weather = FIXED_WX !== '' ? { lvl: Number(FIXED_WX) | 0, since: now(), until: 1e15 } : (() => { const r = Math.random(), lvl = r < 0.7 ? 0 : r < 0.85 ? 1 : W_PICK(), t = now(); return { lvl, since: t, until: t + W_SPELL(lvl) * (0.4 + 0.6 * Math.random()) }; })();
 function weatherTick() {
   const t = now(); if (t < weather.until) return; const cur = weather.lvl; let lvl; const r = Math.random();
   if (r < 0.12) lvl = W_PICK(); // sudden jump: cloudburst out of nowhere, or rain stops dead
