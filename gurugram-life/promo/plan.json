@@ -1,11 +1,126 @@
-{"note": "One English POV + hook reel a day, 17-24 Oct 2026, ready by 7pm IST. Every day: new concept, new scenes, new beat style, new song pick. Adjust freely but never repeat a concept, beat style or song from log.json.",
+{
+ "note": "One English POV + hook reel a day, 17-24 Oct 2026, ready by 7pm IST. Every day: new concept, new scenes, new beat style, new song pick. Adjust freely but never repeat a concept, beat style or song from log.json.",
  "days": {
-  "2026-10-17": {"pov": "POV: Day 1 of your 'corporate job' in Gurugram", "format": "timestamps 8 AM to 11 PM", "scenes": "carjack hook, cab cancelled roadside, police chase commute, TechNova office, dhaba lunch, baraat jam, fireworks", "beat": "filmy", "song": "Apna Time Aayega (Gully Boy)", "backup": "Tauba Tauba (Bad Newz)"},
-  "2026-10-18": {"pov": "POV: You planned a 'chill Sunday' in Gurugram", "format": "expectation text vs what happens, Sunday chaos", "scenes": "Holi colours on Sohna Road, akhara dangal vs pehlwan, cow traffic on village road, roast battle at chaupal, Galleria chaat", "beat": "item", "song": "Kala Chashma (Baar Baar Dekho)", "backup": "Gallan Goodiyaan (Dil Dhadakne Do)"},
-  "2026-10-19": {"pov": "POV: Monday at TechNova Towers", "format": "'Things my manager said' list with game cut-aways", "scenes": "office shift minigame, Malhotra sir, pantry, Chalo cab rides, Jhatpat delivery in rain, auto-rickshaw", "beat": "edm", "song": "Badtameez Dil (Yeh Jawaani Hai Deewani)", "backup": "Kar Gayi Chull (Kapoor & Sons)"},
-  "2026-10-20": {"pov": "POV: Google Maps said 'fastest route'", "format": "navigation voice-text 'turn left' gags, GPS arrow on screen", "scenes": "GPS arrow, potholes, wrong-way traffic, toll plaza, metro, waterlogged underpass", "beat": "action", "song": "Dhoom Machale (Dhoom)", "backup": "Zinda Banda (Jawan)"},
-  "2026-10-21": {"pov": "POV: The Gali ke Don just called you", "format": "phone call cold-open, boss intro cards like a gangster film", "scenes": "Don phone call, Rinku Chhapri fight, chele, crew, slow-mo KO, Dalal Bhai tease", "beat": "gangster", "song": "Malhari (Bajirao Mastani)", "backup": "Jhoome Jo Pathaan (Pathaan)"},
-  "2026-10-22": {"pov": "POV: A baraat blocked Golf Course Road", "format": "'if you can't beat them, join them' escalation", "scenes": "baraat procession, joining the dance, throwing notes, money-bag rush, ghodi", "beat": "baraat", "song": "London Thumakda (Queen)", "backup": "Nachde Ne Saare (Baar Baar Dekho)"},
-  "2026-10-23": {"pov": "POV: Friday night in Gurugram", "format": "night-out speedrun, outfit change to arrival", "scenes": "Ambience Mall shopping, neon underglow drive, IPL screening at Cyber Hub, street race, police naka", "beat": "retro", "song": "Kar Gayi Chull (Kapoor & Sons) if unused, else Nashe Si Chadh Gayi (Befikre)", "backup": "Saturday Saturday (Humpty Sharma Ki Dulhania)"},
-  "2026-10-24": {"pov": "POV: You finally bought a Thar in Gurugram", "format": "glow-up / show-off, VIP HR26 plate reveal", "scenes": "garage, VIP plate auction, Thar show-off, race win, Goyal Jewellers chain, crew photo", "beat": "haryanvi", "song": "Gallan Goodiyaan (Dil Dhadakne Do) if unused, else Tune Maari Entriyaan (Gunday)", "backup": "Swag Se Swagat (Tiger Zinda Hai)"}
- }}
+  "2026-10-17": {
+   "pov": "POV: Day 1 of your 'corporate job' in Gurugram",
+   "format": "timestamps 8 AM to 11 PM",
+   "scenes": "carjack hook, cab cancelled roadside, police chase commute, TechNova office, dhaba lunch, baraat jam, fireworks",
+   "beat": "filmy",
+   "song": "Apna Time Aayega (Gully Boy)",
+   "backup": "Tauba Tauba (Bad Newz)"
+  },
+  "2026-10-18": {
+   "pov": "POV: You planned a 'chill Sunday' in Gurugram",
+   "format": "expectation text vs what happens, Sunday chaos",
+   "scenes": "Holi colours on Sohna Road, akhara dangal vs pehlwan, cow traffic on village road, roast battle at chaupal, Galleria chaat",
+   "beat": "item",
+   "song": "Kala Chashma (Baar Baar Dekho)",
+   "backup": "Gallan Goodiyaan (Dil Dhadakne Do)"
+  },
+  "2026-10-19": {
+   "pov": "POV: Monday at TechNova Towers",
+   "format": "'Things my manager said' list with game cut-aways",
+   "scenes": "office shift minigame, Malhotra sir, pantry, Chalo cab rides, Jhatpat delivery in rain, auto-rickshaw",
+   "beat": "edm",
+   "song": "Badtameez Dil (Yeh Jawaani Hai Deewani)",
+   "backup": "Kar Gayi Chull (Kapoor & Sons)"
+  },
+  "2026-10-20": {
+   "pov": "POV: Google Maps said 'fastest route'",
+   "format": "navigation voice-text 'turn left' gags, GPS arrow on screen",
+   "scenes": "GPS arrow, potholes, wrong-way traffic, toll plaza, metro, waterlogged underpass",
+   "beat": "action",
+   "song": "Dhoom Machale (Dhoom)",
+   "backup": "Zinda Banda (Jawan)"
+  },
+  "2026-10-21": {
+   "pov": "POV: The Gali ke Don just called you",
+   "format": "phone call cold-open, boss intro cards like a gangster film",
+   "scenes": "Don phone call, Rinku Chhapri fight, chele, crew, slow-mo KO, Dalal Bhai tease",
+   "beat": "gangster",
+   "song": "Malhari (Bajirao Mastani)",
+   "backup": "Jhoome Jo Pathaan (Pathaan)"
+  },
+  "2026-10-22": {
+   "pov": "POV: A baraat blocked Golf Course Road",
+   "format": "'if you can't beat them, join them' escalation",
+   "scenes": "baraat procession, joining the dance, throwing notes, money-bag rush, ghodi",
+   "beat": "baraat",
+   "song": "London Thumakda (Queen)",
+   "backup": "Nachde Ne Saare (Baar Baar Dekho)"
+  },
+  "2026-10-23": {
+   "pov": "POV: Friday night in Gurugram",
+   "format": "night-out speedrun, outfit change to arrival",
+   "scenes": "Ambience Mall shopping, neon underglow drive, IPL screening at Cyber Hub, street race, police naka",
+   "beat": "retro",
+   "song": "Kar Gayi Chull (Kapoor & Sons) if unused, else Nashe Si Chadh Gayi (Befikre)",
+   "backup": "Saturday Saturday (Humpty Sharma Ki Dulhania)"
+  },
+  "2026-10-24": {
+   "pov": "POV: You finally bought a Thar in Gurugram",
+   "format": "glow-up / show-off, VIP HR26 plate reveal",
+   "scenes": "garage, VIP plate auction, Thar show-off, race win, Goyal Jewellers chain, crew photo",
+   "beat": "haryanvi",
+   "song": "Gallan Goodiyaan (Dil Dhadakne Do) if unused, else Tune Maari Entriyaan (Gunday)",
+   "backup": "Swag Se Swagat (Tiger Zinda Hai)"
+  },
+  "2026-10-25": {
+   "pov": "POV: Your Delhi friend said Gurugram is 'just 30 minutes away'",
+   "format": "a running clock in the corner that keeps jumping (0:30 → 1:10 → 2:45 → 4:20) while you are stuck",
+   "scenes": "leaving at sunset, Kherki Daula toll queue, Iffco Chowk mahajam top-down, cows blocking the lane, metro packed, arriving at night to 'bhai kahan hai?'",
+   "beat": "filmy (seed 25)",
+   "song": "Dilli Wali Girlfriend (Yeh Jawaani Hai Deewani)",
+   "backup": "Abhi Toh Party Shuru Hui Hai (Khoobsurat)"
+  },
+  "2026-10-26": {
+   "pov": "POV: HR said the Diwali bonus is 'coming soon'",
+   "format": "HR message bubbles vs what you already spent (running total going negative)",
+   "scenes": "TechNova desk, Goyal Jewellers window, Ambience Mall shopping, Diwali fireworks on the roof, Sharma Sweets box, the bonus: ₹501 + a dry-fruit box",
+   "beat": "item (seed 26)",
+   "song": "Paisa Ye Paisa (Total Dhamaal)",
+   "backup": "Lungi Dance (Chennai Express)"
+  },
+  "2026-10-27": {
+   "pov": "POV: Rating Gurugram's roads out of 10",
+   "format": "big score cards per road (2/10, 0/10, 'cow/10'), last one 10/10 with a twist",
+   "scenes": "pothole bounce, speed-breaker launch on a Scooty, village road with cows, dusty kachcha road, Golf Course Road smooth NOS run (10/10) then a sudden jam",
+   "beat": "edm (seed 27)",
+   "song": "Zingaat (Dhadak)",
+   "backup": "Chaiyya Chaiyya (Dil Se)"
+  },
+  "2026-10-28": {
+   "pov": "POV: You on the phone with Mummy",
+   "format": "what you say to Mummy (subtitle) vs what's actually on screen",
+   "scenes": "'haan mummy, office mein hoon' at the akhara dangal, 'khana kha liya' at the theka, 'bas ghar pahunch gaya' in a police chase, 'jaldi so jaunga' at Neon Nights at 2 AM, last shot: Mummy calls again, you're in hospital",
+   "beat": "retro (seed 28)",
+   "song": "Ainvayi Ainvayi (Band Baaja Baaraat)",
+   "backup": "Sooraj Dooba Hain (Roy)"
+  },
+  "2026-10-29": {
+   "pov": "POV: Things you only see in Gurugram",
+   "format": "countdown list #5 → #1, each a 'wait, what?' shot",
+   "scenes": "cow next to a glass skyscraper, boat in an underpass, tractor beside a luxury car at a signal, baraat on the highway, ghodi at Cyber Hub, #1 the rent",
+   "beat": "action (seed 29)",
+   "song": "Kajra Re (Bunty Aur Babli)",
+   "backup": "Ghungroo (War)"
+  },
+  "2026-10-30": {
+   "pov": "POV: You became a delivery boy in Gurugram",
+   "format": "delivery app notifications vs reality, rating counter",
+   "scenes": "Jhatpat order ping, scooty through traffic, guard at the society gate, rain, the stairs, customer: 'bhaiya thanda ho gaya', tip ₹0 + 1 star, last shot: you eat it yourself",
+   "beat": "gangster (seed 30)",
+   "song": "Mauja Hi Mauja (Jab We Met)",
+   "backup": "Aankh Marey (Simmba)"
+  },
+  "2026-10-31": {
+   "pov": "POV: Halloween in Gurugram hits different",
+   "format": "'scariest things in Gurugram' horror-film title cards, dark filter, jump-scare cuts",
+   "scenes": "Iffco Chowk at 6 PM, Sharma Uncle walking up, police naka at midnight, the rent hike notice, empty Cyber Hub at night, final jump-scare: the EMI",
+   "beat": "gangster or action, darker seed 31",
+   "song": "Ami Je Tomar (Bhool Bhulaiyaa)",
+   "backup": "Aayi Nai (Stree 2)"
+  }
+ },
+ "note2": "Week 2 (25-31 Oct 2026): the user wants mainly the SILENT Reel + SILENT Short and the two txt files (they add the song in the app). Make every concept a scroll-stopper: relatable Gurugram/Delhi-NCR pain or flex, the joke readable in the first second, a twist or punchline on the last shot, a comment-bait question on the end card. Never repeat a concept, format, scene set or song from log.json."
+}
