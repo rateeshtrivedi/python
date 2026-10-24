@@ -31,7 +31,7 @@ function compile(pairs) {
   TMPL.sort((a, b) => b.w - a.w); // most specific first
 }
 function fill(out, vals) { let i = 0; return out.replace(/\{(\d*)\}/g, (_, n) => { const v = vals[n ? +n - 1 : i++]; return v == null ? '' : exactOnly(v); }); }
-function exactOnly(v) { const m = v.match(EDGE); const t = EXACT.get(norm(m[2])); return t == null ? v : m[1] + t + m[3]; }
+function exactOnly(v) { const w = EXACT.get(norm(v)); if (w != null) return w; const m = v.match(EDGE); const t = EXACT.get(norm(m[2])); return t == null ? v : m[1] + t + m[3]; } // whole sentence first (keys keep their full stop), then without the edges
 function one(s) {
   let t = EXACT.get(s); if (t != null) return t;
   for (const T of TMPL) { if (!s.includes(T.need)) continue; const m = s.match(T.re); if (m) return fill(T.out, m.slice(1)); }

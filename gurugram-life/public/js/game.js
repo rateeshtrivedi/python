@@ -871,6 +871,7 @@ function openPhone() {
   tutEvent('phone');
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
+    { const live = el('p', { class: 'menuclock' }); const tick = () => { if (!live.isConnected && live.dataset.on) return; live.dataset.on = 1; const bits = []; if (G.ev) bits.push('⏱ ' + G.ev.name + ' · ' + mmss(Math.max(0, Math.round(G.ev.end - serverNow())))); if (BK.on && BK.deadline) bits.push('⏱ Bada Kaam · ' + mmss(timeLeft())); live.textContent = bits.join('  ·  '); live.hidden = !bits.length; setTimeout(tick, 1000); }; tick(); b.append(live); } // the clock doesn't stop for the menu, so the menu shows it
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
     const apps = [['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
     const LOCK = { Gang: 'gang', Zameen: 'land', Hathiyaar: 'guns' }; const grid = el('div', { class: 'apps' }); for (const a of apps) { const lk = LOCK[a[0]] && !D.unlocked(P, LOCK[a[0]]); grid.append(el('button', { class: 'app' + (lk ? ' locked' : ''), title: lk ? 'Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] + ' ke baad khulega' : '', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0], lk ? el('small', { class: 'lockb', text: '🔒 Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] }) : '')); } b.append(grid); /* a lock badge on what the story hasn't opened yet */
@@ -1499,6 +1500,11 @@ function findSpot(cx, cz, w, d, r0, r1) {
 function foodTip() {
   G.foodTip = now() + 90; const f = mapPOIs().filter(q => q.cat === 'khana').sort((a, b) => Math.hypot(a.x - G.x, a.z - G.z) - Math.hypot(b.x - G.x, b.z - G.z))[0];
   if (!f) return toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); toast('Bhookh lag rahi se! Khana: ' + f.name + ' · ' + Math.round(Math.hypot(f.x - G.x, f.z - G.z)) + ' m', 'bad'); if (!G.wp && !G.inside) setWaypoint(f.x, f.z, f.name);
+}
+function openNear(sp) { // a start point that landed in a wall or a stall: the nearest open ground
+  const free = (x, z) => !colHit(x - 0.7, x + 0.7, z - 0.7, z + 0.7); if (free(sp.x, sp.z)) return sp;
+  for (let r = 1.5; r <= 14; r += 1.5) for (let k = 0; k < 12; k++) { const x = sp.x + Math.cos(k / 12 * Math.PI * 2) * r, z = sp.z + Math.sin(k / 12 * Math.PI * 2) * r; if (free(x, z)) return { ...sp, x, z }; }
+  return { ...sp, ...safeSpot(sp.x, sp.z) };
 }
 function safeSpot(x, z) {
   const c = []; for (const r of ROADS) for (const s of [-9.5, 9.5]) { c.push({ x: r + s, z }); c.push({ x, z: r + s }); }
@@ -2659,7 +2665,7 @@ function buildRaceSpots() {
     ZONES.push({ zone: 'out', x: x0, z: z0, r: 16, label: () => G.race ? null : raceUnlocked(i) ? 'Race lagao: ' + R.name + ' vs ' + R.rival : 'Locked: pehle ' + D.RACES[i - 1].rival + ' ko hara', act: () => raceUnlocked(i) ? startRace(R.id) : toast('Pehle ' + D.RACES[i - 1].name + ' jeet', 'bad') });
   });
 }
-function bestCar() { const own = (P.vehicles || []).filter(v => D.VEH[v]); own.sort((a, b) => D.VEH[b].speed - D.VEH[a].speed); return own[0] || null; }
+function bestCar() { const own = (P.vehicles || []).filter(v => D.VEH[v] && D.VEH[v].kind === 4); /* cars only: a race never puts a Scooty against a car */ own.sort((a, b) => D.VEH[b].speed - D.VEH[a].speed); return own[0] || null; }
 function startRace(id, opts) {
   opts = opts || {}; const i = D.RACES.findIndex(r => r.id === id); const R = D.RACES[i]; if (!R) return;
   if (G.race) cleanupRace(); if (G.inside) return toast('Pehle bahar aa'); if (G.selfie) endSelfie(); closeModal(); $('raceres').hidden = true;
@@ -3186,7 +3192,7 @@ function sendAvatar() { if (!G.avatarDirty && P.look) return; G.avatarDirty = fa
 function startGame(daily) {
   $('login').hidden = true; $('hud').hidden = false; G.started = true; L.hunger = Math.max(L.hunger, 50); /* nobody arrives starving */
   player = makeChar(D.SHIRTS[P.color]); scene.add(player); sendAvatar(); applyMyLook();
-  const st = STARTS.find(x => x[0] === G.startId) || STARTS[0]; const sp = st[3](); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; G.pitch = 0.12;
+  const st = STARTS.find(x => x[0] === G.startId) || STARTS[0]; const sp = openNear(st[3]()); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; G.pitch = 0.12;
   updateHUD(); renderMissions(); setNetChip(); G.startedAt = now();
   { const k = $('keyhint'); k.hidden = false; k.innerHTML = '<kbd>W A S D</kbd> chalo · <kbd>Shift</kbd> daudo<br><kbd>Space</kbd> jump · <kbd>Click</kbd> punch<br><kbd>E</kbd> action · <kbd>F</kbd> gaadi · <kbd>M</kbd> map<br><kbd>Tab</kbd> menu · <kbd>T</kbd> chat · <kbd>Esc</kbd> mouse'; } // stays on screen
   const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length); const cl = chapterLine();
