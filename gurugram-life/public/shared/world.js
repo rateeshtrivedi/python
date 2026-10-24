@@ -28,7 +28,7 @@ function newProfile(name, color) {
     daily: { last: '', streak: 0 }, blessed: '', party: 0, tutDone: false, created: Date.now(), lastSeen: Date.now(),
   };
 }
-function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; }
+function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); if (p.bkOn && (p.bkOn.i !== p.bk || now() - p.bkOn.at > 6 * 3600)) p.bkOn = null; /* a kaam left overnight starts fresh */ p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; }
 function publicProfile(p) { const { token, ...rest } = p; return rest; }
 
 
@@ -99,10 +99,10 @@ function storyPrize(c) {
 function bkDone(c, m) {
   const p = c.p, i = Math.floor(num(m.i, -1)), B = D.BADE[i];
   if (!B || i !== (p.bk || 0)) return { ok: false, error: 'Yeh kaam abhi nahi' };
-  if (!c.bk || c.bk.i !== i) return { ok: false, error: 'Kaam poora nahi hua' };
-  if (now() - c.bk.at < 50) return { ok: false, error: 'Kaam poora nahi hua', wait: 50 - (now() - c.bk.at) }; // too quick: the client waits this long and asks again
+  const on = p.bkOn; if (!on || on.i !== i) return { ok: false, error: 'Kaam poora nahi hua' };
+  if (now() - on.at < 50) return { ok: false, error: 'Kaam poora nahi hua', wait: 50 - (now() - on.at) }; // too quick: the client waits this long and asks again
   if (B.gang && p.gang.length < B.gang) return { ok: false, error: 'Is kaam ke liye gang chahiye' };
-  c.bk = null; p.bk = i + 1; credit(c, B.pay, 'Bada Kaam: ' + B.title); p.respect += 25 + i * 10; addXP(c, 150 + 50 * i); track(c, 'bade');
+  p.bkOn = null; p.bk = i + 1; credit(c, B.pay, 'Bada Kaam: ' + B.title); p.respect += 25 + i * 10; addXP(c, 150 + 50 * i); track(c, 'bade');
   if (B.plot && !db.plots[B.plot]) db.plots[B.plot] = p.id;
   if (B.unlock) send(c, { t: 'toast', text: { guns: 'Naya: Bittu Hathiyaar wala (Sohna Road) ab tujhe katta aur dunali bechega', gang: 'Naya: Bhola Pehlwan ke akhare se apni gang bana', land: 'Naya: Zameen ke saude (Menu → Zameen)' }[B.unlock], kind: 'money', sfx: 'level' });
   announce(p.name + ' ne Bada Kaam "' + B.title + '" kar dikhaya!', 'showoff'); storyPrize(c); dirty = true; sendProfile(c);
@@ -547,8 +547,10 @@ function handle(c, m) {
     }
     case 'setcur': { if (p.vehicles.includes(m.v)) { p.cur = m.v; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'rishta': reply(rishta(c, m)); break;
-    case 'bkstart': { const i = Math.floor(num(m.i, -1)); if (i === (p.bk || 0) && D.BADE[i]) { c.bk = { i, at: now() }; reply({ ok: true }); } else reply({ ok: false, error: 'Yeh kaam abhi nahi' }); break; }
+    case 'bkstart': { const i = Math.floor(num(m.i, -1)); if (i === (p.bk || 0) && D.BADE[i]) { p.bkOn = { i, at: now(), step: 0 }; dirty = true; reply({ ok: true }); } /* kept in the profile: a reload picks the kaam up where it was */ else reply({ ok: false, error: 'Yeh kaam abhi nahi' }); break; }
     case 'bkdone': reply(bkDone(c, m)); break;
+    case 'bkstep': { if (p.bkOn && p.bkOn.i === Math.floor(num(m.i, -1))) { p.bkOn.step = Math.max(0, Math.min(20, Math.floor(num(m.step, 0)))); dirty = true; } break; }
+    case 'bkquit': { if (p.bkOn) { p.bkOn = null; dirty = true; } break; }
     case 'shot': { // a gunshot: spends a round; a hit on a nearby player (or an AI player) hurts them
       const g = D.GUNS[m.gun]; if (!g || !p.guns.includes(m.gun) || !((p.ammo[m.gun] || 0) > 0) || !rateOk(c, 'shot', g.cd * 0.8)) return;
       p.ammo[m.gun]--; dirty = true; track(c, 'shots'); if (!c.st) return;

@@ -562,12 +562,15 @@ function districtBuilders() {
 
 // ---------------- interiors
 function floorTex(kind) { return texFrom((x, w, h) => { if (kind === 'marble') { x.fillStyle = '#e8e2d6'; x.fillRect(0, 0, w, h); x.fillStyle = '#d6cdbb'; x.fillRect(0, 0, w / 2, h / 2); x.fillRect(w / 2, h / 2, w / 2, h / 2); } else if (kind === 'carpet') { x.fillStyle = '#3d4a5c'; x.fillRect(0, 0, w, h); for (let i = 0; i < 200; i++) { x.fillStyle = pick(['#43526a', '#38455a']); x.fillRect(Math.random() * w, Math.random() * h, 2, 2); } } else if (kind === 'tile') { x.fillStyle = '#bdb3a0'; x.fillRect(0, 0, w, h); x.strokeStyle = '#8f8676'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2); } else if (kind === 'parquet') { x.fillStyle = '#7a4a26'; x.fillRect(0, 0, w, h); for (let r = 0; r < 8; r++) for (let c = 0; c < 2; c++) { x.fillStyle = pick(['#83512b', '#6f4222', '#8c5a31', '#76482a']); x.fillRect(c * w / 2 + (r % 2) * w / 4, r * h / 8, w / 2 - 1, h / 8 - 1); } } else if (kind === 'chess') { x.fillStyle = '#efe9dd'; x.fillRect(0, 0, w, h); x.fillStyle = '#2b2622'; x.fillRect(0, 0, w / 2, h / 2); x.fillRect(w / 2, h / 2, w / 2, h / 2); x.strokeStyle = 'rgba(200,170,90,.6)'; x.lineWidth = 1; x.strokeRect(0.5, 0.5, w - 1, h - 1); } else if (kind === 'club') { x.fillStyle = '#120a1c'; x.fillRect(0, 0, w, h); x.strokeStyle = '#2a1838'; x.lineWidth = 2; x.strokeRect(1, 1, w - 2, h - 2); } else { x.fillStyle = '#a8875a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 300; i++) { x.fillStyle = pick(['#9b7a4f', '#b39264', '#8f7048']); x.fillRect(Math.random() * w, Math.random() * h, 3, 2); } } }, 64, 64, 1, 1); }
+const EXIT_RINGS = [];
 function makeRoom(key, ox, oz, W, D2, H, fkind, wall, fr) {
   const g = new THREE.Group(); scene.add(g); const ft = floorTex(fkind); ft.repeat.set(W / (fr || 6), D2 / (fr || 6));
   const f = new THREE.Mesh(new THREE.PlaneGeometry(W, D2), new THREE.MeshLambertMaterial({ map: ft })); f.rotation.x = -Math.PI / 2; f.position.set(ox, 0.01, oz); g.add(f);
   bx(g, W, H, 0.6, wall, ox, H / 2, oz - D2 / 2, { col: key }); bx(g, 0.6, H, D2, wall, ox - W / 2, H / 2, oz, { col: key }); bx(g, 0.6, H, D2, wall, ox + W / 2, H / 2, oz, { col: key });
   const seg = (W - 6) / 2; bx(g, seg, H, 0.6, wall, ox - W / 2 + seg / 2, H / 2, oz + D2 / 2, { col: key }); bx(g, seg, H, 0.6, wall, ox + W / 2 - seg / 2, H / 2, oz + D2 / 2, { col: key }); bx(g, 6, H - 4, 0.6, wall, ox, 4 + (H - 4) / 2, oz + D2 / 2);
   bx(g, 6, 4, 0.2, 0, ox, 2, oz + D2 / 2 + 0.3, { mat: glow(0x1a1a1a) }); sign(g, 'EXIT · BAHAR', null, '#1a8a4a', '#ffffff', 4, 0.8, ox, 4.6, oz + D2 / 2 - 0.35, Math.PI);
+  { const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 32), new THREE.MeshBasicMaterial({ color: 0x39ff88, transparent: true, opacity: 0.85, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(ox, 0.04, oz + D2 / 2 - 1.2); g.add(ring); EXIT_RINGS.push(ring);
+    const l = labelSprite('🚪 Bahar · E', { fs: 34, scale: 0.55, bg: 'rgba(26,138,74,.9)' }); l.position.set(ox, 2.6, oz + D2 / 2 - 1.2); g.add(l); } // the way out glows on the floor
   INTERIOR[key] = { name: INTERIOR_NAMES[key], ox, oz, W, D: D2, H, g, spawn: { x: ox, z: oz + D2 / 2 - 4, r: Math.PI } };
   zone(key, ox, oz + D2 / 2 - 1.2, 3.2, () => 'Exit to ' + DOOR_NAMES[key], () => exitInterior()); return g;
 }
@@ -775,7 +778,7 @@ async function acceptDon() {
   const s = donState(); if (!s || !s.avail) return; let best = 0, bd = 1e9;
   D.DON_SPOTS.forEach((q, i) => { const d = Math.hypot(q[0] - G.x, q[1] - G.z), sc = d < 50 ? d + 400 : d; if (sc < bd) { bd = sc; best = i; } }); // nearest corner, but not right on top of you
   const r = await net.req('donstart', { spot: best }); if (!r.ok) return toast('Abhi nahi ho paya, thodi der mein try kar');
-  const q = D.DON_SPOTS[best]; setWaypoint(q[0], q[1], s.C.boss + ' (' + q[2] + ')'); const dist = Math.round(Math.hypot(q[0] - G.x, q[1] - G.z) / 5) * 5;
+  const q = D.DON_SPOTS[best]; setWaypoint(q[0], q[1], s.C.boss + ' (' + q[2] + ')', 'don'); const dist = Math.round(Math.hypot(q[0] - G.x, q[1] - G.z) / 5) * 5;
   showCard('Chapter ' + (s.ch + 1) + ': ' + s.C.boss, s.C.intro.replace(s.C.at[2], q[2]) + ' (' + dist + ' m door)', [['🛺 Auto bulao (₹50)', async () => { $('raceres').hidden = true; const b2 = await buy('misc', 'don_auto'); if (!b2.ok) return; if (G.veh) dismount(); fadeTo('Auto wale bhaiya ' + q[2] + ' le ja rahe se...', 1400, () => { G.x = q[0] + 9; G.z = q[1] + 9; G.r = G.yaw = Math.atan2(-9, -9); }); }, 'alt'], ['Khud jaunga (GPS on)', () => { $('raceres').hidden = true; }, 'alt2']], 'GPS laga diya · Chele bhi saath honge, taiyaar reh!');
 }
 function donRewardText(i) { return fmt(Math.round(D.DON[i].r * (1 + 0.1 * Math.min(P.level, 10)) / 10) * 10); }
@@ -984,7 +987,8 @@ $('tutSkip').onclick = () => { G.tut = false; $('tut').hidden = true; net.send('
 // ================================================================ JOBS
 function makeBeacon(color) { const g = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.1, 60, 12, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide })); c.position.y = 30; g.add(c); const r = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.12, 6, 28), new THREE.MeshBasicMaterial({ color })); r.rotation.x = Math.PI / 2; r.position.y = 0.4; g.add(r); g.userData.ring = r; scene.add(g); return g; }
 const jobBeacon = makeBeacon(0x2fc46b), wpBeacon = makeBeacon(0xf6c026); jobBeacon.visible = wpBeacon.visible = false;
-function setWaypoint(x, z, name) { G.wp = { x, z, name }; wpBeacon.position.set(x, 0, z); wpBeacon.visible = true; toast('GPS set: ' + name); }
+// GPS priority: what you asked for > the Bada Kaam > a job > the Gali ke Don > a city event; an event never takes the arrow from the story
+function setWaypoint(x, z, name, src) { G.wp = { x, z, name, src: src || 'you' }; wpBeacon.position.set(x, 0, z); wpBeacon.visible = true; toast('GPS set: ' + name); }
 function jobTarget() { const j = G.job; return j.stage === 'pickup' ? j.from : j.to; }
 function jobText() { const j = G.job; if (!j) return ''; if (j.type === 'quest') return j.title + ' → ' + j.to.name; return j.type === 'ride' ? (j.stage === 'pickup' ? 'Pick up ' + j.who + ' at ' + j.from.name : 'Drop ' + j.who + ' at ' + j.to.name) : (j.stage === 'pickup' ? 'Collect order at ' + j.from.name : 'Deliver to ' + j.to.name); }
 function hereXZ() { return G.inside ? DOORS[G.inside] : G; }
@@ -1001,8 +1005,16 @@ function offerQuest() {
   if (G.job) return toast('Pehle current kaam poora kar'); if (G.questCD > now()) return toast('Ramphal ji: "Abhi aaram kar, thodi der baad aaiyo"');
   const q = pick(QUESTS); openModal('Ramphal Ahlawat', '2007 mein zameen biki, ab crorepati. Kaam dete hain, paisa bhi', b => { b.append(el('p', { text: '"' + q[0] + '. Jaldi pahunchaiyo, inaam milega."' }), itemRow('Kaam le lo', 'Reward up to ' + fmt(1500), 'Haan ji', () => { closeModal(); G.questCD = now() + 90; G.job = { type: 'quest', stage: 'drop', title: q[0], from: { x: 170, z: 155, name: 'Badshahpur' }, to: { name: blockOf(q[1], q[2])?.[2] || 'Gurugram', x: q[1], z: q[2] + 71 }, pay: irnd(1000, 1500), par: 70, t0: now() }; jobBeacon.position.set(q[1], 0, q[2] + 71); jobBeacon.visible = true; ev('quest_start'); renderJob(); })); });
 }
-function endJob() { G.job = null; jobBeacon.visible = false; $('job').hidden = true; }
-function renderJob() { const j = G.job; if (!j) { $('job').hidden = true; return; } $('job').hidden = false; const t = jobTarget(); const p = hereXZ(); const d = Math.hypot(t.x - p.x, t.z - p.z); const surge = G.ev?.type === 'flood' && j.type !== 'quest' ? 2 : 1; $('job').textContent = ''; $('job').append(el('b', { text: (j.type === 'ride' ? 'Chalo ride · ' : j.type === 'quest' ? 'Ramphal ji ka kaam · ' : 'Jhatpat order · ') + fmt(j.pay * (j.car ? 1.4 : 1) * surge) }), el('div', { text: jobText() }), el('div', { class: 'dist', text: Math.round(d) + ' m' })); }
+function endJob() { G.job = null; jobBeacon.visible = false; $('job').hidden = true; persistJob(); }
+// the job in hand survives a reload (for 20 minutes); after that the customer has gone
+function persistJob() { const j = G.job; L.job = j ? { ...j, el: now() - j.t0, at: Date.now() } : null; saveLocal(); }
+function restoreJob() {
+  const j = L.job; if (!j) return; L.job = null; saveLocal();
+  if (Date.now() - j.at > 20 * 60e3) return toast('Pichla order cancel ho gaya: customer intezaar na kar saka', 'bad');
+  const { el, at, ...job } = j; G.job = { ...job, t0: now() - el }; const t = job.stage === 'pickup' ? job.from : job.to; jobBeacon.position.set(t.x, 0, t.z); jobBeacon.visible = true; renderJob(); persistJob();
+  toast('Kaam wapas: ' + jobText(), 'money');
+}
+function renderJob() { const j = G.job; if (!j) { $('job').hidden = true; return; } if (!L.job || L.job.stage !== j.stage || L.job.t0 !== j.t0) persistJob(); $('job').hidden = false; const t = jobTarget(); const p = hereXZ(); const d = Math.hypot(t.x - p.x, t.z - p.z); const surge = G.ev?.type === 'flood' && j.type !== 'quest' ? 2 : 1; $('job').textContent = ''; $('job').append(el('b', { text: (j.type === 'ride' ? 'Chalo ride · ' : j.type === 'quest' ? 'Ramphal ji ka kaam · ' : 'Jhatpat order · ') + fmt(j.pay * (j.car ? 1.4 : 1) * surge) }), el('div', { text: jobText() }), el('div', { class: 'dist', text: Math.round(d) + ' m' })); }
 async function updateJob() {
   const j = G.job; if (!j || G.inside || j.busy) return; const t = jobTarget(); if (Math.hypot(t.x - G.x, t.z - G.z) >= 8) return;
   if (j.stage === 'pickup') { if (j.type === 'ride' && !G.veh) return; j.stage = 'drop'; j.t0 = now(); j.car = G.veh && D.VEH[G.veh].kind === 4; jobBeacon.position.set(j.to.x, 0, j.to.z); A.sfx('ok'); if (j.type === 'ride') { toast(j.who + ' baith gaye. "' + pick(RIDE_CHAT) + '"'); say(player, 'Ram Ram!', 3); } else toast('Order le liya! Garam garam pahuncha.'); return; }
@@ -1044,7 +1056,7 @@ function toggleVehicle() { if (G.veh) { if (G.race && G.race.phase !== 'done') r
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
 function exitInterior() { const key = G.inside; const d = DOORS[key]; fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
-function setIndoor(on) { scene.fog.near = on ? 60 : 160; scene.fog.far = on ? 220 : 560; camera.far = on ? 260 : 640; camera.updateProjectionMatrix(); if (!on) A.setOverride(null); }
+function setIndoor(on) { $('bExit').hidden = !on; scene.fog.near = on ? 60 : 160; scene.fog.far = on ? 220 : 560; camera.far = on ? 260 : 640; camera.updateProjectionMatrix(); if (!on) A.setOverride(null); }
 function fadeTo(text, ms, cb) { const f = $('fade'); f.textContent = text; f.classList.add('show'); G.frozen = true; setTimeout(() => { cb && cb(); setTimeout(() => { f.classList.remove('show'); G.frozen = false; }, Math.max(250, ms - 400)); }, 400); }
 function resolve(o, r) {
   const list = COL[G.inside || 'out']; let hit = false;
@@ -1101,7 +1113,7 @@ const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDe
 $('modal').addEventListener('click', e => { const t = G.tap; if (t && e.timeStamp - t.t < 2500 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 30) /* no new finger since the button: this is its leftover click */ { G.tap = null; e.stopPropagation(); e.preventDefault(); } }, true);
 $('modal').addEventListener('pointerdown', () => { G.tap = null; }, true); // a real tap inside the modal: let its click through
 $('stat').addEventListener('click', e => { if (document.body.classList.contains('touch') && !e.target.closest('button')) $('stat').classList.toggle('open'); }); // phones: tap the small stats card for the full panel
-tap('bAct', doAction); tap('bPunch', attack); tap('bGun', cycleWeapon); tap('bVeh', toggleVehicle); tap('bMenu', openPhone);
+tap('bAct', doAction); tap('bPunch', attack); tap('bGun', cycleWeapon); tap('bVeh', toggleVehicle); tap('bMenu', openPhone); tap('bExit', () => { if (G.inside) exitInterior(); });
 $('bRun').addEventListener('pointerdown', e => { e.preventDefault(); if (G.veh) { nosHeld = true; return; } G.jumpReq = true; }); // Jump on foot, hold for NOS in a car
 for (const ev2 of ['pointerup', 'pointercancel', 'pointerleave']) $('bRun').addEventListener(ev2, () => { nosHeld = false; });
 $('helpBtn').onclick = openHelp; $('musicBtn').onclick = appRadio; $('net').onclick = appOnline;
@@ -1176,7 +1188,10 @@ function updateCamera(dt) {
   const h = G.veh ? (D.VEH[G.veh].kind === 4 ? 2.2 : 1.8) : 1.9; const dist = G.veh ? G.dist + 3 : G.dist;
   let cx = G.x - Math.sin(G.yaw) * Math.cos(G.pitch) * dist, cz = G.z - Math.cos(G.yaw) * Math.cos(G.pitch) * dist, cy = h + Math.sin(G.pitch) * dist + 0.5;
   let snap = false;
-  if (G.inside) { const I = INTERIOR[G.inside]; cx = clamp(cx, I.ox - I.W / 2 + 0.8, I.ox + I.W / 2 - 0.8); cz = clamp(cz, I.oz - I.D / 2 + 0.8, I.oz + I.D / 2 - 0.8); cy = Math.min(cy, I.H - 0.5); }
+  if (G.inside) { const I = INTERIOR[G.inside], lx = I.ox - I.W / 2 + 0.8, hx = I.ox + I.W / 2 - 0.8, lz = I.oz - I.D / 2 + 0.8, hz = I.oz + I.D / 2 - 0.8;
+    cx = clamp(cx, lx, hx); cz = clamp(cz, lz, hz); cy = Math.min(cy, I.H - 0.5);
+    if (Math.hypot(cx - G.x, cz - G.z) < 2.6) { // backed into a wall: look from the room's side, up near the ceiling, so the room (and the door) stay in view
+      const ax = I.ox - G.x, az = I.oz - G.z, ad = Math.hypot(ax, az) || 1; cx = clamp(G.x + ax / ad * 3.6, lx, hx); cz = clamp(G.z + az / ad * 3.6, lz, hz); cy = I.H - 0.6; snap = true; } }
   else { // a building between you and the camera: slide the camera in front of it (and a little higher) so the walls never hide you
     const k = camBlock(G.x, G.z, cx, cz, cy); if (k < 1) { const full = Math.hypot(cx - G.x, cz - G.z), want = Math.max(1.1, full * k - 0.35), f = want / full; cx = G.x + (cx - G.x) * f; cz = G.z + (cz - G.z) * f; cy = h + 0.5 + (cy - h - 0.5) * Math.max(f, 0.6) + (1 - f) * 0.8; if (want < 3) cy = h + 0.6; /* no room behind you (back to a wall, under a shop awning): a close over-the-shoulder view below the awnings */ snap = true; } }
   camWant.set(cx, cy, cz); camera.position.lerp(camWant, snap ? Math.min(1, dt * 25) : Math.min(1, dt * 10));
@@ -1217,7 +1232,7 @@ function takeHit(dmg, who, from) { G.lastFight = now(); if (G.hp <= 0) return; G
 function playerKO(who, from) {
   G.hp = 0; A.sfx('ko'); grunt(player, 'ko'); net.send('ko', {}); if (G.veh) dismount(); if (G.job) { endJob(); toast('Job cancel ho gaya.', 'bad'); }
   const robber = from && FIGHTERS.includes(from) && from.state !== 'ko' && P.money > 0 ? from : null; if (robber) robBatua(robber); /* he grabs your batua while you're down, then the ambulance comes */
-  setTimeout(() => fadeTo((who ? who + ' ne dhobi pachhad maar diya!' : 'Behosh ho gaya!') + ' Civil Hospital le ja rahe hain...', 2400, async () => { G.hp = 100; G.inside = null; setIndoor(false); G.x = HOSPITAL.x; G.z = HOSPITAL.z + 4; G.r = 0; G.yaw = 0; if (P.money > 0) { await buy('misc', 'ko_bill'); toast('Civil Hospital mein hosh aaya. Bill kat gaya.', 'bad'); } if (G.robbed) { toast(G.robbed.name + ' tera batua le gaya: -' + fmt(G.robbed.amt), 'bad'); G.robbed = null; } updateHUD(); }), robber ? 1800 : 0);
+  setTimeout(() => fadeTo((who ? who + ' ne dhobi pachhad maar diya!' : 'Behosh ho gaya!') + ' Civil Hospital le ja rahe hain...', 2400, async () => { G.hp = 100; L.hunger = Math.max(L.hunger, 60); /* the hospital feeds you too, or starving loops */ G.inside = null; setIndoor(false); { const sp = safeSpot(HOSPITAL.x, HOSPITAL.z + 4); G.x = sp.x; G.z = sp.z; G.r = G.yaw = Math.atan2(HOSPITAL.x - sp.x, HOSPITAL.z - sp.z); } if (P.money > 0) { await buy('misc', 'ko_bill'); toast('Civil Hospital mein hosh aaya. Bill kat gaya.', 'bad'); } if (G.robbed) { toast(G.robbed.name + ' tera batua le gaya: -' + fmt(G.robbed.amt), 'bad'); G.robbed = null; } updateHUD(); }), robber ? 1800 : 0);
 }
 // ---- batua: a knocked-down NPC drops his wallet (or her purse) with a little cash; walk over it to take it. The same happens to you.
 const DROPS = []; let ROB = null;
@@ -1432,6 +1447,16 @@ function findSpot(cx, cz, w, d, r0, r1) {
     if (!colHit(x - w / 2 - 1, x + w / 2 + 1, z - d / 2 - 1, z + d / 2 + 1) && !zoneNear(x, z, Math.max(w, d) / 2 + 2) && !blockRoad(x, z, Math.max(w, d) / 2)) return { x, z }; }
   return null;
 }
+// the nearest open footpath beside a road: respawns and start points must never land in a boxed-in alley
+function foodTip() {
+  G.foodTip = now() + 90; const f = mapPOIs().filter(q => q.cat === 'khana').sort((a, b) => Math.hypot(a.x - G.x, a.z - G.z) - Math.hypot(b.x - G.x, b.z - G.z))[0];
+  if (!f) return toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); toast('Bhookh lag rahi se! Khana: ' + f.name + ' · ' + Math.round(Math.hypot(f.x - G.x, f.z - G.z)) + ' m', 'bad'); if (!G.wp && !G.inside) setWaypoint(f.x, f.z, f.name);
+}
+function safeSpot(x, z) {
+  const c = []; for (const r of ROADS) for (const s of [-9.5, 9.5]) { c.push({ x: r + s, z }); c.push({ x, z: r + s }); }
+  c.sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z));
+  return c.find(p => Math.abs(p.x) < 440 && Math.abs(p.z) < 440 && !colHit(p.x - 0.7, p.x + 0.7, p.z - 0.7, p.z + 0.7)) || { x, z };
+}
 const blockRoad = (x, z, r) => ROADS.some(q => Math.abs(x - q) < 9 + r || Math.abs(z - q) < 9 + r); // keep off the carriageways
 const BITTU = { x: 0, z: 0, ok: false };
 const PLOT_AT = {}; // plot id -> { x, z, lab }
@@ -1514,11 +1539,26 @@ function bkCar(type, x, z, r, label, col) { const v = makeVehicle(type, col); v.
   BK.carZone = { zone: 'out', get x() { return BK.car && BK.car.mesh.parent ? BK.car.x : 1e5; }, get z() { return BK.car && BK.car.mesh.parent ? BK.car.z : 1e5; }, r: 4, label: () => G.veh ? null : label, act: () => { const k = BK.car; scene.remove(k.mesh); G.x = k.x; G.z = k.z; G.r = G.yaw = k.r; G.quietMount = true; mount(k.type); G.quietMount = false; G.loaner = true; BK.inCar = true; } };
   ZONES.push(BK.carZone); return c; }
 const foesLeft = () => BK.ents.filter(e => e.foe && e.foe.state !== 'ko').length;
-const bkWp = (x, z, name) => setWaypoint(x, z, name);
+const bkWp = (x, z, name) => setWaypoint(x, z, name, 'bk');
 const clearWp = () => { G.wp = null; wpBeacon.visible = false; };
 const timeLeft = () => BK.deadline ? Math.max(0, Math.ceil(BK.deadline - now())) : 0;
 const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 function bkQuest(title, sub) { BK.qt = title; BK.qs = sub; quest(title, sub + (BK.deadline ? ' · ⏱ ' + mmss(timeLeft()) : '')); }
+// after a reload: rebuild what earlier steps left behind (people, places), and pick the step to restart from
+const RESUME = [
+  { prime(s) { if (s >= 1) { const pm = PUMP0(), q = pumpSpot(pm, -5, -2); BK.boss = bkNpc('Chaudhary Saab', q.x, q.z, 0xf5f5f5, Math.atan2(pm.fx, pm.fz)); } if (s === 2) BK.d.cars = 3; }, at: s => s === 3 ? 2 : s },
+  { prime(s) { const h = bkCx(-1, 0, 18, 66); BK.d.home = h; BK.d.at = bkCx(-1, 1, 6, 66); if (s >= 1) BK.boss = bkNpc('Sharma ji', h.x, h.z, 0xe8e2d0, Math.PI); }, at: s => s },
+  { prime() {}, at: () => 0 },
+  { prime() { BK.noCops = true; }, at: s => s },
+  { prime() { BK.d.b = bkCx(-1, -1, 30, 63); BK.d.p = PLOT_AT.sohna || bkCx(1, 0, 20, 30); }, at: s => s === 1 ? 0 : s },
+  { prime(s) { const n = bkCx(2, 1, -10, 66); BK.d.n = n; if (s >= 1) BK.boss = bkNpc('Netaji', n.x, n.z, 0xffffff, Math.PI); }, at: s => s },
+  { prime() { BK.d.s = bkCx(1, 1, 10, 63); BK.noCops = true; }, at: s => s },
+];
+function bkResume() {
+  const on = P && P.bkOn; if (!on || BK.on || on.i !== P.bk || !MISSIONS[on.i]) return; const R = RESUME[on.i], s = R.at(Math.min(on.step || 0, MISSIONS[on.i].steps.length - 1));
+  Object.assign(BK, { on: true, i: on.i, step: s - 1, d: {}, ents: [], deadline: 0, noCops: false, inCar: false, car: null, carZone: null, boss: null }); R.prime(s);
+  toast('Bada Kaam ' + (on.i + 1) + ' chal rya se: ' + D.BADE[on.i].title + ' (wahin se shuru)', 'money'); bkNext(); renderMissions();
+}
 const MISSIONS = [
   { // 1 Pehli Kamai: a shift at the pump, and a customer who runs without paying
     steps: [
@@ -1602,13 +1642,13 @@ async function bkStart(i) {
   showCard('Bada Kaam ' + (i + 1) + ': ' + B.title, B.giver + ' · ' + B.brief, [['Chalo! 💥', () => { $('raceres').hidden = true; bkNext(); }]], 'Inaam: ' + fmt(B.pay) + (i + 1 < D.LADDER.length ? ' + ' + D.HOUSES[D.LADDER[i + 1]].name : ' + ' + D.BLING.heera.name));
   A.sfx('level'); renderMissions();
 }
-function bkNext() { BK.step++; const st = MISSIONS[BK.i].steps[BK.step]; if (!st) return bkWin(); BK.stepAt = now(); st.start(); }
+function bkNext() { BK.step++; const st = MISSIONS[BK.i].steps[BK.step]; if (!st) return bkWin(); BK.stepAt = now(); net.send('bkstep', { i: BK.i, step: BK.step }); st.start(); }
 function bkCleanup() {
   for (const e of BK.ents || []) { if (e.mesh) scene.remove(e.mesh); if (e.foe) { scene.remove(e.foe.mesh); const k = FIGHTERS.indexOf(e.foe); if (k >= 0) FIGHTERS.splice(k, 1); } }
   if (BK.carZone) { const k = ZONES.indexOf(BK.carZone); if (k >= 0) ZONES.splice(k, 1); } if (G.loaner && BK.inCar && G.veh) dismount();
   BK.ents = []; BK.on = false; BK.deadline = 0; BK.noCops = false; BK.car = null; BK.carZone = null; quest(null); clearWp(); renderMissions();
 }
-function bkFail(why) { if (!BK.on) return; const i = BK.i, B = D.BADE[i]; bkCleanup(); A.sfx('err');
+function bkFail(why) { if (!BK.on) return; const i = BK.i, B = D.BADE[i]; bkCleanup(); net.send('bkquit', {}); A.sfx('err');
   setTimeout(() => showCard('Kaam fail: ' + B.title, why + '. Dobara koshish kar, Gurugram mein haar se kuch nahi rukta.', [['Dobara 💥', () => { $('raceres').hidden = true; bkStart(i); }], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]), 900); }
 async function bkWin() { const i = BK.i, B = D.BADE[i]; const r = await net.req('bkdone', { i });
   if (!r.ok && r.wait && BK.on && BK.i === i) { toast('Chaudhary hisaab laga raha se... ' + Math.ceil(r.wait) + ' sec ruk', 'info'); setTimeout(() => { if (BK.on && BK.i === i) bkWin(); }, r.wait * 1000 + 400); return; } /* done faster than the server's minimum: wait it out, don't lose the kaam */
@@ -2108,7 +2148,7 @@ net.on('fx', m => {
   if (m.fx === 'bottle' && G.inside === 'club') { for (let i = 0; i < 4; i++) setTimeout(() => burst(3200 + rnd(-8, 8), 6, 2000 + rnd(-6, 6), pick([0xffd400, 0xff2bd6, 0x00e5ff]), 50, { speed: 8 }), i * 300); A.sfx('cheer'); }
 });
 net.on('evsoon', m => { G.evSoon = { name: m.name, at: now() + m.in }; if (!G.story && !G.race) toast('⏱ ' + m.in + ' second mein: ' + m.name + '. Pehle 3 ko inaam!'); updateBanner(); });
-net.on('event', m => { const prev = G.ev; G.ev = m.ev; G.evSoon = null; G.evReached = false; rushStart(); buildFlood(); if (G.ev?.type === 'ipl') drawIpl(G.ev.data); else drawIpl(null); if (G.story || G.race) { /* no interruptions during the story or a race */ } else if (G.ev) { toast(G.ev.name + ' shuru! ' + eventHelp(G.ev.type)); A.sfx('ok'); } else if (prev) toast(prev.name + ' khatam'); renderJob(); });
+net.on('event', m => { const prev = G.ev; G.ev = m.ev; G.evSoon = null; G.evReached = false; if (G.wp && G.wp.src === 'event' && (!G.ev || G.ev.type !== prev?.type)) { G.wp = null; wpBeacon.visible = false; } /* an event's GPS goes when the event does */ rushStart(); buildFlood(); if (G.ev?.type === 'ipl') drawIpl(G.ev.data); else drawIpl(null); if (G.story || G.race) { /* no interruptions during the story or a race */ } else if (G.ev) { toast(G.ev.name + ' shuru! ' + eventHelp(G.ev.type)); A.sfx('ok'); } else if (prev) toast(prev.name + ' khatam'); renderJob(); });
 net.on('ipl', m => { if (G.ev) G.ev.data = m.d; drawIpl(m.d); });
 net.on('auction', m => { G.auction = m.a; });
 net.on('party', m => { const was = G.party; G.party = m.party; if (m.party && !was && m.party.host !== P.id) showPartyInvite(m.party); });
@@ -2406,7 +2446,7 @@ function mapPOIs() {
 }
 let mapGroup = null;
 function openMap3D() {
-  if (!G.started) return; if (G.inside) return toast('Bahar aa ke map dekh'); if (G.race && G.race.phase !== 'done') return; if (G.map) return closeMap3D();
+  if (!G.started) return; if (G.inside) return toast('Andar map na chale. Hare gol ghere pe E dabao, ya upar "Bahar niklo"'); if (G.race && G.race.phase !== 'done') return; if (G.map) return closeMap3D();
   closeModal(); if (document.pointerLockElement) document.exitPointerLock();
   G.map = { x: G.x, z: G.z, h: innerWidth < 700 ? 300 : 360, filter: G.mapFilter || 'all', fogFar: scene.fog.far, camFar: camera.far, dayFixed: DAY.fixed };
   scene.fog.far = 4000; camera.far = 4000; camera.updateProjectionMatrix(); DAY.fixed = true; DAY.t = 0.45;
@@ -2513,7 +2553,7 @@ const bagBeacon = makeBeacon(0xf6c026); bagBeacon.visible = false;
 function rushStart() {
   const e = G.ev; BAG.visible = bagBeacon.visible = false; if (!e) return; const sp = eventSpot(e.type); if (!sp) return;
   if (e.type === 'thaila') { BAG.position.set(sp.x, 0, sp.z); bagBeacon.position.set(sp.x, 0, sp.z); BAG.visible = bagBeacon.visible = !e.data.taken; }
-  if (!G.story && !G.race && !G.job && !G.frun && (!G.wp || e.type === 'thaila')) setWaypoint(sp.x, sp.z, e.type === 'thaila' ? '💰 Thaila (' + e.data.place + ')' : e.name);
+  if (!G.story && !G.race && !G.job && !G.frun && !BK.on && (!G.wp || G.wp.src === 'event' || (G.wp.src === 'you' && e.type === 'thaila'))) setWaypoint(sp.x, sp.z, e.type === 'thaila' ? '💰 Thaila (' + e.data.place + ')' : e.name, 'event');
   if (!G.story && !G.race) bigText(e.type === 'thaila' ? '💰 PAISON KA THAILA!' : 'CITY EVENT!', e.type === 'thaila' ? e.data.place + ' · pehle pahuncho, ' + fmt(e.data.prize) + ' tera' : e.name + ' · pehle 3 ko inaam', 2);
 }
 function updateRush() {
@@ -2979,16 +3019,17 @@ $('sapna').onclick = () => { const g = sapnaGoal(); if (!g) return; if (g.kind =
 // ================================================================ LOGIN & BOOT
 // Joining: name → avatar (first time, or "Avatar badlo") → start place → play
 const AVD = Object.assign({ g: 'm', skin: 2, hair: 0, hc: 0, top: 0, pants: 0, acc: 1, color: lsGet('gl_color') ?? 0, hat: 'none', shades: false, ride: 'chhotu' }, lsGet('gl_avatar') || {});
+// each start stands on the footpath inside its own district (a road between two districts reads as the wrong place)
 const STARTS = [
   ['ghar', 'Apna Ghar', '', () => ({ x: HM.CAMP.x + 2.4, z: HM.CAMP.z + 1.2, r: -Math.PI / 2 })], // home, or the footpath at Rajiv Chowk on day one
   ['ambience', 'Ambience Mall', 'Mall, shopping, lucky draw', () => ({ x: DOORS.mall.x + rnd(-3, 3), z: DOORS.mall.z + 37, r: Math.PI })],
   ['sector29', 'Sector 29', 'Neon Nights club, Sher-e-Haryana Dhaba', () => ({ x: DOORS.club.x + rnd(-2, 2), z: DOORS.club.z + 10, r: Math.PI })],
-  ['cyberhub', 'Cyber Hub', 'Office crowd, cafe, raat ki ronak', () => ({ x: 158, z: -228, r: Math.PI })],
+  ['cyberhub', 'Cyber Hub', 'Office crowd, cafe, raat ki ronak', () => ({ x: 158, z: -234.5, r: Math.PI })],
   ['rajiv', 'Rajiv Chowk', 'Shehar ka centre, Iffco Chowk paas mein', () => ({ x: rnd(-9, 9), z: 48, r: Math.PI })],
-  ['sohna', 'Sohna Road', 'Theka aur nightlife', () => ({ x: 158, z: 72, r: Math.PI })],
-  ['golf', 'Golf Course Road', 'Penthouse, baraat route, rich log', () => ({ x: -292, z: 72, r: Math.PI })],
-  ['badshahpur', 'Badshahpur', 'Chaupal, gaon ka swag', () => ({ x: 158, z: 222, r: Math.PI })],
-  ['leisure', 'Leisure Valley', 'Akhara: dangal aur champion belt', () => ({ x: 308, z: -78, r: Math.PI })],
+  ['sohna', 'Sohna Road', 'Theka aur nightlife', () => ({ x: 158, z: 65.5, r: Math.PI })],
+  ['golf', 'Golf Course Road', 'Penthouse, baraat route, rich log', () => ({ x: -292, z: 65.5, r: Math.PI })],
+  ['badshahpur', 'Badshahpur', 'Chaupal, gaon ka swag', () => ({ x: 158, z: 215.5, r: Math.PI })],
+  ['leisure', 'Leisure Valley', 'Akhara: dangal aur champion belt', () => ({ x: 308, z: -84.5, r: Math.PI })],
 ];
 let PREVIEW = null, previewYaw = 0;
 function avLook() { return { body: { g: AVD.g, skin: AVD.skin, hair: AVD.hair, hc: AVD.hc, top: AVD.top, pants: AVD.pants, acc: AVD.acc }, shirt: D.SHIRTS[AVD.color], hat: AVD.hat, shades: AVD.shades, bling: [] }; }
@@ -3060,7 +3101,7 @@ function joinGame(startId) { if (G.viewOff) { camera.clearViewOffset(); G.viewOf
 }
 function sendAvatar() { if (!G.avatarDirty && P.look) return; G.avatarDirty = false; const a = AVD; net.req('look', { look: { g: a.g, skin: a.skin, hair: a.hair, hc: a.hc, top: a.top, pants: a.pants, acc: a.acc }, color: a.color, hat: a.hat, shades: a.shades }).then(() => lsSet('gl_lookset', 1)); }
 function startGame(daily) {
-  $('login').hidden = true; $('hud').hidden = false; G.started = true;
+  $('login').hidden = true; $('hud').hidden = false; G.started = true; L.hunger = Math.max(L.hunger, 50); /* nobody arrives starving */
   player = makeChar(D.SHIRTS[P.color]); scene.add(player); sendAvatar(); applyMyLook();
   const st = STARTS.find(x => x[0] === G.startId) || STARTS[0]; const sp = st[3](); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; G.pitch = 0.12;
   updateHUD(); renderMissions(); setNetChip(); G.startedAt = now();
@@ -3068,6 +3109,7 @@ function startGame(daily) {
   const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length); const cl = chapterLine();
   step('play'); lsSet('gl_home', P.home); const intro = fresh && !lsGet('gl_intro'); // the dream film plays once, for someone who has never played
   const begin = () => {
+    setTimeout(() => { restoreJob(); bkResume(); }, 3200); // a reload keeps the job and the Bada Kaam you were on
     if (st[0] === 'ghar' && P.home !== 'street' && goInside(true)) bigText(cl ? 'ADHYAY ' + cl.n + ' · ' + cl.C.title.toUpperCase() : 'SUBAH HO GAYI', D.HOUSES[P.home].name + ' · ' + clockText(), 2.6);
     else if (st[0] === 'ghar') bigText(cl ? 'ADHYAY ' + cl.n + ' · ' + cl.C.title.toUpperCase() : 'RAJIV CHOWK', 'Footpath, Rajiv Chowk · ' + clockText(), 2.6);
     else bigText(st[1].toUpperCase(), 'Gurugram · ' + clockText(), 2);
@@ -3077,6 +3119,7 @@ function startGame(daily) {
   if (intro) playIntroFilm(begin); else begin();
 }
 
+addEventListener('pagehide', () => { if (G.job) persistJob(); });
 let last = performance.now(), hungerT = 0, regenT = 0, hudT = 0, shT = 99;
 const PERF = { acc: 0, n: 0, pr: Math.min(window.devicePixelRatio || 1, 1.5) };
 function adaptQuality(frameMs) { // average over ~2 s; slow → drop the pixel ratio a step (1.5 → 1.25 → 1 → 0.85), fast again → step back up
@@ -3091,8 +3134,8 @@ function loop(t) {
   updateDay(dt); updateWeather(dt);
   if (G.started) {
     updatePlayer(dt); footsteps(); if (G.map) updateMap3D(); else { updateCamera(dt); if (G.film) updateFilm(dt); else speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt);
-    hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 15) toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); saveLocal(); }
-    regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 0) { G.hp -= 2; if (G.hp <= 0) playerKO(null); } }
+    hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 20 || (L.hunger < 20 && now() > (G.foodTip || 0))) foodTip(); saveLocal(); }
+    regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 1) G.hp = Math.max(1, G.hp - 1); /* starving wears you down to 1, it never knocks you out */ }
     updateRishta(dt); hudT += dt; if (hudT > 0.25) { hudT = 0; A.setCity(cityMix()); updateHUD(); renderSapna(); updateHomeDoor(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
     sendState(); if ((G.miniF = (G.miniF || 0) + 1) % 3 === 0) drawMini();
   } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0);
@@ -3100,7 +3143,7 @@ function loop(t) {
       const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
     } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateDogs(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); updateDrops(dt); } updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
+  if (G.started) musicDirector(); updateAmbient(dt); updateDogs(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); updateDrops(dt); if (G.inside) for (const r of EXIT_RINGS) r.material.opacity = 0.55 + Math.sin(now() * 4) * 0.35; } updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
