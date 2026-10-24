@@ -298,6 +298,10 @@ export function netWorth(p) {
   for (const b of p.bling || []) w += (BLING[b] && BLING[b].price) || 0;
   return w;
 }
+// names that can't sit on a public leaderboard (Hinglish and English vulgarities); such a name is replaced at join
+const BAD_NAME = /havas|chut|chod|bhosd|madarch|behench|bhenc|lund|lauda|lawd|loda|gaand|randi|fuck|bitch|dick|pussy|porn|nude|boob|sexy|\bsex\b|\bmc\b|\bbc\b/i;
+export const badName = n => BAD_NAME.test(String(n || '').replace(/[^a-z\s]/gi, ''));
+export function cleanName(n, max = 16) { const t = cleanText(n, max); return badName(t) ? '' : t; }
 export function cleanText(s, max) {
   return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 }

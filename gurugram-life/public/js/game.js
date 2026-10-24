@@ -704,8 +704,15 @@ function pumpToasts() {
 A.hooks.toast = toast; A.hooks.label = radioLabel;
 // City news: quiet for the first 20 s and during races, at most three lines
 function feed(text, kind) { if (G.race || G.story || now() - (G.startedAt || 0) < 20) return; const d = el('div', { class: kind || '', text }); $('feed').prepend(d); while ($('feed').children.length > 3) $('feed').lastChild.remove(); setTimeout(() => d.remove(), 10500); }
+// HUD panels stack instead of overlapping: the job card sits under the stats card, the mission card under the top-centre pills
+function layoutHUD() {
+  const vis = e => e && !e.hidden && e.offsetParent !== null && getComputedStyle(e).display !== 'none'; const st = $('stat').getBoundingClientRect();
+  const job = $('job'); if (vis(job)) job.style.top = Math.round(st.bottom + 8) + 'px';
+  const mc = $('mchip'); if (vis(mc)) mc.style.top = Math.round((vis(job) ? job.getBoundingClientRect().bottom : st.bottom) + 8) + 'px';
+  const q = $('quest'); if (vis(q)) { let b = 0; const qr = q.getBoundingClientRect(); for (const id of ['loc', 'navchip', 'banner', 'ipl']) { const e = $(id); if (!vis(e)) continue; const r = e.getBoundingClientRect(); if (r.right > qr.left && r.left < qr.right && r.top < innerHeight / 3) b = Math.max(b, r.bottom); } q.style.top = Math.round(Math.max(b + 8, 52)) + 'px'; }
+}
 function updateHUD() {
-  if (!P) return;
+  if (!P) return; layoutHUD();
   $('pname').textContent = P.name; $('plv').textContent = 'Lv ' + P.level; $('money').textContent = fmt(P.money); $('ptitle').textContent = D.respectTitle(P.respect) + ' · ' + P.respect + ' R';
   const need = D.xpNeed(P.level); $('xpt').textContent = P.xp >= need ? 'Full · kaam baaki' : P.xp + '/' + need; $('xpb').style.width = (P.xp / need * 100) + '%';
   $('hpt').textContent = Math.round(G.hp); $('hpb').style.width = G.hp + '%'; $('hut').textContent = Math.round(L.hunger); $('hub').style.width = L.hunger + '%';
@@ -723,10 +730,11 @@ function streakNext() { const s = P.streak; return s && s.day != null && P.missi
 function renderMissions() {
   const box = $('mlist'), act = dailyTasks(); if (!P) return; box.textContent = ''; const nd = act.filter(a => a.done).length;
   $('missions').querySelector('h4').textContent = 'Aaj ke kaam · ' + nd + '/' + act.length + (P.streak && P.streak.n ? ' · 🔥' + P.streak.n : '');
-  const ds = donState(); if (ds) box.append(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? (ds.called ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.at[2] + ')' : '📞 Golu ka call: Gali ke Don ch ' + (ds.ch + 1)) : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
+  const story = []; const ds = donState(); if (ds) story.push(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? (ds.called ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.at[2] + ')' : '📞 Golu ka call: Gali ke Don ch ' + (ds.ch + 1)) : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
   for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
-  { const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1]; box.append(el('button', { type: 'button', class: 'm don bk', onclick: openBade }, el('i', { text: '💥' }), el('span', { text: 'Bada Kaam ' + cl.n + ': ' + B.title + ' → ' + cl.C.prize }), el('b', { text: BK.on ? 'chal rya' : 'shuru' }))); } }
+  { const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1]; story.push(el('button', { type: 'button', class: 'm don bk', onclick: openBade }, el('i', { text: '💥' }), el('span', { text: 'Bada Kaam ' + cl.n + ': ' + B.title + ' → ' + cl.C.prize }), el('b', { text: BK.on ? 'chal rya' : 'shuru' }))); } }
   if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Agle din (15 min) naye kaam' : nd < 2 ? (2 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Teeno = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
+  if (story.length) { box.append(el('h5', { class: 'mhead', text: 'Kahani · level ke kaam se alag' })); for (const e of story) box.append(e); } // the 3 daily kaam count; the story rows sit under their own heading
   const cl = chapterLine(); $('mchip').textContent = (cl ? '💥 Bada Kaam ' + cl.n + ' · ' : '') + '📋 ' + nd + '/' + act.length + ' · ' + dayClock();
 }
 function goTask(a) {
@@ -864,8 +872,8 @@ function openPhone() {
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Sapne', '#c2185b', '★', appSapne], ['Races', '#d7331f', 'GO', appRaces], ['Paani paar', '#1f7ab8', '~', startFloodRun], ['Chalo', '#111', 'C', appRide], ['Jhatpat', '#d7331f', 'J', appDelivery], ['Garage', '#2563b8', 'G', appGarage], ['Ghar', '#f28c1b', 'H', appHome], ['Top 10', '#e8b923', '#1', () => appLeaderboard()], ['Crew', '#00a3b4', 'K', appCrew], ['Plates', '#1b1410', 'HR', appPlates], ['Events', '#d7331f', '!', appEvents], ['Card', '#ff6fa5', '📷', () => { closeModal(); startSelfie(); }], ['Radio', '#8b3fc4', 'FM', appRadio], ['Online', '#6a5acd', 'O', appOnline], ['Bhasha', '#2f5fd0', 'Aa', appLang], ['Help', '#0f766e', '?', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
-    const grid = el('div', { class: 'apps' }); for (const a of apps) grid.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(grid);
+    const apps = [['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]);
+    const LOCK = { Gang: 'gang', Zameen: 'land', Hathiyaar: 'guns' }; const grid = el('div', { class: 'apps' }); for (const a of apps) { const lk = LOCK[a[0]] && !D.unlocked(P, LOCK[a[0]]); grid.append(el('button', { class: 'app' + (lk ? ' locked' : ''), title: lk ? 'Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] + ' ke baad khulega' : '', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0], lk ? el('small', { class: 'lockb', text: '🔒 Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] }) : '')); } b.append(grid); /* a lock badge on what the story hasn't opened yet */
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(el('p', { text: 'Login streak: ' + P.daily.streak + ' din. Kal wapas aa, aur bada inaam milega.' }));
     b.append(itemRow('Credits', 'Artists whose work is in the game', 'Dekho', openCredits));
@@ -881,7 +889,7 @@ function openCredits() {
 }
 function appRide() { openModal('Chalo Driver', 'Passenger le jao, paise kamao' + (G.ev?.type === 'flood' ? ' · FLOOD SURGE 2x' : ''), b => { if (G.job) { b.append(el('p', { text: 'Current job: ' + jobText() }), itemRow('Cancel current job', '', 'Cancel', () => { endJob(); closeModal(); }, false, true)); return; } b.append(el('p', { text: G.veh ? 'Cars pay 40% more (AC wali sawari).' : 'Ride ke liye gaadi chahiye. Iffco Chowk se e-scooter rent kar, ya Chaudhary Motors se khareed.' }), itemRow('Go online and accept a ride', 'Pickup → drop, fast drop = tip', G.veh ? 'Go online' : 'Need vehicle', () => { closeModal(); startJob('ride'); }, !G.veh)); }); }
 function appDelivery() { openModal('Jhatpat Food', '10 minute delivery, Gurugram style' + (G.ev?.type === 'flood' ? ' · FLOOD SURGE 2x' : ''), b => { if (G.job) { b.append(el('p', { text: 'Current job: ' + jobText() }), itemRow('Cancel current job', '', 'Cancel', () => { endJob(); closeModal(); }, false, true)); return; } b.append(el('p', { text: 'Paidal bhi chalega, par gaadi se jaldi hoga.' }), itemRow('Accept a delivery order', 'Restaurant se uthao, sector mein pahunchao', 'Accept', () => { closeModal(); startJob('delivery'); })); }); }
-function appGarage() { openModal('Garage', 'V to ride your selected vehicle · H for pressure horn', b => { if (!P.vehicles.length) { b.append(el('p', { text: 'Garage khaali se. Chaudhary Motors (NH-48 Auto Mile) se gaadi le, ya Iffco Chowk pe e-scooter rent kar.' }), itemRow('Set GPS to Chaudhary Motors', '', 'Set GPS', () => { setWaypoint(300, -300, 'Chaudhary Motors'); closeModal(); })); return; } for (const t of P.vehicles) { const m = P.mods[t] || {}; const mods = Object.keys(m).filter(k => m[k] !== false).map(k => D.MODS[k].name).join(', '); b.append(itemRow(D.VEH[t].name, (P.cur === t ? 'Selected' : 'Tap to select') + (mods ? ' · ' + mods : ''), P.cur === t ? 'Selected' : 'Select', () => { net.send('setcur', { v: t }); P.cur = t; appGarage(); }, P.cur === t)); } b.append(itemRow('Modify at Sandhu Car Accessories', 'Horn, film, bull bar, neon, stickers, plates', 'GPS', () => { setWaypoint(345, -255, 'Sandhu Car Accessories'); closeModal(); }, false, true)); }); }
+function appGarage() { openModal('Garage', 'V to ride your selected vehicle · H for pressure horn', b => { if (!P.vehicles.length) { b.append(el('p', { text: 'Garage khaali se. Chaudhary Motors (NH-48 Auto Mile) se gaadi le, ya Iffco Chowk pe e-scooter rent kar.' }), itemRow('Set GPS to Chaudhary Motors', '', 'Set GPS', () => { setWaypoint(300, -300, 'Chaudhary Motors'); closeModal(); })); return; } for (const t of P.vehicles) { const m = P.mods[t] || {}; const mods = Object.keys(m).filter(k => m[k] !== false).map(k => D.MODS[k].name).join(', '); b.append(itemRow(D.VEH[t].name, (P.cur === t ? 'Abhi yahi chalegi (V)' : 'Tap to select') + (mods ? ' · ' + mods : ''), P.cur === t ? 'Selected' : 'Select', () => { net.send('setcur', { v: t }); P.cur = t; appGarage(); }, P.cur === t)); } b.append(itemRow('Modify at Sandhu Car Accessories', 'Horn, film, bull bar, neon, stickers, plates', 'GPS', () => { setWaypoint(345, -255, 'Sandhu Car Accessories'); closeModal(); }, false, true)); }); }
 function homePos() { if (P.home === 'street') return { x: HM.CAMP.x + 2.2, z: HM.CAMP.z + 0.6 }; const h = D.HOUSES[P.home] || D.HOUSES.pg; if (P.home === 'farm') return { x: D.SPOTS.farmLawn.x, z: D.SPOTS.farmLawn.z }; return { x: h.at[0] * 150 + (h.at[0] < 0 ? 40 : -40), z: h.at[1] * 150 + 66 }; }
 function appHome() { const h = D.HOUSES[P.home]; openModal('Ghar: ' + h.name + (P.home === 'street' ? ' 😴' : ''), 'Sleep to restore health and cure the hangover', b => { b.append(itemRow('Go home', P.home === 'street' ? 'Footpath, Rajiv Chowk' : 'Free auto ride, seedha andar', 'Go', () => { closeModal(); fadeTo('Ghar ja rya se...', 1200, () => { if (G.inside) { G.inside = null; setIndoor(false); } if (P.home === 'street' || !goInside(false)) { const p = homePos(); teleport(p.x, p.z, 0); } }); }), itemRow('So jao', 'Full health, hangover gayab', 'Sleep', () => { closeModal(); fadeTo('Zzz... so rya se', 2200, () => { G.hp = 100;  G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal(); const p = homePos(); teleport(p.x, p.z, 0); toast('Neend poori! Ram Ram.'); }); }), itemRow('Buy a better home', 'Yadav Estates, DLF Phase 3', 'GPS', () => { setWaypoint(-300, -103, 'Yadav Estates'); closeModal(); }, false, true)); if (P.houses.includes('farm')) b.append(itemRow('Host a farmhouse party', 'Sab players ko invite jaega', fmt(D.MISC.party[1]), () => hostParty(), !!G.party)); }); }
 async function appLeaderboard(tab) {
@@ -925,7 +933,7 @@ function appPlates() {
 function appEvents() {
   openModal('Events', 'Gurugram mein abhi kya chal rya se', b => {
     const e = G.ev;
-    if (e) { const left = Math.max(0, Math.round(e.end - serverNow())); b.append(el('h3', { text: e.name }), el('p', { text: eventHelp(e.type) + ' · ' + Math.ceil(left / 60) + ' min baaki' })); const wp = eventSpot(e.type); if (wp) b.append(itemRow('Go there', '', 'Set GPS', () => { setWaypoint(wp.x, wp.z, e.name); closeModal(); })); }
+    if (e) { const left = Math.max(0, Math.round(e.end - serverNow())); const tl = el('b', { class: 'evleft', text: mmss(left) }); b.append(el('h3', { text: e.name }), el('p', null, el('span', { text: eventHelp(e.type) + ' · ' }), tl, el('span', { text: ' baaki' }))); const iv = setInterval(() => { if (!tl.isConnected) return clearInterval(iv); tl.textContent = mmss(Math.max(0, Math.round(e.end - serverNow()))); }, 1000); /* the same live clock as the banner */ const wp = eventSpot(e.type); if (wp) b.append(itemRow('Go there', '', 'Set GPS', () => { setWaypoint(wp.x, wp.z, e.name); closeModal(); })); }
     else b.append(el('p', { text: 'Abhi koi bada event nahi. Baraat, Holi, Diwali, IPL screening, flood aur mahajam baari baari aate hain.' }));
     b.append(el('h3', { text: 'Farmhouse party' }));
     if (G.party) b.append(itemRow(G.party.hostName + ' ki party', G.party.guests + ' guests · Bhondsi farmhouse', 'Join party', () => { closeModal(); joinParty(); }));
@@ -1111,7 +1119,7 @@ canvas.addEventListener('pointerdown', e => {
   }
   if (e.pointerType === 'touch' && e.clientX < window.innerWidth * 0.4 && document.body.classList.contains('touch')) return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
 });
-document.addEventListener('pointerlockerror', () => { if (!G.noLock) { G.noLock = true; if (G.started) toast('Mouse: drag karke ghumao, click se punch, right-click se action'); } });
+document.addEventListener('pointerlockerror', () => { if (!G.noLock) { G.noLock = true; if (G.started && !G.lockTip) { G.lockTip = true; toast('Mouse: drag karke ghumao, click se punch, right-click se action'); } } }); // the hint once a session
 document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('locked', locked()); if (locked()) L.locked = 1; });
 document.addEventListener('mousemove', e => { if (!locked()) return; G.yaw -= e.movementX * 0.0026; G.pitch = clamp(G.pitch + e.movementY * 0.002, 0.05, 1.2); G.lookAt = now(); });
 canvas.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; G.yaw -= dx * 0.006; G.pitch = clamp(G.pitch + dy * 0.004, 0.05, 1.2); G.lookAt = now(); if (Math.abs(dx) + Math.abs(dy) > 2) tutEvent('looked'); });
@@ -1718,7 +1726,7 @@ function checkNakaToll() { if (G.race) return;
     G.nakaCD = now() + 90; const drunk = G.tipsy > now() || (G.drankAt && now() - G.drankAt < 180); const film = (P.mods[G.veh] || {}).film && Math.random() < 0.4;
     if (drunk) naka('drunk'); else if (film) naka('film'); else { toast('Traffic Police: "Chalo chalo, aage badho"'); }
   }
-  const t = D.SPOTS.toll; if (G.tollCD < now() && Math.abs(G.x - t.x) < 3 && Math.abs(G.z - t.z) < 9) { G.tollCD = now() + 60; buy('misc', 'toll').then(r => { if (r.ok) toast('Kherki Daula toll: ₹50 kat gaye. Jam free nahi, toll free bhi nahi!'); }); }
+  const t = D.SPOTS.toll; if (G.tollCD < now() && Math.abs(G.x - t.x) < 3 && Math.abs(G.z - t.z) < 9) { G.tollCD = now() + 60; if (!G.veh || D.VEH[G.veh].kind !== 4) { if (G.veh) toast('Do-pahiya: Kherki Daula toll free'); return; } /* only cars pay */ buy('misc', 'toll').then(r => { if (r.ok) toast('Kherki Daula toll: ₹50 kat gaye. Jam free nahi, toll free bhi nahi!'); }); }
 }
 function naka(kind) {
   G.vs = 0; A.sfx('siren');
@@ -2030,12 +2038,12 @@ const BASE_FILTER = RL.Q.phone ? '' : 'saturate(1.12) contrast(1.04)'; renderer.
 const DAY = { t: 0.3, fixed: false }; const tmpC = new THREE.Color(), HAZE = new THREE.Color(0xd2d3cc);
 const DAYV = { horizon: scene.fog.color, sunVec: new THREE.Vector3(0.5, 0.6, 0.4), day: 1, dusk: 0, night: 0, wet: 0, inside: false, map: false, t: 0, dt: 0 };
 function updateDay(dt) {
-  if (!DAY.fixed) DAY.t = D.dayFrac(Date.now() + (G.timeOffset || 0) * 1000); /* a game day is 15 real minutes, shared by everyone */ let t = DAY.t; if (G.ev?.type === 'diwali') t = 0.92;
+  if (!DAY.fixed) DAY.t = D.dayFrac(Date.now() + ((G.timeOffset || 0) + (G.skySkew || 0)) * 1000); /* a game day is 15 real minutes, shared by everyone */ let t = DAY.t; if (G.ev?.type === 'diwali') t = 0.92;
   const sunH = Math.sin((t - 0.25) * Math.PI * 2); const day = clamp(sunH * 1.6 + 0.3, 0, 1); const dusk = clamp(1 - Math.abs(sunH) * 4, 0, 1); const night = 1 - day;
   if (G.inside) { const club = G.inside === 'club'; scene.background.copy(club ? SKY_CLUB : SKY_IN); scene.fog.color.copy(scene.background); hemi.intensity = club ? 0.6 : 1.05; sun.intensity = club ? 0.2 : 0.45; for (const m of NIGHT_MATS) m.emissiveIntensity = 0; return; }
   tmpC.copy(SKY_NIGHT).lerp(SKY_DAY, day); tmpC.lerp(HAZE, day * 0.25); /* less grey haze: a bluer, livelier sky */ tmpC.lerp(SKY_DUSK, dusk * 0.6); if (G.ev?.type === 'flood') tmpC.lerp(new THREE.Color(0x6b7680), 0.6); scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
   // strong sun and softer fill: sunlit sides bright, shadows and shaded sides cooler; warm light at sunrise and sunset
-  hemi.intensity = 0.3 + day * 0.45; sun.intensity = 0.08 + day * 0.72; sun.color.setRGB(1, 1 - dusk * 0.25, 1 - dusk * 0.45); DAYV.sunVec.set(Math.cos((t - 0.25) * Math.PI * 2), Math.max(0.15, sunH), 0.4).normalize(); sun.position.copy(DAYV.sunVec).multiplyScalar(200); DAYV.day = day; DAYV.dusk = dusk; DAYV.night = night;
+  hemi.intensity = 0.44 + day * 0.33 + (1 - day) * Math.min(0.12, (WX.wl || 0) * 0.15); sun.intensity = 0.1 + day * 0.7; /* night (and rain at night) stays readable: streets, people and roads keep their shape */ sun.color.setRGB(1, 1 - dusk * 0.25, 1 - dusk * 0.45); DAYV.sunVec.set(Math.cos((t - 0.25) * Math.PI * 2), Math.max(0.15, sunH), 0.4).normalize(); sun.position.copy(DAYV.sunVec).multiplyScalar(200); DAYV.day = day; DAYV.dusk = dusk; DAYV.night = night;
   const ni = clamp(Math.max(night * 1.2 - 0.1, WX.wl * 0.8), 0, 1); for (const m of NIGHT_MATS) m.emissiveIntensity = ni * 0.9; if (LAMP_MAT) LAMP_MAT.emissiveIntensity = ni;
   weatherSky();
 }
@@ -2069,7 +2077,7 @@ function drawMini() {
 // ================================================================ RADIO UI
 function radioLabel() { const b = $('musicBtn'); if (!A.Radio.playing) { b.textContent = 'Radio: off'; b.classList.remove('on'); return; } const st = A.STATIONS.find(x => x.id === A.Radio.st); if (A.Radio.street) { b.textContent = 'Radio: gaadi mein'; b.classList.remove('on'); return; } b.textContent = (A.Radio.override === 'club' ? 'CLUB' : st.freq) + ' · ' + (A.rjLine() || A.nowPlaying()); b.classList.add('on'); }
 function pickLang(id) { // Haryanvi keeps the Haryanvi station; Hindi and English players get Bollywood
-  I18N.setLang(id).then(() => { A.preferStation(id === 'har' ? 'har' : 'bol'); radioLabel(); renderLangPick(); if (G.started) renderMissions(); });
+  return I18N.setLang(id).then(() => { A.preferStation(id === 'har' ? 'har' : 'bol'); radioLabel(); renderLangPick(); if (G.started) renderMissions(); });
 }
 function renderLangPick() {
   const box = $('langPick'); if (!box) return; box.textContent = '';
@@ -2077,7 +2085,7 @@ function renderLangPick() {
 }
 function appLang() {
   openModal('Bhasha', 'Game ki bhasha chuno', b => {
-    for (const l of I18N.LANGS) { const on = I18N.LANG === l.id; const r = itemRow(l.name, l.sub, on ? 'Chalu' : 'Chuno', () => { pickLang(l.id); setTimeout(appLang, 80); }, on); r.querySelector('.t').setAttribute('data-notr', ''); b.append(r); }
+    for (const l of I18N.LANGS) { const on = I18N.LANG === l.id; const r = itemRow(l.name, l.sub, on ? 'Chalu' : 'Chuno', () => { pickLang(l.id).then(() => { if (!$('modal').hidden) appLang(); }); }, on); /* redraw once the new language is in */ r.querySelector('.t').setAttribute('data-notr', ''); b.append(r); }
   });
 }
 function appRadio() {
@@ -2274,7 +2282,7 @@ function updateWeather(dt) {
   if (WX.flashT > 0) WX.flashT -= dt;
 }
 // rain greys the sky, shortens the view and dims the sun; called from updateDay after the normal sky
-function weatherSky() { if (G.inside || WX.wl < 0.01) { if (!G.inside && !G.map) { scene.fog.near = 160; scene.fog.far = 560; } return; } const w = WX.wl; scene.background.lerp(GREY_SKY, w * 0.75); scene.fog.color.copy(scene.background); if (!G.map) { scene.fog.near = 160 - 120 * w; scene.fog.far = 560 - 300 * w; } hemi.intensity *= 1 - 0.4 * w; sun.intensity *= 1 - 0.6 * w; if (WX.flashT > 0) hemi.intensity += 1.2; }
+function weatherSky() { if (G.inside || WX.wl < 0.01) { if (!G.inside && !G.map) { scene.fog.near = 160; scene.fog.far = 560; } return; } const w = WX.wl; scene.background.lerp(GREY_SKY, w * 0.75); scene.fog.color.copy(scene.background); if (!G.map) { scene.fog.near = 160 - 120 * w; scene.fog.far = 560 - 300 * w; } hemi.intensity *= 1 - (0.4 - 0.28 * (DAYV.night || 0)) * w; sun.intensity *= 1 - 0.6 * w; /* rain greys the day; at night it no longer blacks the street out */ if (WX.flashT > 0) hemi.intensity += 1.2; }
 const GREY_SKY = new THREE.Color(0x56606b);
 // Paani paar karo: a timed run straight through a flooded chowk
 function startFloodRun() {
@@ -2399,6 +2407,10 @@ function buildCityFill() {
     g.p.push(cxs - rx * hw, y0, czs - rz * hw, cxs + rx * hw, y0, czs + rz * hw, cxs + rx * hw, y1, czs + rz * hw, cxs - rx * hw, y1, czs - rz * hw); g.uv.push(0, 0, 1, 0, 1, 1, 0, 1); g.ix.push(b, b + 1, b + 2, b, b + 2, b + 3);
   });
   for (const im of [body, awn]) if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  // the food shops in the rows serve food (and show on the map as Khana)
+  const FOODK = [[/SWEETS/, 'sweets'], [/DHABA/, 'dhaba'], [/CHHOLE/, 'chole'], [/MOMOS/, 'momo'], [/CHAI/, 'chai']];
+  for (const sh of shops) { const nm = SHOP_NAMES[sh.sign], k = FOODK.find(f => f[0].test(nm)); if (!k) continue; const title = nm.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    zone('out', sh.x + sh.fx * 5.2, sh.z + sh.fz * 5.2, 3, () => 'Khana: ' + title, () => openFood(title, 'Garam garam, abhi bana', k[1])); }
   signGeo.forEach((g, k) => { if (!g.p.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(g.p, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(g.uv, 2)); geo.setIndex(g.ix); const [bg, fg] = SIGN_COLS[k % SIGN_COLS.length]; const t = new THREE.CanvasTexture(signCanvas(SHOP_NAMES[k], null, bg, fg, 512, 80)); world.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t }))); });
   // skyline ring outside the playable city
   const ring = []; for (let side = 0; side < 4; side++) for (let t = -600; t <= 600; t += rnd(20, 30)) { const off = rnd(462, 540); const x = side < 2 ? t : (side === 2 ? off : -off), z = side < 2 ? (side === 0 ? off : -off) : t; ring.push([x, z, rnd(18, 30), rnd(18, 30), rnd(20, 90)]); }
@@ -2455,7 +2467,8 @@ function crowdHumans(dt) {
   for (const s of CPOOL) { if (!s.p) continue; const p = s.p, h = s.h; h.root.visible = true; const fall = p.fall || 0; h.root.position.set(p.x, (p.lift || 0) + (fall ? 0.25 : 0), p.z); h.root.rotation.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); // standing groups never set fall/lift
     const stand = (p.still || p.wait > 0) && !p.knock; HU.play(h, stand ? 'idle' : 'walk', 0.25, stand ? 1 : Math.min(1.5, p.sp / 1.7)); h.mixer.update(dt); }
 }
-function knockPerson(p) { const sp = Math.max(6, Math.abs(G.vs)); p.knock = 7; p.kx = Math.sin(G.r) * sp * 0.5; p.kz = Math.cos(G.r) * sp * 0.5; G.vs *= 0.82; A.sfx('punch', 0.8); A.sfx('crash', 0.4); if (Math.random() < 0.6) toast(pick(['Oye! Andha se ke?', 'Bhai dekh ke chala!', 'Arre maar diya re!', 'Police bulaunga!']), 'bad'); G.hitPeople = (G.hitPeople || 0) + 1; if (G.hitPeople % 5 === 0 && !G.chase && !G.race && !G.story) { startChase({ near: true, secs: 25 }); toast('Logon ko thok raha hai? Police aa gayi!', 'bad'); } }
+function knockPerson(p) { const sp = Math.max(6, Math.abs(G.vs)); p.knock = 7; p.kx = Math.sin(G.r) * sp * 0.5; p.kz = Math.cos(G.r) * sp * 0.5; G.vs *= 0.82; A.sfx('punch', 0.8); A.sfx('crash', 0.4); if (Math.random() < 0.6) toast(pick(['Oye! Andha se ke?', 'Bhai dekh ke chala!', 'Arre maar diya re!', 'Police bulaunga!']), 'bad'); G.hitPeople = (G.hitPeople || 0) + 1; crowdPanic(G.x, G.z); if (G.race || G.story || G.chase) return; G.runHeat = Math.max(0, (G.runHeat || 0) - (now() - (G.runHeatT || 0)) / 60) + 1.5; G.runHeatT = now(); /* witnesses: one hit and they shout, a second and someone dials 112 */
+  if (G.runHeat >= 3) { G.runHeat = 0; bigText('112 PE CALL!', 'Logon ne gaadi ka number note kar liya', 1.6); setTimeout(() => { if (!G.chase && !G.inside && !G.race) startChase({ near: true, secs: 30 }); }, 1500); } else toast('Logon ne dekh liya! Ek aur aur police aayegi', 'bad'); }
 // road hazards: potholes jolt the car, waterlogging slows everything, garbage blocks walkers unless they jump
 function roadHazards(dt) {
   if (G.inside) return; const sp = Math.abs(G.vs); const t = now();
@@ -2513,6 +2526,11 @@ function updateMap3D() {
     const b = o.userData.base; const k = (o.userData.district ? 13 : o.userData.me ? 17 : 15) * (innerWidth < 700 ? 1.5 : 1); o.scale.set(b.x * k * s, b.y * k * s, 1); o.position.y = (o.userData.district ? 4 : 18 + 5) * s;
     if (o.userData.me) o.position.set(G.x, 26 * s + Math.sin(now() * 4) * 2 * s, G.z);
   }
+  // labels never pile up: places first (nearest the map centre first), then district names; one that would overlap a shown one hides
+  const W = innerWidth, H = innerHeight, v = new THREE.Vector3(), placed = [];
+  const labs = mapGroup.children.filter(o => o.isSprite && !o.userData.stick && !o.userData.me).sort((a, b) => (a.userData.district ? 1 : 0) - (b.userData.district ? 1 : 0) || Math.hypot(a.position.x - m.x, a.position.z - m.z) - Math.hypot(b.position.x - m.x, b.position.z - m.z));
+  for (const o of labs) { v.copy(o.position).project(camera); const cx = (v.x + 1) / 2 * W, cy = (1 - v.y) / 2 * H; v.set(o.position.x + o.scale.x / 2, o.position.y, o.position.z).project(camera); const hw = Math.abs((v.x + 1) / 2 * W - cx) + 2, hh = hw * o.scale.y / o.scale.x + 2;
+    const r = { x0: cx - hw, x1: cx + hw, y0: cy - hh, y1: cy + hh }; const hit = cx < -hw || cx > W + hw || placed.some(q => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0); o.visible = !hit; if (!hit) placed.push(r); }
 }
 const mapRay = new THREE.Raycaster(), mapPtr = new THREE.Vector2(); const mapTouch = new Map(); let mapMoved = 0;
 canvas.addEventListener('pointerdown', e => { if (!G.map) return; mapTouch.set(e.pointerId, { x: e.clientX, y: e.clientY }); mapMoved = 0; canvas.setPointerCapture(e.pointerId); }, true);
@@ -2815,7 +2833,9 @@ function spouseLook(sp) {
 function makeSpouse(sp) { sp = sp || P.spouse; const lk = spouseLook(sp); const c = makeChar(lk.shirt); setLook(c, lk); const l = labelSprite((married() ? '❤️ ' : '') + sp.name, { fs: 34, scale: 0.5 }); l.position.set(0, 3.0, 0); c.add(l); return c; }
 const SPOUSE_LINES = ['Aa gaye? Khana lag gaya se!', 'Aaj kitna kamaya? Sapna yaad se na?', 'Mummy ka phone aaya tha, tera haal pooch rahi thi.', 'Chal aaj Cyber Hub chalein?', 'Bas ek baat: gaadi dhyaan se chalana.', 'Agla sapna: farmhouse! Main saath hoon.', 'Thak gaye? Chai bana doon?'];
 function spouseTalk() { if (!HOME || !HOME.spouse) return; say(HOME.spouse, pick(SPOUSE_LINES), 3); }
-function sleepNow() { fadeTo('Zzz… ' + (married() ? P.spouse.name + ' ne chaadar odha di' : 'so rya se'), 2200, () => { G.hp = 100; G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal(); toast('Neend poori! Ram Ram.'); if (HOME && HOME.spouse) setTimeout(() => say(HOME.spouse, 'Good morning! Chai ready se ☕', 3), 900); }); }
+function sleepNow() { fadeTo('Zzz… ' + (married() ? P.spouse.name + ' ne chaadar odha di' : 'so rya se'), 2600, () => { G.hp = 100; G.hangover = false; L.drinks = 0; $('hangover').hidden = true; saveLocal();
+    if (DAY.t > 0.27) G.skySkew = (G.skySkew || 0) + (1.27 - DAY.t) * D.DAY_SECS; else G.skySkew = (G.skySkew || 0) + (0.27 - DAY.t) * D.DAY_SECS; /* your sky wakes at 6:30; the city's clock is shared, so only yours moves */
+    bigText('SUBAH HO GAYI ☀️', 'Health ' + Math.round(G.hp) + ' · hangover gayab · bhookh ' + Math.round(L.hunger), 2.6); toast('Neend poori! Ram Ram.'); if (HOME && HOME.spouse) setTimeout(() => say(HOME.spouse, 'Good morning! Chai ready se ☕', 3), 900); }); }
 // wake up in your own bed (or walk in through the front door)
 function goInside(wake) {
   if (!ensureHome()) return false; if (G.veh) dismount(); if (G.race) return false; const s = HOME.spot.wake, I = INTERIOR.home;
@@ -3134,7 +3154,7 @@ function showStartPick() {
   const gharSub = gh && gh !== 'street' && D.HOUSES[gh] ? D.HOUSES[gh].name + ': apne ghar mein subah' : 'Bus se utro, footpath pe pehli raat: Sapno ka Shehar yahin se shuru';
   for (const [id, name0, sub0] of STARTS) { const name = id === 'ghar' && !(gh && gh !== 'street') ? 'Bus Adda' : name0, sub = id === 'ghar' ? gharSub : sub0; box.append(el('button', { type: 'button', class: 'splace' + (id === 'ghar' ? ' rec' : '') + (id === last ? ' on' : ''), onclick: e => joinWhenReady(id, e.currentTarget) }, el('b', { text: name }), el('span', { text: sub }))); }
 }
-renderLangPick();
+renderLangPick(); I18N.ready.then(() => { renderLangPick(); if (!lsGet('gl_radio')) A.preferStation(I18N.LANG === 'har' ? 'har' : 'bol'); }); // the saved language, once loaded; Haryanvi players start on Haryanvi radio
 const savedName = lsGet('gl_name'); if (!savedName) { $('nameIn').value = pick(['Bunty', 'Monty', 'Rocky', 'Sunny', 'Lucky', 'Bittu', 'Golu', 'Pinky', 'Sweety', 'Neetu']) + ' ' + pick(['Yadav', 'Chaudhary', 'Dahiya', 'Sangwan', 'Malik', 'Hooda', 'Rao', 'Phogat']); $('loginNote').textContent = 'Naam badalna ho to badal le. Agle step mein apna avatar banao!'; } if (savedName) { $('nameIn').value = savedName; $('loginNote').textContent = 'Wapas aa gaya ' + savedName + '! Tera progress saved se.'; }
 if (savedName && lsGet('gl_lookset')) { $('playBtn').textContent = 'Chalo, Khelo!'; $('playBtn').after(el('button', { type: 'button', class: 'buy alt', id: 'avBtn', text: 'Avatar badlo', onclick: () => { saveName(); showCreator(); } })); } else $('playBtn').textContent = 'Aage: apna avatar banao →';
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('playBtn').click(); });

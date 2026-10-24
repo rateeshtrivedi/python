@@ -1,4 +1,4 @@
-// Language: the game is written in Haryanvi; Hindi and English players get it translated on the fly.
+// Language: the game is written in Haryanvi; Hindi and English players get it translated on the fly (and Haryanvi players get the few lines still written in English).
 // Hindi is written in Roman letters (Hinglish), the same way the Haryanvi is.
 // Every piece of text that reaches the screen (DOM text, a few attributes, canvas text) is looked up in
 // a dictionary of the game's own strings, so the game code and the server keep speaking Haryanvi.
@@ -48,7 +48,7 @@ function trCore(s) {
 }
 // Translate one string (Haryanvi source -> current language). Unknown text (names, numbers) comes back as is.
 export function tr(s) {
-  if (!EXACT || LANG === 'har' || typeof s !== 'string' || !/[A-Za-z]{2}/.test(s)) return s;
+  if (!EXACT || typeof s !== 'string' || !/[A-Za-z]{2}/.test(s)) return s;
   let r = cache.get(s); if (r !== undefined) return r;
   const lead = s.match(/^\s*/)[0], trail = s.slice(lead.length).match(/\s*$/)[0]; const core = norm(s);
   const t = core ? trCore(core) : null; r = t == null ? s : lead + t + trail;
@@ -101,7 +101,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined') {
   for (const f of ['fillText', 'strokeText', 'measureText']) { const o = P[f]; P[f] = function (t, ...r) { return o.call(this, tr(t), ...r); }; }
 }
 
-const LOAD = { hi: () => import('./lang/hi.js'), en: () => import('./lang/en.js') };
+const LOAD = { har: () => import('./lang/har.js'), hi: () => import('./lang/hi.js'), en: () => import('./lang/en.js') }; // Haryanvi too: the few lines the game still writes in English
 let switchNo = 0;
 async function loadDict(id) { const m = await LOAD[id](); return m.default; }
 // Switch language (also used at startup). Resolves once the page is translated.
@@ -110,12 +110,12 @@ export async function setLang(id, remember = true) {
   if (remember) lsSet('gl_lang', id);
   const no = ++switchNo;
   return (async () => {
-    let pairs = null; if (id !== 'har') { try { pairs = await loadDict(id); } catch (e) { console.warn('Gurugram Life: could not load language', id, e); id = 'har'; } }
+    let pairs = null; try { pairs = await loadDict(id); } catch (e) { console.warn('Gurugram Life: could not load language', id, e); if (id !== 'har') id = 'har'; }
     if (no !== switchNo) return; // a newer switch won
     LANG = id; if (pairs) compile(pairs); else { EXACT = null; cache = new Map(); }
     // the page and its search text stay English (en-IN); the game UI in Hindi / Haryanvi is marked Roman-script Hindi
     document.documentElement.lang = 'en-IN'; for (const id2 of ['hud', 'modal', 'creator', 'startpick']) { const e = document.getElementById(id2); if (e) e.lang = id === 'en' ? 'en-IN' : 'hi-Latn'; }
-    if (id !== 'har') watch(); if (document.body) retranslate();
+    watch(); if (document.body) retranslate();
   })();
 }
 export const ready = setLang(LANG, false);
