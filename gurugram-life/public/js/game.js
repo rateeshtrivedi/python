@@ -706,10 +706,12 @@ A.hooks.toast = toast; A.hooks.label = radioLabel;
 function feed(text, kind) { if (G.race || G.story || now() - (G.startedAt || 0) < 20) return; const d = el('div', { class: kind || '', text }); $('feed').prepend(d); while ($('feed').children.length > 3) $('feed').lastChild.remove(); setTimeout(() => d.remove(), 10500); }
 // HUD panels stack instead of overlapping: the job card sits under the stats card, the mission card under the top-centre pills
 function layoutHUD() {
-  const vis = e => e && !e.hidden && e.offsetParent !== null && getComputedStyle(e).display !== 'none'; const st = $('stat').getBoundingClientRect();
-  const job = $('job'); if (vis(job)) job.style.top = Math.round(st.bottom + 8) + 'px';
-  const mc = $('mchip'); if (vis(mc)) mc.style.top = Math.round((vis(job) ? job.getBoundingClientRect().bottom : st.bottom) + 8) + 'px';
-  const q = $('quest'); if (vis(q)) { let b = 0; const qr = q.getBoundingClientRect(); for (const id of ['loc', 'navchip', 'banner', 'ipl']) { const e = $(id); if (!vis(e)) continue; const r = e.getBoundingClientRect(); if (r.right > qr.left && r.left < qr.right && r.top < innerHeight / 3) b = Math.max(b, r.bottom); } q.style.top = Math.round(Math.max(b + 8, 52)) + 'px'; }
+  const vis = e => e && !e.hidden && e.offsetParent !== null && getComputedStyle(e).display !== 'none', put = (e, y) => e.style.setProperty('top', Math.round(y) + 'px', 'important'); // the phone stylesheet pins these with !important
+  const box = id => { const e = $(id); return vis(e) ? e.getBoundingClientRect() : null; }, over = (a, b) => a && b && a.right > b.left && a.left < b.right;
+  const job = $('job'), st = box('stat'); if (vis(job) && st && !document.body.classList.contains('touch')) put(job, st.bottom + 8);
+  const mc = $('mchip'); if (vis(mc)) { const jb = box('job'); put(mc, (jb || st || { bottom: 44 }).bottom + 8); }
+  const q = $('quest'); if (vis(q)) { q.style.removeProperty('top'); let b = 0; const qr = q.getBoundingClientRect(); for (const id of ['loc', 'navchip', 'job', 'mchip']) { const r = box(id); if (over(r, qr) && r.top < innerHeight / 2) b = Math.max(b, r.bottom); } if (b) put(q, Math.max(b + 8, qr.top)); }
+  const bn = $('banner'); if (vis(bn)) { bn.style.removeProperty('top'); const br = bn.getBoundingClientRect(); let b = 0; for (const id of ['quest', 'job', 'mchip']) { const r = box(id); if (over(r, br) && r.bottom > br.top - 2 && r.top < br.bottom + 40) b = Math.max(b, r.bottom); } if (b) put(bn, b + 6); }
 }
 function updateHUD() {
   if (!P) return; layoutHUD();
