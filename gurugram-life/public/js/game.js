@@ -711,7 +711,7 @@ function layoutHUD() {
   const job = $('job'), st = box('stat'); if (vis(job) && st && !document.body.classList.contains('touch')) put(job, st.bottom + 8);
   const mc = $('mchip'); if (vis(mc)) { const jb = box('job'); put(mc, (jb || st || { bottom: 44 }).bottom + 8); }
   const q = $('quest'); if (vis(q)) { q.style.removeProperty('top'); let b = 0; const qr = q.getBoundingClientRect(); for (const id of ['loc', 'navchip', 'job', 'mchip']) { const r = box(id); if (over(r, qr) && r.top < innerHeight / 2) b = Math.max(b, r.bottom); } if (b) put(q, Math.max(b + 8, qr.top)); }
-  const bn = $('banner'); if (vis(bn)) { bn.style.removeProperty('top'); const br = bn.getBoundingClientRect(); let b = 0; for (const id of ['quest', 'job', 'mchip']) { const r = box(id); if (over(r, br) && r.bottom > br.top - 2 && r.top < br.bottom + 40) b = Math.max(b, r.bottom); } if (b) put(bn, b + 6); }
+  const bn = $('banner'); if (vis(bn)) { bn.style.removeProperty('top'); const br = bn.getBoundingClientRect(); let b = 0; for (const id of ['quest', 'job', 'mchip']) { const r = box(id); if (over(r, br) && r.top < innerHeight / 2 && r.bottom > br.top - 2) b = Math.max(b, r.bottom); } /* under every top-area panel it would touch */ if (b) put(bn, b + 6); }
 }
 function updateHUD() {
   if (!P) return; layoutHUD();
