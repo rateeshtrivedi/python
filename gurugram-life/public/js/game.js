@@ -1096,9 +1096,10 @@ window.addEventListener('touchstart', () => document.body.classList.add('touch')
 for (const t of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(t, () => { if (!A.audioRunning() || A.Radio.blocked) A.unlock(); }, { capture: true, passive: true });
 window.addEventListener('keydown', e => { if (/^(Key[WASD]|Arrow(Up|Down|Left|Right))$/.test(e.code) && !(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) document.body.classList.remove('touch'); });
 if (matchMedia('(pointer:coarse)').matches && !matchMedia('(any-pointer:fine)').matches) document.body.classList.add('touch');
-const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); G.tapAt = performance.now(); if (G.started) fn(); });
-// a touch still sends its click where the finger lifts: swallow it so a button that opens a modal doesn't also press what opened under it
-$('modal').addEventListener('click', e => { if (performance.now() - (G.tapAt || 0) < 450) { e.stopPropagation(); e.preventDefault(); } }, true);
+const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); G.tap = { t: e.timeStamp, x: e.clientX, y: e.clientY }; if (G.started) fn(); });
+// a touch still sends its click where the finger lifts: swallow that one click (same spot, right after) so a button that opens a modal doesn't also press what opened under it
+$('modal').addEventListener('click', e => { const t = G.tap; if (t && e.timeStamp - t.t < 2500 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 30) /* no new finger since the button: this is its leftover click */ { G.tap = null; e.stopPropagation(); e.preventDefault(); } }, true);
+$('modal').addEventListener('pointerdown', () => { G.tap = null; }, true); // a real tap inside the modal: let its click through
 $('stat').addEventListener('click', e => { if (document.body.classList.contains('touch') && !e.target.closest('button')) $('stat').classList.toggle('open'); }); // phones: tap the small stats card for the full panel
 tap('bAct', doAction); tap('bPunch', attack); tap('bGun', cycleWeapon); tap('bVeh', toggleVehicle); tap('bMenu', openPhone);
 $('bRun').addEventListener('pointerdown', e => { e.preventDefault(); if (G.veh) { nosHeld = true; return; } G.jumpReq = true; }); // Jump on foot, hold for NOS in a car
@@ -1205,17 +1206,49 @@ function punch() {
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 // a punched passer-by squares up and fights back (they go home afterwards)
 function pedFight(p) {
-  const pos = p.mesh.position; const n = makeFighter(pick(['Raahgir', 'Sharma Uncle', 'Gym wala Bunty', 'Bhaiya ji', 'Delivery boy']), pos.x, pos.z, 40, 4, p.mesh.userData.torso ? p.mesh.userData.torso.material.color.getHex() : pick(D.SHIRTS));
+  const pos = p.mesh.position, fem = p.mesh.userData.dress && p.mesh.userData.dress.g === 'f'; const n = makeFighter(pick(fem ? ['Aunty ji', 'Didi', 'Bhabhi ji', 'College wali'] : ['Raahgir', 'Sharma Uncle', 'Gym wala Bunty', 'Bhaiya ji', 'Delivery boy']), pos.x, pos.z, 40, 4, p.mesh.userData.torso ? p.mesh.userData.torso.material.color.getHex() : pick(D.SHIRTS), false, fem ? 'f' : 'm');
   n.fromPed = p; n.state = 'aggro'; n.cd = 0.9; n.hp -= irnd(9, 14); n.hitT = 0.2; p.fighter = n; p.mesh.visible = false; FIGHTERS.push(n);
   grunt(n, 'hit'); setTimeout(() => { if (n.state !== 'ko') say(n, pick(['Oye! Mere te haath uthaya?', 'Bina baat ke? Aaja fir!', 'Ab dekh tu!']), 2.2); }, 550);
 }
 // a hit knocks you back AWAY from whoever threw it (not just backwards from where you face: with the attacker behind
 // you that pulled you into them, until you stood on the same spot and they spun round you)
 function takeHit(dmg, who, from) { G.lastFight = now(); if (G.hp <= 0) return; G.hp -= dmg; flashHit(); A.sfx('punch'); player._vi = nameIdx(P.name); if (G.hp > 0) grunt(player, 'hit');
-  const kx = from ? G.x - from.x : -Math.sin(G.r), kz = from ? G.z - from.z : -Math.cos(G.r), kd = Math.hypot(kx, kz); if (kd > 0.01) { G.x += kx / kd * 0.4; G.z += kz / kd * 0.4; } else { G.x -= Math.sin(G.r) * 0.4; G.z -= Math.cos(G.r) * 0.4; } G.dance = false; if (G.hp <= 0) playerKO(who); updateHUD(); }
-function playerKO(who) {
+  const kx = from ? G.x - from.x : -Math.sin(G.r), kz = from ? G.z - from.z : -Math.cos(G.r), kd = Math.hypot(kx, kz); if (kd > 0.01) { G.x += kx / kd * 0.4; G.z += kz / kd * 0.4; } else { G.x -= Math.sin(G.r) * 0.4; G.z -= Math.cos(G.r) * 0.4; } G.dance = false; if (G.hp <= 0) playerKO(who, from); updateHUD(); }
+function playerKO(who, from) {
   G.hp = 0; A.sfx('ko'); grunt(player, 'ko'); net.send('ko', {}); if (G.veh) dismount(); if (G.job) { endJob(); toast('Job cancel ho gaya.', 'bad'); }
-  fadeTo((who ? who + ' ne dhobi pachhad maar diya!' : 'Behosh ho gaya!') + ' Civil Hospital le ja rahe hain...', 2400, async () => { G.hp = 100; G.inside = null; setIndoor(false); G.x = HOSPITAL.x; G.z = HOSPITAL.z + 4; G.r = 0; G.yaw = 0; if (P.money > 0) { await buy('misc', 'ko_bill'); toast('Civil Hospital mein hosh aaya. Bill kat gaya.', 'bad'); } updateHUD(); });
+  const robber = from && FIGHTERS.includes(from) && from.state !== 'ko' && P.money > 0 ? from : null; if (robber) robBatua(robber); /* he grabs your batua while you're down, then the ambulance comes */
+  setTimeout(() => fadeTo((who ? who + ' ne dhobi pachhad maar diya!' : 'Behosh ho gaya!') + ' Civil Hospital le ja rahe hain...', 2400, async () => { G.hp = 100; G.inside = null; setIndoor(false); G.x = HOSPITAL.x; G.z = HOSPITAL.z + 4; G.r = 0; G.yaw = 0; if (P.money > 0) { await buy('misc', 'ko_bill'); toast('Civil Hospital mein hosh aaya. Bill kat gaya.', 'bad'); } if (G.robbed) { toast(G.robbed.name + ' tera batua le gaya: -' + fmt(G.robbed.amt), 'bad'); G.robbed = null; } updateHUD(); }), robber ? 1800 : 0);
+}
+// ---- batua: a knocked-down NPC drops his wallet (or her purse) with a little cash; walk over it to take it. The same happens to you.
+const DROPS = []; let ROB = null;
+function batuaMesh(purse) {
+  const g = new THREE.Group();
+  if (purse) { bx(g, 0.42, 0.3, 0.16, pick([0xc2185b, 0x8e24aa, 0xd84315, 0x5d4037]), 0, 0.17, 0); bx(g, 0.1, 0.05, 0.17, 0xf6c026, 0, 0.27, 0); const h = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 6, 14, Math.PI), mat(0x3e2723)); h.position.y = 0.32; g.add(h); }
+  else { bx(g, 0.34, 0.06, 0.24, 0x4e342e, 0, 0.04, 0); bx(g, 0.26, 0.012, 0.16, 0x7fbf7f, 0.05, 0.08, 0.02); bx(g, 0.34, 0.01, 0.02, 0x2b1a14, 0, 0.075, -0.11); }
+  scene.add(g); return g;
+}
+async function dropBatua(n) {
+  if (n.dropT && now() - n.dropT < 30) return; n.dropT = now(); /* one batua per knockdown */
+  const purse = !!(n.mesh.userData.dress && n.mesh.userData.dress.g === 'f'), x = n.x + rnd(-0.6, 0.6), z = n.z + rnd(-0.6, 0.6);
+  const r = await net.req('npcdrop', { big: !!(n.bk || n.donBoss) }); if (!r.ok || G.inside) return;
+  const m = batuaMesh(purse); m.position.set(x, groundY(x, z), z); m.rotation.y = rnd(0, 6); const l = labelSprite('💰 ' + fmt(r.amt), { fs: 30, scale: 0.42, bg: 'rgba(20,90,40,.85)' }); l.position.y = 0.8; m.add(l);
+  DROPS.push({ id: r.id, amt: r.amt, purse, x, z, m, t: now() + D.DROP.keep - 5, busy: false });
+  if (DROPS.length > 6) dropGone(DROPS[0]); setTimeout(() => { if (DROPS.some(d => d.id === r.id)) toast((purse ? 'Purse' : 'Batua') + ' gir gaya! Upar se chal ke utha le', 'money'); }, 900);
+}
+function dropGone(d) { scene.remove(d.m); const i = DROPS.indexOf(d); if (i >= 0) DROPS.splice(i, 1); }
+function robBatua(n) {
+  const x = G.x + rnd(-0.5, 0.5), z = G.z + rnd(-0.5, 0.5); const m = batuaMesh(false); m.position.set(x, groundY(x, z), z); A.sfx('cash', 0.4);
+  ROB = { n, m, x, z, t: now() + 1.7 }; net.req('robbed', {}).then(r => { if (r.ok && r.amt > 0) G.robbed = { name: n.name, amt: r.amt }; });
+}
+function updateDrops(dt) {
+  const t = now();
+  for (const d of DROPS.slice()) {
+    if (t > d.t || G.inside) { dropGone(d); continue; } d.m.rotation.y += dt * 1.6; d.m.position.y = groundY(d.x, d.z) + 0.05 + Math.sin(t * 4) * 0.04;
+    if (!d.busy && G.hp > 0 && Math.hypot(G.x - d.x, G.z - d.z) < (G.veh ? 2.4 : 1.5)) { d.busy = true; net.req('pickdrop', { id: d.id, purse: d.purse }).then(r => { dropGone(d); if (r.ok) { popText('+' + fmt(r.amt), 'gold'); burst(d.x, 0.6, d.z, 0x7fbf7f, 14, { note: true, speed: 2, up: 2, life: 1.2 }); } }); }
+  }
+  if (ROB) { const n = ROB.n;
+    if (Math.hypot(ROB.x - n.x, ROB.z - n.z) <= 0.55 && ROB.m.parent) { scene.remove(ROB.m); n.mesh.userData.punchT = 0.25; say(n, pick(['Tera batua ab mera!', 'Chai-paani ho gaya, shukriya!', 'Agli baar sambhal ke chaliyo!']), 2.2); }
+    if (t > ROB.t + 4.5) { if (ROB.m.parent) scene.remove(ROB.m); ROB = null; } }
 }
 const FIGHTERS = []; let PEHLWAN = null;
 function spawnFighters() {
@@ -1223,8 +1256,9 @@ function spawnFighters() {
   homes.forEach(h => FIGHTERS.push(makeFighter('Chhora ' + pick(['Monu', 'Sonu', 'Bittu', 'Golu', 'Rinku', 'Pintu', 'Lalit', 'Sandy']), h[0], h[1], 60, 6, pick([0x1c1c1c, 0xd7331f, 0x2e6bd1, 0xf3b61f]))));
   PEHLWAN = makeFighter('Pehlwan Bhola', AKHARA.x, AKHARA.z, 160, 9, 0xd7331f, true); PEHLWAN.mesh.scale.set(1.25, 1.25, 1.25); PEHLWAN.state = 'idle'; FIGHTERS.push(PEHLWAN);
 }
-function makeFighter(name, x, z, hp, dmg, shirt, pehl) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined, g: 'm' }); /* chhore, bosses and the pehlwan are men */ scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
+function makeFighter(name, x, z, hp, dmg, shirt, pehl, g) { const m = makeChar(shirt, { pants: pehl ? 0xd7331f : undefined, g: g || 'm' }); /* chhore, bosses and the pehlwan are men; a passer-by who fights back keeps her own look */ scene.add(m); const l = labelSprite(name, { fs: 34, scale: 0.5, bg: 'rgba(120,25,15,.75)' }); l.position.y = 3.0; m.add(l); return { mesh: m, name, x, z, hx: x, hz: z, r: 0, hp, max: hp, dmg, state: 'wander', tx: x, tz: z, cd: 0, t: 0, pehl: !!pehl, hitT: 0 }; }
 function npcKO(n) {
+  if (!n.story && !n.pehl) dropBatua(n);
   if (n.bk) { n.state = 'ko'; n.t = 1e9; koSay(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Galti ho gayi bhai...']), 2.5); ev('npc_ko'); return; } // a Bada Kaam enemy stays down
   if (n.donBoss) { n.state = 'ko'; n.t = 8; koSay(n, 'Bas kar... maan gaya tujhe!', 3); ev('npc_ko'); net.send('donko', { ch: n.donCh }); for (const h of DONF) if (h !== n && h.state !== 'ko') { h.state = 'ko'; h.t = 6; say(h, 'Bhaago!', 1.5); } bigText('CHAPTER ' + (n.donCh + 1) + ' POORA!', D.DON[n.donCh].boss + ' dhobi pachhad', 1.8); return; }
   if (n.fromPed) { n.state = 'ko'; n.t = 4; koSay(n, pick(['Bas kar bhai!', 'Maaf kar de!', 'Aaj ka din hi kharab se...']), 2.5); ev('npc_ko'); return; }
@@ -1233,7 +1267,7 @@ function npcKO(n) {
   if (n.story) { n.state = 'ko'; n.t = 99; koSay(n, 'Maaf kar de bhai! Galti ho gayi!', 2.5); ev('npc_ko'); earn('loot', 150, 'Monu ne haar maani'); return storyKO(); }
   n.state = 'ko'; n.t = n.pehl ? 6 : 22; koSay(n, n.pehl ? 'Haar gaya... tu asli pehlwan se!' : pick(['Maaf kar de bhai!', 'Galti ho gayi!', 'Ab na karunga!']), 2.5);
   ev('npc_ko');
-  if (n.pehl) { AKHARA.fight = false; earn('dangal', 1000, 'Dangal jeeta!'); } else earn('loot', irnd(40, 120), n.name + ' ne haar maani');
+  if (n.pehl) { AKHARA.fight = false; earn('dangal', 1000, 'Dangal jeeta!'); } 
 }
 // ================================================================ GAADI CHHEENO: stop any vehicle and take it; whoever is driving fights for it
 const JACK_NAMES = ['Driver Pappu', 'Auto wala Rajesh', 'Truck wala Balwinder', 'Ustaad Kallu', 'Driver Satbir', 'Bus conductor Ramesh'];
@@ -1269,6 +1303,7 @@ function updateFighters(dt) {
   const gone = [];
   for (const n of FIGHTERS) {
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
+    if (ROB && ROB.n === n && n.state !== 'ko') { const rx = ROB.x - n.x, rz = ROB.z - n.z, rd = Math.hypot(rx, rz), mv = rd > 0.5; if (mv) { n.x += rx / rd * Math.min(rd, 4.5 * dt); n.z += rz / rd * Math.min(rd, 4.5 * dt); n.r = Math.atan2(rx, rz); } m.position.set(n.x, groundY(n.x, n.z), n.z); m.rotation.y = n.r; animChar(m, dt, mv ? 1 : 0, 1.3); continue; } // the robber walks to your batua, nothing else
     if ((n.jack || n.badla || n.fromPed || n.don) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && !n.don && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false, gm = null;
@@ -1310,7 +1345,7 @@ function gunFx(x, y, z, tx, ty, tz) {
   setTimeout(() => { scene.remove(f); scene.remove(ln); geo.dispose(); }, 70);
 }
 function shoot() {
-  const id = WEAPONS[G.weapon], g = D.GUNS[id]; if ((G.gunCD || 0) > now() || G.frozen || G.selfie) return; G.gunCD = now() + g.cd;
+  const id = WEAPONS[G.weapon], g = D.GUNS[id]; if (!g) { G.weapon = 0; weaponHUD(); return punch(); } /* the gun is gone (sold, or a fresh profile): fists */ if ((G.gunCD || 0) > now() || G.frozen || G.selfie) return; G.gunCD = now() + g.cd;
   if (!(((P.ammo || {})[id] || 0) > 0)) { A.sfx('click'); toast(g.round + ' khatam! Bittu Hathiyaar wala (Sohna Road) se le', 'bad'); return; }
   P.ammo[id]--; G.dance = false; player.userData.punchT = 0.12; A.sfx(id === 'dunali' ? 'dunali' : 'gun');
   const cone = id === 'dunali' ? 0.55 : 0.3, out = !G.inside, cands = [];
@@ -3065,7 +3100,7 @@ function loop(t) {
       const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
     } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateDogs(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); } updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
+  if (G.started) musicDirector(); updateAmbient(dt); updateDogs(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); updateDrops(dt); } updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }

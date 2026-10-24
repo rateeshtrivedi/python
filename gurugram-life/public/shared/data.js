@@ -92,6 +92,9 @@ export const plotPrice = (pl, day = gameDay()) => Math.round(pl.base * (1 + 0.22
 export const plotRent = pl => Math.round(pl.base * 0.004 / 10) * 10; // paid every game day you own it
 // petrol: every motor vehicle has a tank; fill up at a petrol pump
 export const PETROL_RATE = 100; // ₹ a litre
+// a knocked-down NPC drops his batua (or her purse): a little cash to pick up. A player knocked down by an NPC loses a bit the same way.
+export const DROP = { min: 40, max: 160, perLevel: 5, big: [300, 900], keep: 120 };
+export const robAmount = money => Math.min(money, Math.max(50, Math.round(money * 0.06)), 3000);
 export const TANK = { scooty: 6, dhakad: 13, chhotu: 30, desert: 50, cruiser: 60, auto: 8, bus: 120, truck: 160, naav: 20 };
 export const FUEL_RANGE = { 2: 2600, 4: 2100, 5: 1800 }; // game units on a full tank, by vehicle kind
 export const SPOUSE_NAMES = { f: ['Simran', 'Pooja', 'Neha', 'Anjali', 'Kavya', 'Riya', 'Priya'], m: ['Rohit', 'Aman', 'Vikram', 'Karan', 'Arjun', 'Rahul', 'Sahil'] };

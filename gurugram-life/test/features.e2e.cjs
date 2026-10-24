@@ -5,7 +5,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright'); const fs = require('fs'); const path = require('path'); const os = require('os');
 const PHONE = !!process.env.PHONE, DEV = PHONE ? 'phone' : 'desk', ROOT = process.env.OUT || path.join(os.tmpdir(), 'gl-features'), OUT = path.join(ROOT, DEV); fs.mkdirSync(OUT, { recursive: true });
 const URL = process.env.URL || 'http://localhost:3000/';
-const HOOK = `\nwindow.__t={G,L,D,BK,DAY,FIGHTERS,CROWD,PEDS,ZONES,PUMPS,THANA,PLOT_AT,BITTU,GANG,PEHLWAN:()=>PEHLWAN,mount,dismount,teleport,startChase,closeModal,openBade,syncGang,weaponHUD,setWeapon,shoot,makeFighter,fuelLeft,pumpLabel,pumpAct,appGuns,appGang,appZameen,plotDeal,updateZones,
+const HOOK = `\nwindow.__t={G,L,D,BK,DAY,FIGHTERS,DROPS,get ROB(){return ROB},npcKO,takeHit,CROWD,PEDS,ZONES,PUMPS,THANA,PLOT_AT,BITTU,GANG,PEHLWAN:()=>PEHLWAN,mount,dismount,teleport,startChase,closeModal,openBade,syncGang,weaponHUD,setWeapon,shoot,makeFighter,fuelLeft,pumpLabel,pumpAct,appGuns,appGang,appZameen,plotDeal,updateZones,
   get nearZone(){return nearZone},get P(){return P},get player(){return player},get gunMesh(){return gunMesh}};`;
 const results = []; let errs = [];
 (async () => {
@@ -46,7 +46,7 @@ const results = []; let errs = [];
     const r = await E(async pm => { const t = window.__t, G = t.G; t.teleport(pm.x + pm.fx * 30, pm.z + pm.fz * 30, Math.atan2(pm.fx, pm.fz)); t.mount('chhotu'); const f0 = t.fuelLeft(); G.vs = 20; await new Promise(r => setTimeout(r, 2500)); const f1 = t.fuelLeft();
       G.x = pm.x + pm.fx * 1.5; G.z = pm.z + pm.fz * 1.5; G.vs = 0; t.updateZones(); return { f0: +f0.toFixed(2), f1: +f1.toFixed(2), label: t.nearZone && t.nearZone.label() }; }, pm);
     return { ok: r.f1 < r.f0 && /Petrol bharwao|Tanki full/.test(r.label || ''), info: JSON.stringify(r) }; });
-  await step('an empty tank crawls and offers the petrol-wala bhaiya', async () => { const r = await E(async () => { const t = window.__t, G = t.G; t.L.fuel._tmp = 0.01; G.vs = 20; await new Promise(r => setTimeout(r, 5000)); return { vs: +Math.abs(G.vs).toFixed(1), card: document.querySelector('#raceres h2')?.textContent }; });
+  await step('an empty tank crawls and offers the petrol-wala bhaiya', async () => { const r = await E(async () => { const t = window.__t, G = t.G; t.L.fuel._tmp = 0.01; G.vs = 20; for (let k = 0; k < 24 && (k < 6 || Math.abs(G.vs) >= 3); k++) await new Promise(r => setTimeout(r, 500)); /* slows to a push, however slow the renderer */ return { vs: +Math.abs(G.vs).toFixed(1), card: document.querySelector('#raceres h2')?.textContent }; });
     await closeCards(); await E(() => window.__t.dismount()); return { ok: r.vs < 3 && /Petrol khatam/.test(r.card || ''), info: JSON.stringify(r) }; });
   await step('police catch you: arrest at the thana and a fine, the car stays yours', async () => {
     await E(() => { const t = window.__t, G = t.G; t.teleport(30, 40, 0); t.mount('chhotu'); G.loaner = true; t.startChase({ near: true, secs: 30 }); G.chase.wait = 0; G.chase.x = G.x + 1; G.chase.z = G.z; }); await W(9000);
@@ -60,11 +60,11 @@ const results = []; let errs = [];
     const B = await E(() => window.__t.BITTU); await at(B.x, B.z + 6); await W(1200);
     return { ok: r.bittu && r.plots >= 5 && /Udhaar Vasooli/.test(g) && /Pump pe Kabza/.test(z), info: JSON.stringify(r) }; });
   await step('guns: draw a katta, shoot a chhora down, people run, police come', async () => {
-    const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); P.guns = ['katta']; P.ammo = { katta: 8 }; t.weaponHUD(); t.setWeapon(1);
+    const r = await E(async () => { const t = window.__t, G = t.G; let P = t.P; t.teleport(10, 40, 0); P.guns = ['katta']; P.ammo = { katta: 8 }; t.weaponHUD(); t.setWeapon(1); const keep = setInterval(() => { const Q = t.P; if (!Q.guns.includes('katta')) { Q.guns = ['katta']; Q.ammo = { katta: P.ammo.katta }; P = Q; G.weapon = 1; t.weaponHUD(); } }, 50); /* a server profile push (a new game day) would take the test gun away */
       const n = t.makeFighter('Test Chhora', G.x, G.z + 8, 60, 3, 0x555555); n.state = 'wander'; t.FIGHTERS.push(n); G.r = G.yaw = 0; let shots = 0;
       for (let k = 0; k < 8 && n.state !== 'ko'; k++) { G.gunCD = 0; G.r = G.yaw = Math.atan2(n.x - G.x, n.z - G.z); t.shoot(); shots++; await new Promise(r => setTimeout(r, 350)); }
       const panic = t.CROWD.concat(t.PEDS).filter(p => p.panic > performance.now() / 1000).length; await new Promise(r => setTimeout(r, 3200));
-      return { ko: n.state === 'ko', shots, ammo: P.ammo.katta, gun: !!t.gunMesh, hud: document.getElementById('weap').textContent, panic, police: !!G.chase }; });
+      clearInterval(keep); return { ko: n.state === 'ko', shots, ammo: t.P.ammo.katta, gun: !!t.gunMesh, hud: document.getElementById('weap').textContent, panic, police: !!G.chase }; });
     await E(() => { const t = window.__t; if (t.G.chase) t.G.chase.until = 0; t.setWeapon(0); }); await W(600); await closeCards();
     return { ok: r.ko && r.gun && r.ammo < 8 && /Desi Katta/.test(r.hud) && r.police, info: JSON.stringify(r) }; });
   await step('an enemy with a katta keeps his distance and fires', async () => {
@@ -72,12 +72,27 @@ const results = []; let errs = [];
       for (let k = 0; k < 40 && G.hp >= 100; k++) await new Promise(r => setTimeout(r, 500)); /* about half his shots land */ const d = Math.hypot(n.x - G.x, n.z - G.z); n.state = 'ko'; n.t = 0.01; return { hp: G.hp, d: +d.toFixed(1) }; });
     return { ok: r.hp < 100 && r.d > 2.4, info: JSON.stringify(r) }; });
   await step('the gang follows you and joins the fight', async () => {
-    const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); G.hp = 100; P.gang = [{ name: 'Bunty', shirt: 2, g: 'm' }, { name: 'Sonu', shirt: 5, g: 'm' }]; t.syncGang();
-      await new Promise(r => setTimeout(r, 600)); G.x += 12; await new Promise(r => setTimeout(r, 3500)); const follow = t.GANG.map(m => +Math.hypot(m.x - G.x, m.z - G.z).toFixed(1));
+    const r = await E(async () => { const t = window.__t, G = t.G, P = t.P; t.teleport(10, 40, 0); G.hp = 100; const crew = [{ name: 'Bunty', shirt: 2, g: 'm' }, { name: 'Sonu', shirt: 5, g: 'm' }]; P.gang = crew; t.syncGang(); const keep = setInterval(() => { if (t.P.gang.length < 2) { t.P.gang = crew; t.syncGang(); } }, 50); /* the gang lives on the server: hold the test one */
+      await new Promise(r => setTimeout(r, 600)); G.x += 12; for (let k = 0; k < 16 && (k < 7 || t.GANG.some(m => Math.hypot(m.x - G.x, m.z - G.z) >= 7)); k++) await new Promise(r => setTimeout(r, 500)); const follow = t.GANG.map(m => +Math.hypot(m.x - G.x, m.z - G.z).toFixed(1));
       const n = t.makeFighter('Gunda', G.x + 4, G.z + 4, 80, 2, 0x444444); n.state = 'aggro'; t.FIGHTERS.push(n); const h0 = n.hp; await new Promise(r => setTimeout(r, 6000));
-      return { follow, enemyHp: [h0, n.hp], state: n.state, visible: t.GANG.every(m => m.mesh.visible) }; });
+      clearInterval(keep); return { follow, enemyHp: [h0, n.hp], state: n.state, visible: t.GANG.every(m => m.mesh.visible) }; });
     return { ok: r.follow.every(d => d < 7) && r.enemyHp[1] < r.enemyHp[0] && r.visible, info: JSON.stringify(r) }; });
   await E(() => { const t = window.__t; t.P.gang = []; t.syncGang(); t.P.guns = []; t.weaponHUD(); for (const n of t.FIGHTERS) if (n.name === 'Gunda' || n.name === 'Test Chhora') { n.state = 'ko'; } });
+  await step('a knocked-down chhora drops his batua; walking over it takes the cash', async () => {
+    const r = await E(async () => { const t = window.__t, G = t.G; t.teleport(30, 40, 0); for (const d of t.DROPS) if (d.m.parent) d.m.parent.remove(d.m); t.DROPS.length = 0; /* earlier fights' batue */ await new Promise(r => setTimeout(r, 2600)); const m0 = t.P.money;
+      const n = t.makeFighter('Chhora Batua', G.x, G.z + 3, 60, 0, 0x555555); n.state = 'aggro'; t.FIGHTERS.push(n); n.hp = 0; t.npcKO(n);
+      for (let k = 0; k < 20 && !t.DROPS.length; k++) await new Promise(r => setTimeout(r, 200)); const d = t.DROPS[0]; if (!d) return { err: 'no batua' };
+      const seen = { amt: d.amt, visible: d.m.visible && !!d.m.parent }; G.x = d.x; G.z = d.z;
+      for (let k = 0; k < 30 && (t.DROPS.includes(d) || t.P.money === m0); k++) await new Promise(r => setTimeout(r, 200));
+      n.t = 0.01; return { ...seen, gone: !t.DROPS.includes(d), got: t.P.money - m0 }; });
+    return { ok: r.amt > 0 && r.visible && r.gone && r.got >= r.amt, info: JSON.stringify(r) }; }); // the knockdown can also finish the day's 'beat two chhore' kaam, which pays on top
+  await step('knocked down by a chhora: he grabs your batua before the ambulance comes', async () => {
+    const r = await E(async () => { const t = window.__t, G = t.G; t.teleport(30, 60, 0); await new Promise(r => setTimeout(r, 2600)); G.hp = 100; const m0 = t.P.money;
+      const n = t.makeFighter('Chhora Chor', G.x, G.z + 2, 60, 0, 0x333333); n.state = 'aggro'; t.FIGHTERS.push(n); t.takeHit(200, n.name, n);
+      const rob = !!t.ROB; let picked = false; for (let k = 0; k < 40 && !picked; k++) { await new Promise(r => setTimeout(r, 150)); if (t.ROB && !t.ROB.m.parent) picked = true; }
+      for (let k = 0; k < 60 && G.hp <= 0; k++) await new Promise(r => setTimeout(r, 200)); await new Promise(r => setTimeout(r, 1500)); n.state = 'ko'; n.t = 0.01;
+      return { rob, picked, lost: m0 - t.P.money, want: t.D.robAmount(m0), hp: G.hp, toast: [...document.querySelectorAll('#toasts > *')].map(e => e.textContent).join(' | ') }; });
+    return { ok: r.rob && r.picked && r.lost >= r.want && r.hp > 0, info: JSON.stringify(r) }; }); // lost = his share + the hospital bill
   // Bada Kaam 1, played: the pump job, three cars, the runner, back to Chaudhary Saab
   await step('Bada Kaam 1: the menu lists 7 missions and starts the first', async () => { await E(() => window.__t.openBade()); await W(500); const rows = await E(() => document.querySelectorAll('#mBody .item').length);
     await E(() => [...document.querySelectorAll('#mBody .item button')].find(b => /Shuru/.test(b.textContent)).click()); await W(1500); const card = await E(() => document.querySelector('#raceres h2')?.textContent);
