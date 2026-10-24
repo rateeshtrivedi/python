@@ -9,6 +9,7 @@ export function createWorld(opts) {
 const rid = opts.rid;
 let db = { profiles: {}, crews: {}, belt: null, plates: {}, turf: {}, plots: {} };
 try { const saved = opts.load(); if (saved) db = { ...db, ...saved }; } catch { /* fresh world */ }
+for (const id of Object.keys(db.races || {})) db.races[id] = db.races[id].filter(e => ((db.profiles[e.id] || {}).raceWins || {})[id]); // records are for winners only (older saves kept lost races too)
 let dirty = false;
 function persist(force) { if (!dirty && !force) return; dirty = false; opts.save(JSON.stringify(db)); }
 
@@ -600,10 +601,10 @@ function handle(c, m) {
       const firstWin = won && !p.raceWins[R.id]; if (won) p.raceWins[R.id] = (p.raceWins[R.id] || 0) + 1;
       db.races = db.races || {}; const top = db.races[R.id] || (db.races[R.id] = []);
       const oldRec = top[0] ? top[0].ms : Infinity; const mine = top.find(e => e.id === p.id);
-      if (mine) { if (ms < mine.ms) { mine.ms = ms; mine.name = p.name; } } else top.push({ id: p.id, name: p.name, ms });
+      if (won) { if (mine) { if (ms < mine.ms) { mine.ms = ms; mine.name = p.name; } } else top.push({ id: p.id, name: p.name, ms }); } // the Gurugram record only counts races that were won
       top.sort((a, b) => a.ms - b.ms); if (top.length > 20) top.length = 20;
       const rank = top.findIndex(e => e.id === p.id) + 1;
-      if (ms < oldRec && oldRec !== Infinity) announce(p.name + ' ne ' + R.name + ' ka record tod diya: ' + (ms / 1000).toFixed(1) + 's!', 'showoff');
+      if (won && ms < oldRec && oldRec !== Infinity) announce(p.name + ' ne ' + R.name + ' ka record tod diya: ' + (ms / 1000).toFixed(1) + 's!', 'showoff');
       if (won) track(c, 'race_wins');
       const amt = won ? R.prize * (firstWin ? 2 : 1) : Math.round(R.prize * 0.15);
       credit(c, amt, (won ? 'Race jeeti: ' : 'Race: ') + R.name); addXP(c, won ? 60 : 20); if (won) p.respect += firstWin ? 10 : 2;
