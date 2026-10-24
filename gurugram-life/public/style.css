@@ -394,3 +394,10 @@ body:has(#speedo:not([hidden])) #weap{display:none}
 #bGun{background:rgba(70,20,15,.6)}#bPunch.gun{background:rgba(160,40,20,.75)!important;border-color:#ffd36b!important}
 body.touch #weap{display:none}
 .tchart{display:flex;align-items:flex-end;gap:6px;height:70px;padding:6px 4px;background:rgba(0,0,0,.06);border-radius:10px;margin:4px 0 8px}.tchart i{flex:1;background:#8a5a1b;border-radius:4px 4px 0 0;min-height:8%}
+
+#bExit{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1a8a4a;color:#fff;border:2px solid #0e5a30;border-radius:999px;padding:7px 16px 4px;font:800 15px var(--display);z-index:5;width:auto;height:auto}
+
+#ptitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;min-width:0;display:inline-block;vertical-align:bottom}
+#missions h5.mhead{margin:6px 0 2px;font:700 11px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--sarson);opacity:.85}
+.app.locked i{filter:grayscale(1) opacity(.55)}.app .lockb{display:block;font:700 10px var(--display);color:var(--lal);margin-top:1px}
+.menuclock{margin:0 0 8px;font:800 14px var(--display);color:var(--lal)}

@@ -9,6 +9,7 @@ export function createWorld(opts) {
 const rid = opts.rid;
 let db = { profiles: {}, crews: {}, belt: null, plates: {}, turf: {}, plots: {} };
 try { const saved = opts.load(); if (saved) db = { ...db, ...saved }; } catch { /* fresh world */ }
+for (const id of Object.keys(db.races || {})) db.races[id] = db.races[id].filter(e => ((db.profiles[e.id] || {}).raceWins || {})[id]); // records are for winners only (older saves kept lost races too)
 let dirty = false;
 function persist(force) { if (!dirty && !force) return; dirty = false; opts.save(JSON.stringify(db)); }
 
@@ -28,7 +29,7 @@ function newProfile(name, color) {
     daily: { last: '', streak: 0 }, blessed: '', party: 0, tutDone: false, created: Date.now(), lastSeen: Date.now(),
   };
 }
-function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; }
+function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); if (p.bkOn && (p.bkOn.i !== p.bk || now() - p.bkOn.at > 6 * 3600)) p.bkOn = null; /* a kaam left overnight starts fresh */ p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; }
 function publicProfile(p) { const { token, ...rest } = p; return rest; }
 
 
@@ -99,10 +100,10 @@ function storyPrize(c) {
 function bkDone(c, m) {
   const p = c.p, i = Math.floor(num(m.i, -1)), B = D.BADE[i];
   if (!B || i !== (p.bk || 0)) return { ok: false, error: 'Yeh kaam abhi nahi' };
-  if (!c.bk || c.bk.i !== i) return { ok: false, error: 'Kaam poora nahi hua' };
-  if (now() - c.bk.at < 50) return { ok: false, error: 'Kaam poora nahi hua', wait: 50 - (now() - c.bk.at) }; // too quick: the client waits this long and asks again
+  const on = p.bkOn; if (!on || on.i !== i) return { ok: false, error: 'Kaam poora nahi hua' };
+  if (now() - on.at < 50) return { ok: false, error: 'Kaam poora nahi hua', wait: 50 - (now() - on.at) }; // too quick: the client waits this long and asks again
   if (B.gang && p.gang.length < B.gang) return { ok: false, error: 'Is kaam ke liye gang chahiye' };
-  c.bk = null; p.bk = i + 1; credit(c, B.pay, 'Bada Kaam: ' + B.title); p.respect += 25 + i * 10; addXP(c, 150 + 50 * i); track(c, 'bade');
+  p.bkOn = null; p.bk = i + 1; credit(c, B.pay, 'Bada Kaam: ' + B.title); p.respect += 25 + i * 10; addXP(c, 150 + 50 * i); track(c, 'bade');
   if (B.plot && !db.plots[B.plot]) db.plots[B.plot] = p.id;
   if (B.unlock) send(c, { t: 'toast', text: { guns: 'Naya: Bittu Hathiyaar wala (Sohna Road) ab tujhe katta aur dunali bechega', gang: 'Naya: Bhola Pehlwan ke akhare se apni gang bana', land: 'Naya: Zameen ke saude (Menu → Zameen)' }[B.unlock], kind: 'money', sfx: 'level' });
   announce(p.name + ' ne Bada Kaam "' + B.title + '" kar dikhaya!', 'showoff'); storyPrize(c); dirty = true; sendProfile(c);
@@ -133,8 +134,9 @@ const donAt = dn => (dn.spot != null && D.DON_SPOTS[dn.spot]) || D.DON[dn.ch].at
 function ensureMissions(p) {
   const ms = p.missions; const day = D.gameDay(); ensureDon(p); /* aaj ke kaam: one set per 15-minute game day */ if (!p.dayBase || p.dayBase.day !== day) p.dayBase = { day, c: { ...p.c }, money: p.money }; if (ms.v === 2 && ms.day === day && ms.active.length) return;
   let seed = 7; for (const ch of p.id + day) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647; const pk = a => a[Math.floor(r() * a.length)];
-  const lvl = p.level;
+  const lvl = p.level; const prev = ms.v === 2 && ms.day !== day ? (ms.active || []) : [];
   ms.active = D.DAILY_SLOTS.map(slot => {
+    const old = prev.find(x => x.slot === slot && !x.done && !x.carried && (x.k === 'badla' || (p.c[x.k] || 0) > x.base)); if (old) return { ...old, carried: true }; // a kaam you are in the middle of (or a badla you are walking to) carries over to the next 15-minute day, once
     const o = pk(D.DAILY[slot].filter(x => !(x.min && lvl < x.min))); const n = o.n(lvl);
     const a = { slot, k: o.k, n, r: Math.round(o.r * (1 + 0.1 * Math.min(lvl, 10)) / 10) * 10, base: p.c[o.k] || 0, done: false, go: o.go || null };
     if (o.k === 'badla') { const s = pk(D.BADLA_SPOTS); Object.assign(a, { enemy: pk(D.BADLA_ENEMY), friend: pk(D.BADLA_FRIEND), x: s[0], z: s[1], place: s[2] }); }
@@ -309,7 +311,7 @@ function danceAdvance() {
 // ------------------------------------------------------------------ leaderboards
 let lbCache = null;
 function leaderboards() {
-  const ps = Object.values(db.profiles).filter(p => p.lastSeen > Date.now() - 30 * 864e5);
+  const ps = Object.values(db.profiles).filter(p => !p.bot && p.lastSeen > Date.now() - 7 * 864e5 && (p.level > 1 || ((p.c || {}).earned || 0) > 0) && !D.badName(p.name)); // active players only: no idle starter accounts, no crude names
   const top = (fn, n = 10) => ps.map(p => ({ id: p.id, name: p.name, v: fn(p), crew: crewOf(p) ? crewOf(p).tag : null })).filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, n);
   lbCache = { rich: top(D.netWorth), fight: top(p => p.c.kos || 0), party: top(p => p.party || 0), respect: top(p => p.respect || 0), crews: crewList().sort((a, b) => b.turf - a.turf || b.members - a.members).slice(0, 10) };
   return lbCache;
@@ -547,8 +549,10 @@ function handle(c, m) {
     }
     case 'setcur': { if (p.vehicles.includes(m.v)) { p.cur = m.v; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'rishta': reply(rishta(c, m)); break;
-    case 'bkstart': { const i = Math.floor(num(m.i, -1)); if (i === (p.bk || 0) && D.BADE[i]) { c.bk = { i, at: now() }; reply({ ok: true }); } else reply({ ok: false, error: 'Yeh kaam abhi nahi' }); break; }
+    case 'bkstart': { const i = Math.floor(num(m.i, -1)); if (i === (p.bk || 0) && D.BADE[i]) { p.bkOn = { i, at: now(), step: 0 }; dirty = true; reply({ ok: true }); } /* kept in the profile: a reload picks the kaam up where it was */ else reply({ ok: false, error: 'Yeh kaam abhi nahi' }); break; }
     case 'bkdone': reply(bkDone(c, m)); break;
+    case 'bkstep': { if (p.bkOn && p.bkOn.i === Math.floor(num(m.i, -1))) { p.bkOn.step = Math.max(0, Math.min(20, Math.floor(num(m.step, 0)))); dirty = true; } break; }
+    case 'bkquit': { if (p.bkOn) { p.bkOn = null; dirty = true; } break; }
     case 'shot': { // a gunshot: spends a round; a hit on a nearby player (or an AI player) hurts them
       const g = D.GUNS[m.gun]; if (!g || !p.guns.includes(m.gun) || !((p.ammo[m.gun] || 0) > 0) || !rateOk(c, 'shot', g.cd * 0.8)) return;
       p.ammo[m.gun]--; dirty = true; track(c, 'shots'); if (!c.st) return;
@@ -576,7 +580,7 @@ function handle(c, m) {
       if (price >= 200000) announce(p.name + ' ne ' + pl.name + ' ' + fmt(price) + ' mein bech diya!', 'showoff'); sendProfile(c); reply({ ok: true, price }); break; }
     case 'sethome': { if (p.houses.includes(m.h)) { p.home = m.h; dirty = true; sendProfile(c); } break; }
     case 'unshade': { if (p.outfit.shades) { p.outfit.shades = false; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
-    case 'name': { const n = D.cleanText(m.name, 16); if (n.length >= 2 && rateOk(c, 'name', 30)) { p.name = n; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
+    case 'name': { const n = D.cleanName(m.name, 16); if (n.length >= 2 && rateOk(c, 'name', 30)) { p.name = n; dirty = true; sendProfile(c); broadcast(pinfo(c)); } break; }
     case 'tutdone': { p.tutDone = true; dirty = true; break; }
     case 'step': { // first-session funnel for the owner page: the first time each player reaches a milestone
       const k = String(m.k || ''); if (!FUNNEL.some(f => f[0] === k)) return; p.steps = p.steps || {}; if (!p.steps[k]) { p.steps[k] = Date.now(); dirty = true; } break;
@@ -598,10 +602,10 @@ function handle(c, m) {
       const firstWin = won && !p.raceWins[R.id]; if (won) p.raceWins[R.id] = (p.raceWins[R.id] || 0) + 1;
       db.races = db.races || {}; const top = db.races[R.id] || (db.races[R.id] = []);
       const oldRec = top[0] ? top[0].ms : Infinity; const mine = top.find(e => e.id === p.id);
-      if (mine) { if (ms < mine.ms) { mine.ms = ms; mine.name = p.name; } } else top.push({ id: p.id, name: p.name, ms });
+      if (won) { if (mine) { if (ms < mine.ms) { mine.ms = ms; mine.name = p.name; } } else top.push({ id: p.id, name: p.name, ms }); } // the Gurugram record only counts races that were won
       top.sort((a, b) => a.ms - b.ms); if (top.length > 20) top.length = 20;
       const rank = top.findIndex(e => e.id === p.id) + 1;
-      if (ms < oldRec && oldRec !== Infinity) announce(p.name + ' ne ' + R.name + ' ka record tod diya: ' + (ms / 1000).toFixed(1) + 's!', 'showoff');
+      if (won && ms < oldRec && oldRec !== Infinity) announce(p.name + ' ne ' + R.name + ' ka record tod diya: ' + (ms / 1000).toFixed(1) + 's!', 'showoff');
       if (won) track(c, 'race_wins');
       const amt = won ? R.prize * (firstWin ? 2 : 1) : Math.round(R.prize * 0.15);
       credit(c, amt, (won ? 'Race jeeti: ' : 'Race: ') + R.name); addXP(c, won ? 60 : 20); if (won) p.respect += firstWin ? 10 : 2;
@@ -750,7 +754,7 @@ function connect(out, closeFn, meta, outRaw) {
         if (m.t !== 'hello') return;
       if (m.t !== 'hello') return;
       let p = typeof m.token === 'string' ? byToken.get(m.token) || null : null;
-      const name = D.cleanText(m.name, 16) || ('Chhora ' + Math.floor(Math.random() * 90 + 10));
+      const name = D.cleanName(m.name, 16) || ('Chhora ' + Math.floor(Math.random() * 90 + 10));
       if (!p) { if (!mayCreate(meta && meta.ip)) { out({ t: 'kicked', reason: 'Is network se bahut naye account ban gaye. Thodi der baad try karo' }); closeFn(); return; } p = newProfile(name, clamp(Math.floor(num(m.color, 0)), 0, D.SHIRTS.length - 1)); db.profiles[p.id] = p; byToken.set(p.token, p); }
       else if (m.name && name !== p.name) p.name = name;
       if (m.color !== undefined) p.color = clamp(Math.floor(num(m.color, p.color)), 0, D.SHIRTS.length - 1);
@@ -775,7 +779,7 @@ function connect(out, closeFn, meta, outRaw) {
         weather, turf: turfView(), crews: crewList(), ann: announcements.slice(-8), belt: db.belt, lb: lbCache || leaderboards(), serverTime: now(),
       });
       broadcast(pinfo(c));
-      aiGreets.push({ at: now() + 7, text: pick(['Ram Ram ' + p.name + '! Naya aaya ke?', p.name + ', aaja race lagate hain!', 'Oye ' + p.name + ', Gurugram mein swagat se!']) });
+      aiGreets.push({ at: now() + 7, text: (p.visits || 0) > 1 || p.level > 1 ? pick(['Ram Ram ' + p.name + '! Wapas aa gaya?', p.name + ' bhai, Level ' + p.level + '! Aaj race lagegi?', 'Oye ' + p.name + ', kal kahan tha?']) : pick(['Ram Ram ' + p.name + '! Naya aaya ke?', p.name + ', aaja race lagate hain!', 'Oye ' + p.name + ', Gurugram mein swagat se!']) }); // a returning player gets a returning greeting
       if (conns.size > 1) broadcast({ t: 'toast', text: p.name + ' Gurugram mein aa gaya! (' + conns.size + ' online)', kind: 'join' }, x => x !== c);
       return;
       }
@@ -841,6 +845,7 @@ const FUNNEL = [['play', 'Pressed Khelo'], ['intro_play', 'Intro film started'],
 // ------------------------------------------------------------------ computer players: nobody should walk an empty city
 // With fewer than 4 people online, up to 3 "(AI)" players roam the roads near them, chat, dance and fight back.
 const AI_NAMES = [['Sonu', 'm'], ['Pinky', 'f'], ['Jassi', 'm'], ['Neha', 'f'], ['Bittu', 'm'], ['Rinku', 'm'], ['Simran', 'f'], ['Golu', 'm']];
+let aiChatGap = 0; const aiRecent = [];
 const AI_LINES = ['Ram Ram sabne!', 'Koi race lagayega? Ambience Mall ke bahar mil', 'Aaj Sector 29 mein party se, aa jaiyo', 'Gaddhe dekh ke chala, warna gaadi gayi', 'Mere paas Thar hai, tere paas ke se?', 'Chai peeni se kisi ne?', 'Iffco Chowk pe phir jam lag rya se', 'Level up karna se to aaj ke kaam poore kar', 'Pehlwan Bhola ko hara diya maine aaj!', 'Kaun hai jo mujhse lad sake?', 'Sohna Road pe paani bhar gaya, bach ke', 'Cyber Hub mein aaj bahut bheed se'];
 const AI_REPLIES = ['Haan bhai, sahi baat', 'Ke kah rya se tu?', 'Oye hoye!', 'Chal race lagate hain', 'Hahaha, mast', 'Pakka?', 'Chal Sector 29 mil'];
 const ais = new Map(); const aiGreets = [];
@@ -884,7 +889,7 @@ const JACK_LINES = ['Meri gaadi? Pehle mujhse nipat!', 'Abe utaarega mujhe? Aaja
 function aiTalk() {
   const t = now(); if (!ais.size) return; const list = [...ais.values()];
   for (let i = aiGreets.length - 1; i >= 0; i--) if (aiGreets[i].at < t) { const g = aiGreets.splice(i, 1)[0]; const a = list[Math.floor(Math.random() * list.length)]; broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text: g.text }); }
-  for (const a of list) if (t > a.chatT && a.hp > 0) { a.chatT = t + 60 + Math.random() * 70; broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text: pick(AI_LINES) }); }
+  for (const a of list) if (t > a.chatT && a.hp > 0 && t > aiChatGap) { a.chatT = t + 60 + Math.random() * 70; aiChatGap = t + 12; const fresh = AI_LINES.filter(l => !aiRecent.includes(l)); const text = pick(fresh.length ? fresh : AI_LINES); aiRecent.push(text); if (aiRecent.length > 8) aiRecent.shift(); broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text }); } // bots never echo each other: no line twice in the last eight, and a gap between them
 }
 function aiEntries(raw) { const out = []; for (const a of ais.values()) { const p0 = aiPos(a); const st = { x: p0.x, z: p0.z, in: '' }; const entry = [a.id, Math.round(p0.x * 10) / 10, Math.round(p0.z * 10) / 10, Math.round(a.r * 100) / 100, a.a, a.v, '', a.hp, 0]; out.push({ p: { id: a.id }, st, entry, entryJson: raw ? JSON.stringify(entry) : null }); } return out; }
 

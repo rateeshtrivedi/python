@@ -11,7 +11,7 @@ export const SITE = (process.env.SITE_URL || 'https://gurugramlife.com').replace
 // When each page's content last really changed (sitemap <lastmod>). Bump the date when you edit a page; Google stops trusting
 // lastmod that changes on every request. Pages not listed use EDITED.
 const EDITED = '2026-10-19';
-const LASTMOD = { '/': '2026-10-19', '/updates': '2026-10-23', '/how-to-play': '2026-10-23' };
+const LASTMOD = { '/': '2026-10-19', '/updates': '2026-10-24', '/how-to-play': '2026-10-23' };
 
 const PLACES = [
   ['DLF Cyber City', 'Glass towers, office jobs at TechNova Towers and the evening rush.'],
@@ -134,6 +134,7 @@ ${nb.length ? `<h2>Nearby on the map</h2><div class="grid">${nb.map(n => `<div c
 }
 // what changed in the game, newest first (keep adding to the top)
 export const UPDATES = [
+  ['2026-10-24', 'Playtest fixes: 38 bugs', ['Missions and jobs survive a reload; nobody starves on arrival; the hospital and every start point stand on open road; the way out of your home glows on the floor.', 'GPS routes follow the roads; the camera never swallows you against a wall; vehicles slide off walls; races give you a car and honest results.', 'Fair Don fights with health bars; food shops in the street serve food; parked cars can be stolen; English, Hindi and Haryanvi text fixed across the story.']],
   ['2026-10-23', 'Batua: fights now pay (and cost)', ['Knock someone down and their wallet or purse falls on the road with a little cash. Walk over it to take it.', 'Get knocked down by a chhora and he grabs your batua before the ambulance comes, so pick your fights.']],
   ['2026-10-22', 'Bade Kaam, guns, gangs, land deals and petrol pumps', ['Start with an empty pocket. The story now moves through seven Bade Kaam: real jobs with fights, chases, a car theft, an ambush and a final showdown with Dalal Bhai.', 'Desi katta and dunali from Bittu Hathiyaar wala; recruit a gang from the akhara (everyone sees them); buy and sell land as prices move.', 'Four petrol pumps and fuel for every vehicle. Police now arrest and fine you instead of taking your car.', 'A game day is now 15 minutes, with three quick kaam each day. Street people stop, chat and turn back instead of walking in circles. More street sounds.']],
   ['2026-10-20', 'Sapno ka Shehar: from the footpath to a farmhouse', ['New main story: new players start on the footpath at Rajiv Chowk with ₹500. Finish all of a day\'s tasks and the next home is yours, free.', 'Seven homes with their own interiors, from a shared PG room to a farmhouse with an indoor pool and a garage for your cars. You wake up at home every session.', 'Five dreams in Menu → Sapne: lavish home, lavish car, jeevansathi, money and jewellery.', 'Rishta and shaadi: Mausi ji\'s match, a cafe meeting, a long drive, the ring and the wedding. Your spouse waits at home.', 'A 20-second intro film for first-time players shows the dream with your own avatar, with a Hindi narrator. Skip it any time.', 'New jewellery at Goyal Jewellers: an engagement ring and a diamond set. Players who already own homes keep everything.']],

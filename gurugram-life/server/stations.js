@@ -38,7 +38,9 @@ export async function stations() {
       Q(['tag=bollywood', 'name=bollywood', 'tag=hindi', 'tag=filmi']),
       Q(['tag=top%2040&language=english', 'tag=hits&language=english', 'tag=pop&language=english', 'tag=dance&language=english']), // English chart hits, pop and dance
     ]);
-    const data = { har: cleanStations(har), pun: cleanStations(pun), bol: cleanStations(bol), eng: cleanStations(eng) };
+    // 'haryana' also finds Bollywood stations that happen to broadcast from Haryana: keep the Haryanvi ones, named ones first
+    const harOnly = har.filter(s => /haryanvi|ragni|desi/i.test(String(s.name) + ' ' + String(s.tags || '')) && !(/bollywood|filmi|hindi|retro|90s|english/i.test(String(s.name)) && !/haryanvi/i.test(String(s.name)))).sort((a, b) => (/haryanvi/i.test(b.name) ? 1 : 0) - (/haryanvi/i.test(a.name) ? 1 : 0));
+    const data = { har: cleanStations(harOnly.length >= 2 ? harOnly : har.filter(s => !/bollywood|filmi|90s|retro/i.test(String(s.name)))), pun: cleanStations(pun), bol: cleanStations(bol), eng: cleanStations(eng) };
     if (data.har.length || data.pun.length || data.bol.length || data.eng.length) cache = { at: Date.now(), data };
     pending = null; return cache.data || data;
   })();
