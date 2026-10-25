@@ -1,0 +1,7 @@
+[
+ {"sc": 0, "dur": 2.6, "pre": 0.8, "pov": "POV: Your Delhi friend said Gurugram is \"just 30 minutes away\" 🚗", "time": "⏱ Travel time: 0h 30m", "cap": "\"Bas 30 minute, bhai\" 🙂", "capAt": 0.4},
+ {"sc": 1, "dur": 2.3, "pre": 0.8, "time": "⏱ Travel time: 1h 10m", "cap": "Tank khaali. Pump pe line ⛽", "capAt": 0.2},
+ {"sc": 2, "dur": 2.3, "pre": 0.6, "time": "⏱ Travel time: 1h 55m", "cap": "MG Road ke gaddhe. Suspension gaya 🕳️", "capAt": 0.2},
+ {"sc": 3, "dur": 2.4, "pre": 0.8, "time": "⏱ Travel time: 2h 40m", "cap": "Maps ka \"shortcut\". Kutton ne pehchaan liya 🐕", "capAt": 0.2},
+ {"sc": 4, "dur": 3.0, "pre": 0.8, "time": "⏱ Travel time: 4h 20m", "cap": "Pahunch gaya. Party khatam 🙃", "capAt": 0.8, "big": true}
+]
