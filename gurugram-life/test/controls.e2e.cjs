@@ -8,14 +8,14 @@ const URL = process.env.URL || 'http://localhost:3000/'; const GAME_JS = path.jo
 const HOOK = '\nwindow.__t={G,FIGHTERS,REMOTES,PEDS,CROWD,DOORS,AKHARA,get P(){return P},get PV(){return playerVeh},get player(){return player}};';
 const results = []; const rec = (id, ok, info) => { results.push([id, ok, info]); console.log((ok ? 'PASS ' : 'FAIL ') + id + (info ? '  — ' + info : '')); };
 async function open(browser, opts, name, noLock, film) {
-  const ctx = await browser.newContext(opts); if (!film) await ctx.addInitScript(() => localStorage.setItem('gl_intro', '1')); /* the intro film has its own check (F1) */ if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+  const ctx = await browser.newContext(opts); await ctx.addInitScript(() => { localStorage.setItem('gl_ab', '"classic"'); }); /* the classic start; the cold open has its own suite */ if (!film) await ctx.addInitScript(() => localStorage.setItem('gl_intro', '1')); /* the intro film has its own check (F1) */ if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' })); await p.route('**/api/stations', r => r.fulfill({ json: { har: [], pun: [] } })); await p.route('**/radio-browser.info/**', r => r.abort());
   await p.route('**/js/game.js', r => r.fulfill({ body: fs.readFileSync(GAME_JS, 'utf8') + HOOK, contentType: 'application/javascript' }));
   await p.route('**/models/rides/**', r => r.abort()); // input checks only: the box-built vehicles keep three software-rendered tabs fast enough
   if (noLock) await p.addInitScript(() => { HTMLCanvasElement.prototype.requestPointerLock = function () { setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 10); }; });
   await p.goto(URL); await p.waitForTimeout(1200); await p.fill('#nameIn', name).catch(() => {}); await p.click('#playBtn'); await p.waitForTimeout(500); if (await p.$('#cNext:visible')) await p.click('#cNext'); await p.waitForTimeout(300);
   await p.click('.splace >> text=Rajiv Chowk'); await p.waitForFunction(() => window.__t && window.__t.G.started, null, { timeout: 30000 }); await p.waitForTimeout(2500);
-  await p.evaluate(() => { document.querySelectorAll('#modal').forEach(m => m.hidden = true); const G = window.__t.G; G.story = null; G.tut = false; G.donCallNext = 1e12; }); // no Gali ke Don phone call during the checks
+  await p.evaluate(() => { document.querySelectorAll('#modal').forEach(m => m.hidden = true); const G = window.__t.G; G.story = null; G.tut = false; G.donCallNext = 1e12; window.__t.G.calledBK = true; }); // no Gali ke Don phone call during the checks
   return p;
 }
 const E = (p, f, a) => p.evaluate(f, a);
@@ -36,7 +36,7 @@ if (require.main === module) (async () => {
     rec('F1 a first-timer sees the intro film and Skip ends it', seen && after.gone && !after.frozen && after.once === '1', JSON.stringify(after)); await q.context().close(); }
   const p = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Ek', NOLOCK);
   await place(p, 0, 20, 0); await p.waitForTimeout(300);
-  let a = await st(p); await hold(p, 'KeyW', 1500); let c = await st(p); const walk = Math.hypot(c.x - a.x, c.z - a.z); rec('D1 W walks forward', walk > 2, 'moved ' + walk.toFixed(1));
+  let a = await st(p); await hold(p, 'KeyW', 2200); let c = await st(p); const walk = Math.hypot(c.x - a.x, c.z - a.z); rec('D1 W walks forward', walk > 2, 'moved ' + walk.toFixed(1)); /* a longer hold: at ~1-2 fps, 1.5 s is only two or three frames */
   a = c; await hold(p, 'KeyD', 700); c = await st(p); rec('D2 D moves/turns right', Math.hypot(c.x - a.x, c.z - a.z) > 0.8 || Math.abs(c.r - a.r) > 0.3, 'dpos ' + Math.hypot(c.x - a.x, c.z - a.z).toFixed(1));
   await place(p, 0, 20, 0); a = await st(p); await p.keyboard.down('ShiftLeft'); await hold(p, 'KeyW', 1500); await p.keyboard.up('ShiftLeft'); c = await st(p); const run = Math.hypot(c.x - a.x, c.z - a.z); rec('D3 Shift runs faster', run > walk * 1.2, 'run ' + run.toFixed(1) + ' vs walk ' + walk.toFixed(1));
   await place(p, 0, 20, 0); await p.keyboard.press('Space'); let peak = 0; for (let i = 0; i < 10; i++) { await p.waitForTimeout(60); peak = Math.max(peak, (await st(p)).y); } rec('D4 Space jumps', peak > 0.4, 'peak y ' + peak.toFixed(2));
@@ -74,6 +74,7 @@ if (require.main === module) (async () => {
   // ---------------- multiplayer: a second real player
   const q = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Do', NOLOCK);
   await place(q, 30, 30, Math.PI); await place(p, 30, 28.4, 0); await p.waitForTimeout(2500);
+  await q.waitForFunction(() => { for (const [, R] of window.__t.REMOTES) if (R.info && R.info.name === 'Tester Ek') return Math.hypot(R.mesh.position.x - 30, R.mesh.position.z - 28.4) < 1.5; return false; }, null, { timeout: 15000, polling: 300 }).catch(() => {}); // two software-rendered tabs run at ~1 fps: wait until player 2 actually sees player 1 in front
   const seen = await E(p, () => { for (const [id, R] of window.__t.REMOTES) if (R.info && R.info.name === 'Tester Do') return { id, vis: R.visible, x: R.mesh.position.x, z: R.mesh.position.z }; return null; });
   rec('M0 player 1 sees player 2', !!seen && seen.vis, JSON.stringify(seen));
   const qhp0 = (await st(q)).hp; await E(p, () => { window.__t.G.r += 2.4; }); for (let i = 0; i < 3; i++) { await p.keyboard.press('KeyQ'); await p.waitForTimeout(500); } await q.waitForTimeout(500); const qhp1 = (await st(q)).hp;

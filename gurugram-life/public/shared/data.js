@@ -12,6 +12,7 @@ export const VEH = {
   chhotu:  { name: 'Chhotu Hatchback',          price: 60000,  speed: 27, kind: 4, color: 0xdedede },
   desert:  { name: 'Desert King 4x4',           price: 150000, speed: 31, kind: 4, color: 0x8b1e1e },
   cruiser: { name: 'Chaudhary Cruiser',         price: 400000, speed: 37, kind: 4, color: 0x151515 },
+  khatara: { name: 'Khatara 800 (Chacha ki)',    price: 0,      speed: 24, kind: 4, color: 0xcfc6b0, gift: true }, // the starter car: a gift after the first kaam, never sold
   naav:    { name: 'Jugaadu Naav (boat)',       price: 35000,  speed: 24, kind: 5, color: 0xf28c1b }, // fast on water, crawls on dry road
   // not for sale: only taken off the road (stop a vehicle, beat the driver)
   auto:    { name: 'Auto Rickshaw',             price: 0,      speed: 19, kind: 4, color: 0x2e9e4a, street: true },
@@ -95,7 +96,7 @@ export const PETROL_RATE = 100; // ₹ a litre
 // a knocked-down NPC drops his batua (or her purse): a little cash to pick up. A player knocked down by an NPC loses a bit the same way.
 export const DROP = { min: 40, max: 160, perLevel: 5, big: [300, 900], keep: 120 };
 export const robAmount = money => Math.min(money, Math.max(50, Math.round(money * 0.06)), 3000);
-export const TANK = { scooty: 6, dhakad: 13, chhotu: 30, desert: 50, cruiser: 60, auto: 8, bus: 120, truck: 160, naav: 20 };
+export const TANK = { khatara: 25, scooty: 6, dhakad: 13, chhotu: 30, desert: 50, cruiser: 60, auto: 8, bus: 120, truck: 160, naav: 20 };
 export const FUEL_RANGE = { 2: 2600, 4: 2100, 5: 1800 }; // game units on a full tank, by vehicle kind
 export const SPOUSE_NAMES = { f: ['Simran', 'Pooja', 'Neha', 'Anjali', 'Kavya', 'Riya', 'Priya'], m: ['Rohit', 'Aman', 'Vikram', 'Karan', 'Arjun', 'Rahul', 'Sahil'] };
 export const SHAADI_COST = 25000;
@@ -130,7 +131,7 @@ export const RANDOM_PLATE_PRICE = 5000;
 export const VIP_PLATES = ['HR26 0001', 'HR26 0007', 'HR26 0786', 'HR26 9999', 'HR26 1111', 'HR26 0002', 'HR26 0101', 'HR26 5555', 'HR26 0420', 'HR26 7777', 'HR26 0009', 'HR26 2626'];
 export const PLATE_START_BID = 20000;
 
-export const CREW_PRICE = 25000;
+export const CREW_PRICE = 2000; // cheap, so friends make one on day one
 
 // Simple shop items (food, drinks, outfits) validated by the server: id -> [name, price, hunger, extra]
 export const FOOD = {
@@ -165,12 +166,13 @@ export const MISC = {
   hospital: ['Civil Hospital treatment', 100], shirt: ['New shirt', 600], toll: ['Kherki Daula toll', 50],
   challan: ['Drunk-driving challan', 2000], challan_big: ['Challan after argument', 4000], challan_chase: ['Challan after chase', 5000], arrest: ['Jurmana (arrest)', 1500], challan_film: ['Black film challan', 1000],
   bottle: ['Bottle service for the whole club', 15000], notes: ['Note udao at the baraat', 1000], party: ['Host a farmhouse party', 20000],
-  firework: ['Diwali rocket', 200], don_auto: ['Auto to the Gali ke Don fight', 50], dangal: ['Dangal entry', 100], plate: ['Random HR26 number plate', RANDOM_PLATE_PRICE], ko_bill: ['Hospital bill', 200],
+  firework: ['Diwali rocket', 200], auto: ['Auto bulao (fast travel)', 50], golgappa: ['Golgappa plate', 30], bribe: ['Chai-paani (police)', 300], don_auto: ['Auto to the Gali ke Don fight', 50], dangal: ['Dangal entry', 100], plate: ['Random HR26 number plate', RANDOM_PLATE_PRICE], ko_bill: ['Hospital bill', 200],
 };
 
 // Earning caps the server enforces: reason -> {max per event, cooldown seconds}
 export const EARN = {
   ride: { max: 1100, cd: 14 }, delivery: { max: 700, cd: 10 }, loot: { max: 150, cd: 6 }, dangal: { max: 1000, cd: 45 },
+  coldopen: { max: 1000, cd: 5 }, gift: { max: 1500, cd: 140 }, biz: { max: 40000, cd: 5 },
   quest: { max: 1600, cd: 90 }, flood: { max: 1200, cd: 30 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
 };
 
@@ -350,3 +352,37 @@ export const FLOOD_SPOTS = [
   { name: 'Sheetla Mata Road', x: -75, z: 75, r: 34 },
   { name: 'Iffco Chowk', x: 75, z: -75, r: 36 },
 ];
+
+// ---------------------------------------------------------------- retention (what brings a player back)
+// a car the moment the first kaam is done, so the GTA fantasy starts on day one
+export const hasCar = p => (p.vehicles || []).some(v => VEH[v] && VEH[v].kind === 4);
+// 7-day login calendar: day 7 also paints your car gold
+export const CALENDAR = [{ amt: 500 }, { amt: 800 }, { amt: 1200 }, { amt: 1600 }, { amt: 2000 }, { amt: 3000 }, { amt: 5000, skin: 'sona', name: 'Sone ka wrap (gaadi)' }];
+export const calDay = streak => ((Math.max(1, streak) - 1) % 7) + 1;
+export const WRAP_COLOR = 0xd4af37;
+// small businesses that earn while you are away (capped), collected with a tap
+export const BIZ = {
+  chai: { name: 'Chai ki tapri, Sadar Bazaar', price: 5000, perHour: 300, capHours: 8, bk: 1 },
+  wash: { name: 'Hooda Car Wash, Sohna Road', price: 25000, perHour: 1100, capHours: 8, bk: 2 },
+};
+export const bizDue = (b, t) => { const B = BIZ[b.id]; if (!B) return 0; const h = Math.min(B.capHours, Math.max(0, (t - b.at) / 3600e3)); return Math.floor(h * B.perHour); };
+// one more run: Jhatpat / Chalo jobs back to back pay more
+export const STREAK_MULT = [1, 1, 1.5, 2, 3]; export const STREAK_GAP = 180; // seconds between jobs to keep the chain
+export const streakMult = n => STREAK_MULT[Math.min(n, STREAK_MULT.length - 1)];
+// 2-3 minute activities with medals and a leaderboard. score: lower is better for time trials (ms), higher for the rest
+export const MINI = {
+  trial1:  { name: 'Time trial: Golf Course Road', low: true, medals: [40000, 30000, 24000], min: 12000, max: 600000, pts: [[-225, 330], [-225, -225]] },
+  trial2:  { name: 'Time trial: Sohna Road loop', low: true, medals: [90000, 68000, 55000], min: 30000, max: 600000, pts: [[225, -225], [225, 75], [375, 75], [375, -225], [225, -225]] },
+  golgappa: { name: 'Golgappa challenge', medals: [12, 20, 28], min: 0, max: 60 },
+  pothole: { name: 'Pothole dodge, MG Road', medals: [6, 10, 14], min: 0, max: 40 },
+  stunt:   { name: 'Flyover stunt jump', medals: [12, 20, 28], min: 0, max: 80 },
+};
+export const MEDALS = ['', 'Kaansa', 'Chaandi', 'Sona']; export const MEDAL_PAY = [0, 400, 800, 1500];
+export const medalOf = (g, score) => { const M = MINI[g]; if (!M) return 0; let m = 0; M.medals.forEach((v, i) => { if (M.low ? score <= v : score >= v) m = i + 1; }); return m; };
+// wanted stars: what each crime adds, and what a chai-paani costs
+export const WANTED = { ped: 1, jack: 1, cop: 2, gun: 2, steal: 1, max: 5, decay: 20 }; // decay: seconds out of sight per star
+export const bribeCost = stars => 300 * stars * stars;
+// a small reward every few minutes of play
+export const GIFT_EVERY = 150; export const giftAmt = (level, n) => Math.min(1500, 100 + 40 * level + (n % 4 === 3 ? 300 : 0));
+// invite a friend: both get a Bullet once the friend has played their first kaam
+export const INVITE_MAX = 10;

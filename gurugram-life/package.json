@@ -7,12 +7,13 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "PORT=3000 node --watch server/index.js",
-    "test": "node test/smoke.mjs && node test/story.mjs && node test/i18n.mjs",
+    "test": "node test/smoke.mjs && node test/story.mjs && node test/retention.mjs && node test/i18n.mjs",
     "build:solo": "node scripts/build-solo.mjs",
     "test:controls": "node test/controls.e2e.cjs",
     "test:regress": "node test/regress.e2e.cjs",
     "test:features": "node test/features.e2e.cjs",
-    "test:qa": "node test/qa.e2e.cjs"
+    "test:qa": "node test/qa.e2e.cjs",
+    "test:retention": "node test/retention.e2e.cjs"
   },
   "engines": {
     "node": ">=18"

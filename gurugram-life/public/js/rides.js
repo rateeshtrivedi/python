@@ -6,7 +6,7 @@ import { SkeletonUtils } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import * as RL from './realism.js';
 
 // game vehicle type -> model file; sizes are baked in (length along +Z = front, wheels on y = 0)
-export const MODEL_OF = { chhotu: 'hatch', cruiser: 'sedan', desert: 'jeep', police: 'jeep', auto: 'auto', bus: 'bus', truck: 'truck', dhakad: 'bike', scooty: 'scooter' };
+export const MODEL_OF = { chhotu: 'hatch', khatara: 'hatch', cruiser: 'sedan', desert: 'jeep', police: 'jeep', auto: 'auto', bus: 'bus', truck: 'truck', dhakad: 'bike', scooty: 'scooter' };
 const ORDER = ['auto', 'hatch', 'sedan', 'jeep', 'bus', 'truck', 'bike', 'scooter'];
 const SRC = {}, DIM = {}; let COW = null, COW_CLIPS = null;
 export const has = type => !!SRC[MODEL_OF[type]];

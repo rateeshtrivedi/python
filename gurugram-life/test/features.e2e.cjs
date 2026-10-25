@@ -12,6 +12,7 @@ const results = []; let errs = [];
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const ctx = await b.newContext(PHONE ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 1366, height: 768 } });
   await ctx.addInitScript(() => localStorage.setItem('gl_intro', '1')); // the intro film has its own check
+  await ctx.addInitScript(() => { localStorage.setItem('gl_ab', '"classic"'); }); // the classic start (start picker); the cold open has its own suite
   const p = await ctx.newPage();
   p.on('pageerror', e => errs.push('pageerror: ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' ').trim()));
   p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|TUNNEL|ERR_/.test(m.text())) errs.push('console: ' + m.text().slice(0, 300)); });
@@ -28,7 +29,7 @@ const results = []; let errs = [];
 
   await p.goto(URL); await W(1500); await p.fill('#nameIn', 'Feature Tester'); await p.click('#playBtn'); await W(600); if (await p.$('#cNext:visible')) await p.click('#cNext'); await W(500);
   await p.click('.splace >> nth=0'); await p.waitForFunction(() => window.__t && window.__t.G.started, null, { timeout: 40000 }); await W(2500);
-  await E(() => { const t = window.__t; t.G.donCallNext = 1e12; t.G.weather = { lvl: 0, since: 0, until: 1e12 }; }); await closeCards();
+  await E(() => { const t = window.__t; t.G.donCallNext = 1e12; window.__t.G.calledBK = true; t.G.weather = { lvl: 0, since: 0, until: 1e12 }; }); await closeCards();
 
   await step('khaali jeb: a new player starts with ₹0 on Bada Kaam 1', async () => { const r = await E(() => ({ money: window.__t.P.money, bk: window.__t.P.bk, chip: document.getElementById('mchip').textContent, tasks: window.__t.P.missions.active.length }));
     return { ok: r.money === 0 && r.bk === 0 && /Bada Kaam 1/.test(r.chip) && r.tasks === 3, info: JSON.stringify(r) }; });
@@ -95,7 +96,8 @@ const results = []; let errs = [];
     return { ok: r.rob && r.picked && r.lost >= r.want && r.hp > 0, info: JSON.stringify(r) }; }); // lost = his share + the hospital bill
   // Bada Kaam 1, played: the pump job, three cars, the runner, back to Chaudhary Saab
   await step('Bada Kaam 1: the menu lists 7 missions and starts the first', async () => { await E(() => window.__t.openBade()); await W(500); const rows = await E(() => document.querySelectorAll('#mBody .item').length);
-    await E(() => [...document.querySelectorAll('#mBody .item button')].find(b => /Shuru/.test(b.textContent)).click()); await W(1500); const card = await E(() => document.querySelector('#raceres h2')?.textContent);
+    await E(() => [...document.querySelectorAll('#mBody .item button')].find(b => /Shuru/.test(b.textContent)).click()); await W(1500);
+    for (let k = 0; k < 20 && !(await E(() => [...document.querySelectorAll('#raceres button')].some(b => /Chalo/.test(b.textContent)) && !document.getElementById('raceres').hidden)); k++) { await E(() => document.getElementById('cutcap')?.click()); await W(600); } /* the giver's short cutscene comes first: tap through it */ const card = await E(() => document.querySelector('#raceres h2')?.textContent);
     await E(() => [...document.querySelectorAll('#raceres button')].find(b => /Chalo/.test(b.textContent)).click()); await W(800); const r = await E(() => ({ on: window.__t.BK.on, step: window.__t.BK.step, wp: window.__t.G.wp && window.__t.G.wp.name }));
     return { ok: rows === 7 && /Pehli Kamai/.test(card || '') && r.on && r.step === 0 && /Chaudhary/.test(r.wp || ''), info: rows + ' rows · ' + card + ' · ' + JSON.stringify(r) }; });
   const t0 = Date.now();

@@ -55,6 +55,14 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 - Daily akhara champion belt at Leisure Valley, taken by knocking out the holder in the ring.
 - Roast battles at Badshahpur Chaupal, voted on by everyone online.
 
+**Retention (what brings a player back)**
+- Cold open: a new player starts in a 90-second chase (Chintu Chor and your phone) worth ₹1,000, then gets the starter car (Khatara 800). Half of new players get the classic start instead (A/B, `?start=cold|classic`); `/admin` compares the two.
+- Agla kaam strip with GPS and ₹50 auto fast travel (also on the GPS chip); welcome-back card with full health and food and a Continue button; Continue on the start picker.
+- Wanted stars (1-5), police at two, a naka at three, chai-paani bribe when caught.
+- Job streaks (x1.5/x2/x3), Khel mini-games with medals and Top 10s (time trials, pothole dodge, stunt jumps, golgappa), a gift every 2.5 minutes, level-up party with a share card.
+- 7-day login calendar (day 7: gold wrap), free daily lucky draw, Don trophies on your home wall, chai tapri / car wash that earn offline (8 hours max), ₹2,000 crews and a weekly sector war, invite link (both get a Bullet).
+- Bada Kaam cutscenes, a phone call for the next one, cliffhanger cards. Funnel steps, deaths and stuck-camera counts on `/admin`. Loading bar with tips, lite graphics (Menu), gamepad support.
+
 **City-wide events** (every few minutes, same for everyone): baraat, Iffco Chowk mahajam, monsoon flood with surge pay, Holi colours, Diwali fireworks, IPL screening at Cyber Hub.
 
 **Language**: the login screen (and Menu → Bhasha) lets players pick Haryanvi, Hindi or English. Hindi is written in Roman letters (Hinglish), like the Haryanvi. The game is written in Haryanvi; for Hindi and English every piece of text on screen is translated as it appears, using the language packs in `public/js/lang/`. Names of people, places and shops stay as they are. Hindi and English players join with the Bollywood station on.
@@ -129,7 +137,7 @@ Settings (environment variables): `PORT` (default 3000), `DATA_DIR` (save locati
 
 ## Testing
 
-`npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock. `GL_LANG=hi` or `GL_LANG=en` runs it with the game translated. `npm run test:regress` (server on a fresh `DATA_DIR`) plays the whole game as a new player: sign-up, avatar, the intro film, Day 1, every Menu app, every action spot in the city, rides, fights, a race, the map, chat, every interior, moving home, language switch and the screen layout, with a screenshot per step; `PHONE=1` does the same on a 390×844 touch phone. `npm run test:features` checks the newer systems in the browser: the empty-pocket start, the 15-minute day, pumps and petrol, arrests, guns, the gang, Bada Kaam 1 played end to end, and street people who stop and turn.
+`npm test` boots the server and checks the rules with two WebSocket players. `npm run test:controls` (server running, Playwright installed) presses real keys, clicks and taps in a browser: walking, running, jumping, mouse look, punching NPCs, passers-by, real and AI players, vehicles, menu, map, chat, the phone joystick and buttons. `NOLOCK=1` repeats it for a browser that refuses mouse lock. `GL_LANG=hi` or `GL_LANG=en` runs it with the game translated. `npm run test:regress` (server on a fresh `DATA_DIR`) plays the whole game as a new player: sign-up, avatar, the intro film, Day 1, every Menu app, every action spot in the city, rides, fights, a race, the map, chat, every interior, moving home, language switch and the screen layout, with a screenshot per step; `PHONE=1` does the same on a 390×844 touch phone. `npm run test:retention` plays the retention features in the browser (cold open, fast travel, wanted stars, mini-games, calendar, welcome back, gamepad, lite graphics), and `npm test` includes their server rules (`test/retention.mjs`). `npm run test:qa` replays the QA tracker regressions. `npm run test:features` checks the newer systems in the browser: the empty-pocket start, the 15-minute day, pumps and petrol, arrests, guns, the gang, Bada Kaam 1 played end to end, and street people who stop and turn.
 
 For the browser suites, start the server with `GL_WEATHER=0` so the weather stays clear: rain floods roads and slows walking and driving, which makes the movement checks flaky.
 
