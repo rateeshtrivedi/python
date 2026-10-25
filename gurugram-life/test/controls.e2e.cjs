@@ -36,7 +36,7 @@ if (require.main === module) (async () => {
     rec('F1 a first-timer sees the intro film and Skip ends it', seen && after.gone && !after.frozen && after.once === '1', JSON.stringify(after)); await q.context().close(); }
   const p = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Ek', NOLOCK);
   await place(p, 0, 20, 0); await p.waitForTimeout(300);
-  let a = await st(p); await hold(p, 'KeyW', 1500); let c = await st(p); const walk = Math.hypot(c.x - a.x, c.z - a.z); rec('D1 W walks forward', walk > 2, 'moved ' + walk.toFixed(1));
+  let a = await st(p); await hold(p, 'KeyW', 2200); let c = await st(p); const walk = Math.hypot(c.x - a.x, c.z - a.z); rec('D1 W walks forward', walk > 2, 'moved ' + walk.toFixed(1)); /* a longer hold: at ~1-2 fps, 1.5 s is only two or three frames */
   a = c; await hold(p, 'KeyD', 700); c = await st(p); rec('D2 D moves/turns right', Math.hypot(c.x - a.x, c.z - a.z) > 0.8 || Math.abs(c.r - a.r) > 0.3, 'dpos ' + Math.hypot(c.x - a.x, c.z - a.z).toFixed(1));
   await place(p, 0, 20, 0); a = await st(p); await p.keyboard.down('ShiftLeft'); await hold(p, 'KeyW', 1500); await p.keyboard.up('ShiftLeft'); c = await st(p); const run = Math.hypot(c.x - a.x, c.z - a.z); rec('D3 Shift runs faster', run > walk * 1.2, 'run ' + run.toFixed(1) + ' vs walk ' + walk.toFixed(1));
   await place(p, 0, 20, 0); await p.keyboard.press('Space'); let peak = 0; for (let i = 0; i < 10; i++) { await p.waitForTimeout(60); peak = Math.max(peak, (await st(p)).y); } rec('D4 Space jumps', peak > 0.4, 'peak y ' + peak.toFixed(2));
@@ -74,6 +74,7 @@ if (require.main === module) (async () => {
   // ---------------- multiplayer: a second real player
   const q = await open(b, { viewport: { width: 1280, height: 720 } }, 'Tester Do', NOLOCK);
   await place(q, 30, 30, Math.PI); await place(p, 30, 28.4, 0); await p.waitForTimeout(2500);
+  await q.waitForFunction(() => { for (const [, R] of window.__t.REMOTES) if (R.info && R.info.name === 'Tester Ek') return Math.hypot(R.mesh.position.x - 30, R.mesh.position.z - 28.4) < 1.5; return false; }, null, { timeout: 15000, polling: 300 }).catch(() => {}); // two software-rendered tabs run at ~1 fps: wait until player 2 actually sees player 1 in front
   const seen = await E(p, () => { for (const [id, R] of window.__t.REMOTES) if (R.info && R.info.name === 'Tester Do') return { id, vis: R.visible, x: R.mesh.position.x, z: R.mesh.position.z }; return null; });
   rec('M0 player 1 sees player 2', !!seen && seen.vis, JSON.stringify(seen));
   const qhp0 = (await st(q)).hp; await E(p, () => { window.__t.G.r += 2.4; }); for (let i = 0; i < 3; i++) { await p.keyboard.press('KeyQ'); await p.waitForTimeout(500); } await q.waitForTimeout(500); const qhp1 = (await st(q)).hp;
