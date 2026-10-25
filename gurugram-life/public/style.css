@@ -401,3 +401,33 @@ body.touch #weap{display:none}
 #missions h5.mhead{margin:6px 0 2px;font:700 11px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--sarson);opacity:.85}
 .app.locked i{filter:grayscale(1) opacity(.55)}.app .lockb{display:block;font:700 10px var(--display);color:var(--lal);margin-top:1px}
 .menuclock{margin:0 0 8px;font:800 14px var(--display);color:var(--lal)}
+/* retention: loading bar, next objective, wanted stars, welcome back, calendar, golgappa, cutscenes */
+#loadbar{position:relative;height:30px;border-radius:10px;background:rgba(0,0,0,.25);overflow:hidden;margin:2px 0 4px}
+#loadbar i{position:absolute;left:0;top:0;bottom:0;width:10%;background:linear-gradient(90deg,var(--sarson),var(--lal));transition:width .6s}
+#loadbar span{position:relative;display:block;padding:6px 10px;font:700 12px var(--display);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
+#loadbar.done i{background:var(--hara)}
+#obj{position:absolute;left:50%;top:calc(52px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;align-items:center;gap:8px;max-width:min(520px,calc(100% - 32px));background:var(--panel);border:2px solid var(--sarson);border-radius:14px;padding:5px 6px 5px 10px;font:700 13px var(--display);color:var(--cream)}
+#obj small{position:absolute;left:10px;top:-9px;background:var(--sarson);color:var(--ink);font:800 10px var(--display);letter-spacing:.08em;text-transform:uppercase;padding:0 6px;border-radius:6px}
+#obj i{font-style:normal;font-size:18px}#obj b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#obj .buy{padding:4px 10px;font-size:12px;min-height:0}
+body.racing #obj,body.cutscene #obj{display:none!important}
+@media (max-width:700px){#obj{top:calc(240px + env(safe-area-inset-top,0px));left:12px;transform:none;max-width:calc(100% - 24px);font-size:12px}}
+#wanted{position:absolute;right:12px;top:calc(232px + env(safe-area-inset-top,0px));display:flex;gap:2px;background:var(--panel);border-radius:99px;padding:2px 9px;font:900 18px var(--display)}
+#wanted i{font-style:normal;color:rgba(255,255,255,.25)}#wanted i.on{color:#ffd21f;text-shadow:0 0 6px #d7331f;animation:wpulse 1s infinite}
+@keyframes wpulse{50%{opacity:.55}}
+@media (max-width:760px){#wanted{top:calc(276px + env(safe-area-inset-top,0px));font-size:15px}}
+#navauto{border:0;background:var(--sarson);border-radius:99px;font-size:14px;line-height:1;padding:3px 6px;cursor:pointer}
+.wblist{display:grid;gap:6px;margin:6px 0 10px}.wbrow{display:grid;grid-template-columns:28px 1fr;grid-template-rows:auto auto;column-gap:8px;text-align:left;background:rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:6px 10px;cursor:pointer;color:inherit;font:inherit}
+.wbrow i{grid-row:span 2;font-style:normal;font-size:20px;align-self:center}.wbrow b{font:800 14px var(--display)}.wbrow span{font-size:12px;opacity:.8}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px}.cal .cd{background:rgba(0,0,0,.25);border-radius:10px;padding:6px 2px;text-align:center;border:2px solid transparent}
+.cal .cd small{display:block;font:700 10px var(--display);opacity:.75}.cal .cd b{display:block;font:800 13px var(--display);color:var(--sarson)}.cal .cd span{display:block;font-size:10px;min-height:12px}
+.cal .cd.got{opacity:.55}.cal .cd.now{border-color:var(--sarson);background:rgba(246,192,38,.18)}
+@media (max-width:520px){.cal{grid-template-columns:repeat(4,1fr)}}
+.golcnt{display:block;text-align:center;font:900 54px var(--display);color:var(--sarson)}.golbar{height:22px;border-radius:11px;background:rgba(0,0,0,.3);overflow:hidden;margin:8px 0 12px}.golbar i{display:block;height:100%;width:0;background:var(--sarson)}
+.warbox{background:rgba(215,51,31,.15);border-left:4px solid var(--lal);padding:6px 10px;border-radius:6px}
+.splace.cont{border-color:var(--hara)!important}
+body.cutscene #hud > :not(#cutcap):not(#toasts){visibility:hidden}
+body.cutscene #game::before,body.cutscene #game::after{content:'';position:absolute;left:0;right:0;height:11vh;background:#000;z-index:5;pointer-events:none}
+body.cutscene #game::before{top:0}body.cutscene #game::after{bottom:0}
+#cutcap{position:absolute;left:50%;bottom:calc(13vh + 10px);transform:translateX(-50%);z-index:6;max-width:min(640px,calc(100% - 32px));background:rgba(0,0,0,.72);color:#fff;border-radius:12px;padding:8px 16px;text-align:center;cursor:pointer;visibility:visible!important}
+#cutcap b{display:block;font:800 13px var(--display);color:var(--sarson);text-transform:uppercase;letter-spacing:.06em}#cutcap span{font:600 17px var(--body)}

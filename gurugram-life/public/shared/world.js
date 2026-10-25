@@ -17,7 +17,7 @@ function persist(force) { if (!dirty && !force) return; dirty = false; opts.save
 const now = () => Date.now() / 1000;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const num = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date(Date.now()).toISOString().slice(0, 10);
 const fmt = n => '₹' + Math.round(n).toLocaleString('en-IN');
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
@@ -29,7 +29,7 @@ function newProfile(name, color) {
     daily: { last: '', streak: 0 }, blessed: '', party: 0, tutDone: false, created: Date.now(), lastSeen: Date.now(),
   };
 }
-function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); if (p.bkOn && (p.bkOn.i !== p.bk || now() - p.bkOn.at > 6 * 3600)) p.bkOn = null; /* a kaam left overnight starts fresh */ p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; }
+function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); if ((p.bk >= 1 || p.cold) && !D.hasCar(p) && !p.vehicles.includes('khatara')) { p.vehicles.push('khatara'); if (!p.cur) p.cur = 'khatara'; } /* a car early: anyone past the first kaam without one gets Chacha's Khatara */ p.trophies = p.trophies || []; p.mini = p.mini || {}; p.biz = p.biz || []; if (p.bkOn && (p.bkOn.i !== p.bk || now() - p.bkOn.at > 6 * 3600)) p.bkOn = null; /* a kaam left overnight starts fresh */ p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; }
 function publicProfile(p) { const { token, ...rest } = p; return rest; }
 
 
@@ -103,9 +103,10 @@ function bkDone(c, m) {
   const on = p.bkOn; if (!on || on.i !== i) return { ok: false, error: 'Kaam poora nahi hua' };
   if (now() - on.at < 50) return { ok: false, error: 'Kaam poora nahi hua', wait: 50 - (now() - on.at) }; // too quick: the client waits this long and asks again
   if (B.gang && p.gang.length < B.gang) return { ok: false, error: 'Is kaam ke liye gang chahiye' };
-  p.bkOn = null; p.bk = i + 1; credit(c, B.pay, 'Bada Kaam: ' + B.title); p.respect += 25 + i * 10; addXP(c, 150 + 50 * i); track(c, 'bade');
+  p.bkOn = null; p.bk = i + 1; credit(c, B.pay, 'Bada Kaam: ' + B.title); if (!D.hasCar(p) && !p.vehicles.includes('khatara')) { p.vehicles.push('khatara'); p.cur = p.cur || 'khatara'; send(c, { t: 'gift', veh: 'khatara' }); } p.respect += 25 + i * 10; addXP(c, 150 + 50 * i); track(c, 'bade');
   if (B.plot && !db.plots[B.plot]) db.plots[B.plot] = p.id;
   if (B.unlock) send(c, { t: 'toast', text: { guns: 'Naya: Bittu Hathiyaar wala (Sohna Road) ab tujhe katta aur dunali bechega', gang: 'Naya: Bhola Pehlwan ke akhare se apni gang bana', land: 'Naya: Zameen ke saude (Menu → Zameen)' }[B.unlock], kind: 'money', sfx: 'level' });
+  if (i === 0) refReward(c);
   announce(p.name + ' ne Bada Kaam "' + B.title + '" kar dikhaya!', 'showoff'); storyPrize(c); dirty = true; sendProfile(c);
   return { ok: true, pay: B.pay, bk: p.bk };
 }
@@ -343,6 +344,7 @@ function handleBuy(c, m) {
     if (id === 'plate') { after = () => { if (p.plate && db.plates[p.plate] === p.id) delete db.plates[p.plate]; p.plate = randomPlate(); db.plates[p.plate] = p.id; broadcast(pinfo(c)); track(c, 'showoff'); }; }
     if (id === 'movie') after = () => { track(c, 'movies'); addXP(c, 50); p.respect += 3; };
     if (id === 'metro') after = () => { track(c, 'metro'); addXP(c, 10); };
+    if (id === 'lucky' && p.luckyDay !== istDay()) { price = 0; p.luckyDay = istDay(); } // one free scratch card a day
     if (id === 'lucky') after = () => {
       const r = Math.random(); const prize = r < 0.45 ? 0 : r < 0.7 ? 100 : r < 0.86 ? 300 : r < 0.95 ? 500 : r < 0.99 ? 1000 : 5000;
       if (prize) credit(c, prize, 'Lucky draw'); c.lastPrize = prize; if (prize >= 1000) announce(p.name + ' ne Ambience Mall lucky draw mein ' + fmt(prize) + ' jeete!', 'showoff');
@@ -351,6 +353,7 @@ function handleBuy(c, m) {
     if (id === 'notes') after = () => { p.party += 5; p.respect += 10; track(c, 'showoff'); announce(p.name + ' ne baraat mein ' + fmt(1000) + ' ke note udaye!', 'party'); broadcast({ t: 'fx', fx: 'notes', x: c.st?.x, z: c.st?.z }); };
     if (id === 'firework') after = () => broadcast({ t: 'fx', fx: 'firework', x: c.st?.x, z: c.st?.z });
     if (id === 'party') after = () => { party = { host: p.id, hostName: p.name, ends: now() + 300, guests: new Set() }; announce(p.name + ' ki Bhondsi farmhouse party shuru! Phone → Events → Join party', 'party'); broadcast({ t: 'party', party: partyView() }); };
+    if (id === 'bribe') { const st = clamp(Math.floor(num(m.stars, 1)), 1, D.WANTED.max); price = D.bribeCost(st); after = () => { p.respect = Math.max(0, p.respect - 2); }; }
     if (id === 'arrest') { price = Math.min(p.money, 1500 + Math.round(p.money * 0.08)); after = () => { track(c, 'arrests'); p.respect = Math.max(0, p.respect - 5); }; } // the fine: what you can pay, or a night in the lockup
     if (id === 'challan_chase' || id === 'challan' || id === 'challan_big' || id === 'challan_film' || id === 'ko_bill') { price = Math.min(price, p.money); }
   } else if (kind === 'vehicle') {
@@ -403,6 +406,9 @@ function handleBuy(c, m) {
     const pl = D.PLOTS.find(x => x.id === id); if (!pl) return fail('Yeh plot nahi'); if (!D.unlocked(p, 'land')) return fail('Yadav Estates: "Pehle Pump pe Kabza kar ke naam bana."');
     const own = db.plots[id]; if (own) return fail(own === p.id ? 'Yeh plot pehle se tera se' : 'Yeh plot ' + (db.profiles[own]?.name || 'kisi aur') + ' ka se');
     name = pl.name; price = D.plotPrice(pl); after = () => { db.plots[id] = p.id; p.respect += 15; track(c, 'plots'); if (price >= 200000) announce(p.name + ' ne ' + pl.name + ' kharid liya! ' + fmt(price), 'showoff'); };
+  } else if (kind === 'biz') { // a small business that earns while you are away
+    const B = D.BIZ[id]; if (!B) return fail('Yeh dhanda nahi'); if ((p.bk || 0) < B.bk) return fail('Pehle Bada Kaam ' + B.bk + ' poora kar'); if ((p.biz || []).some(b => b.id === id)) return fail('Pehle se tera se');
+    name = B.name; price = B.price; after = () => { p.biz = p.biz || []; p.biz.push({ id, at: Date.now() }); p.respect += 10; announce(p.name + ' ne apna dhanda shuru kiya: ' + B.name + '!', 'showoff'); };
   } else if (kind === 'fuel') { // petrol pump: litres at the pump rate
     const l = clamp(Math.round(num(m.n, 0)), 1, 200); name = l + ' litre petrol'; price = l * D.PETROL_RATE; after = () => track(c, 'fuel', l);
   } else return fail('Unknown purchase');
@@ -421,7 +427,11 @@ function handleEarn(c, m) {
   if (!rateOk(c, 'earn:' + reason, cap.cd * 0.85)) return { ok: false, error: 'Thoda ruk ke' };
   if (reason === 'prasad') { if (p.blessed === today()) return { ok: false, error: 'Aaj ka aashirwad mil gaya' }; p.blessed = today(); }
   if (reason === 'dangal') { track(c, 'wrestle'); if (!db.belt || !conns.has(db.belt.id)) giveBelt(c); }
-  const amt = clamp(Math.round(num(m.amount)), 0, max);
+  let amt = clamp(Math.round(num(m.amount)), 0, max), mult = 1;
+  if (reason === 'ride' || reason === 'delivery') { const js = c.jobStreak && now() - c.jobStreak.at < D.STREAK_GAP ? c.jobStreak.n + 1 : 1; c.jobStreak = { n: js, at: now() }; mult = D.streakMult(js); amt = Math.round(amt * mult); } // back-to-back jobs pay more
+  if (reason === 'coldopen') { if (p.cold) return { ok: false, error: 'Ho gaya' }; p.cold = Date.now(); amt = D.EARN.coldopen.max; if (!D.hasCar(p) && !p.vehicles.includes('khatara')) { p.vehicles.push('khatara'); p.cur = p.cur || 'khatara'; } refReward(c); }
+  if (reason === 'gift') { const due = (c.giftAt || c.since / 1000) + D.GIFT_EVERY - 5; if (now() < due || !c.st) return { ok: false, error: 'Abhi nahi', wait: Math.ceil(due - now()) }; c.giftAt = now(); c.gifts = (c.gifts || 0) + 1; amt = D.giftAmt(p.level, c.gifts); if (c.gifts % 4 === 0) p.respect += 10; }
+  if (reason === 'biz') { let sum = 0; const t = Date.now(); for (const b of p.biz || []) { sum += D.bizDue(b, t); b.at = t; } if (!sum) return { ok: false, error: 'Abhi kuch kamaai nahi hui' }; amt = sum; }
   if (reason === 'ride') { track(c, 'rides'); addXP(c, 45); }
   if (reason === 'delivery') { track(c, 'deliveries'); addXP(c, 30); }
   if (reason === 'shift') { track(c, 'shifts'); addXP(c, 35); }
@@ -430,7 +440,7 @@ function handleEarn(c, m) {
   if (reason === 'loot') { /* xp via npc_ko */ }
   if (amt > 0) credit(c, amt, m.why ? D.cleanText(m.why, 60) : null);
   sendProfile(c);
-  return { ok: true, amount: amt };
+  return { ok: true, amount: amt, mult, streak: c.jobStreak ? c.jobStreak.n : 0 };
 }
 
 function handle(c, m) {
@@ -513,7 +523,7 @@ function handle(c, m) {
       ensureMissions(p); const dn = p.don, ch = dn.ch; if (m.ch !== ch || ch >= D.DON.length || dn.last === istDay() || !c.st || c.st.in) return;
       const C = D.DON[ch], at = donAt(dn); if (dist(c.st, { x: at[0], z: at[1] }) > 60 || !rateOk(c, 'donko', 20)) return;
       const r = Math.round(C.r * (1 + 0.1 * Math.min(p.level, 10)) / 10) * 10; p.money += r; p.respect += 10 + ch * 5; dn.ch++; dn.last = istDay(); dn.spot = null; dn.spotDay = null; track(c, 'don'); addXP(c, 60 + ch * 20);
-      if (C.final) { dn.champ = dn.wk; announce('👑 ' + p.name + ' ne Dalal Bhai ko hara diya! Is hafte ka GALI KA DON!', 'fight'); }
+      if (C.final) { dn.champ = dn.wk; p.trophies = p.trophies || []; if (!p.trophies.includes(dn.wk)) p.trophies.push(dn.wk); announce('👑 ' + p.name + ' ne Dalal Bhai ko hara diya! Is hafte ka GALI KA DON!', 'fight'); }
       else if (ch >= 2) announce(p.name + ' ne ' + C.boss + ' ko ' + at[2] + ' mein dhobi pachhad maara (Gali ke Don, chapter ' + (ch + 1) + ')', 'fight');
       send(c, { t: 'don', ch: dn.ch, reward: r, final: !!C.final }); sendProfile(c); dirty = true; break;
     }
@@ -699,8 +709,19 @@ function handle(c, m) {
       dance.scores[p.id] = { hits: clamp(Math.floor(num(m.hits)), 0, 10), ms: clamp(num(m.ms, 1e9), 300, 1e9) }; track(c, 'dance'); danceAdvance(); break;
     }
     case 'lb': reply({ ok: true, lb: rateOk(c, 'lb', 2) ? leaderboards() : lbCache || leaderboards() }); break;
-    case 'crews': reply({ ok: true, crews: crewList(), turf: turfView() }); break;
+    case 'crews': reply({ ok: true, crews: crewList(), turf: turfView(), war: db.war || null }); break;
+    case 'wrap': { const v = String(m.v || ''); if (!(p.skins || []).includes('sona') || !p.vehicles.includes(v)) break; const cur = p.mods[v] || {}; p.mods[v] = { ...cur, wrap: !cur.wrap }; dirty = true; sendProfile(c); broadcast(pinfo(c)); break; } // the day-7 gold wrap, on or off
     case 'ping': reply({ ok: true }); break;
+    case 'evc': { const k = String(m.k || ''); if (!['death', 'camstuck', 'quit_early'].includes(k) || !rateOk(c, 'evc:' + k, 20)) break; p.evc = p.evc || {}; p.evc[k] = (p.evc[k] || 0) + 1; dirty = true; break; } // how often players die or get the camera stuck
+    case 'mini': { // a finished mini-game: best score, medal, leaderboard
+      const g = String(m.g || ''), M = D.MINI[g]; if (!M) return reply({ ok: false }); const sc = Math.round(num(m.score, -1)); if (sc < M.min || sc > M.max || !rateOk(c, 'mini', 8)) return reply({ ok: false, error: 'Score nahi gina' });
+      p.mini = p.mini || {}; const old = p.mini[g] || { best: null, day: '', medal: 0 }; const better = old.best == null || (M.low ? sc < old.best : sc > old.best); if (better) old.best = sc;
+      const md = D.medalOf(g, sc); let pay = 0; if (old.day !== today()) { old.day = today(); old.medal = 0; } if (md > old.medal) { pay = D.MEDAL_PAY[md] - D.MEDAL_PAY[old.medal]; old.medal = md; credit(c, pay, M.name + ': ' + D.MEDALS[md] + ' medal'); addXP(c, 20 * md); } // pays once per medal step per day
+      p.mini[g] = old; db.mini = db.mini || {}; const lb = (db.mini[g] || []).filter(e => e.id !== p.id || !better); if (better || !lb.some(e => e.id === p.id)) lb.push({ id: p.id, name: p.name, score: old.best }); lb.sort((a, b) => M.low ? a.score - b.score : b.score - a.score); db.mini[g] = lb.slice(0, 10);
+      if (md === 3 && better && db.mini[g][0].id === p.id) announce(p.name + ' ne ' + M.name + ' ka record tod diya!', 'showoff');
+      dirty = true; sendProfile(c); return reply({ ok: true, medal: md, pay, best: old.best, top: db.mini[g] });
+    }
+    case 'minis': reply({ ok: true, top: db.mini || {}, mine: p.mini || {} }); break;
   }
 }
 
@@ -740,6 +761,23 @@ function botTick() {
   if (Math.random() < 0.006) { const b = pick(bots); announce(pick([b.name + ' ne Neon Nights mein poore club ke liye bottle mangwayi!', b.name + ' ki nayi gaadi pe pressure horn lag gaya. Sector 29 hil gaya!', b.name + ' ne akhara mein ek chhore ko dhobi pachhad maara!', b.name + ' Golf Course Road pe neon underglow ke saath ghoom rahe hain', b.name + ' ki farmhouse party mein 40 log aaye!']), pick(['showoff', 'party', 'fight'])); b.party += 5; }
 }
 
+// ------------------------------------------------------------------ people today, invites, the weekly sector war
+function seenToday(p) { if (p.bot) return; const d = istDay(); if (!db.seen || db.seen.day !== d) db.seen = { day: d, ids: [] }; if (!db.seen.ids.includes(p.id)) { db.seen.ids.push(p.id); dirty = true; } }
+const todayCount = () => (db.seen && db.seen.day === istDay() ? db.seen.ids.length : 0);
+const refCount = p => Object.values(db.profiles).filter(x => x.refBy === p.id && x.refPaid).length;
+function refReward(c) { // the invited friend finished their first kaam: both of them get a Bullet (or its price if they have one)
+  const p = c.p, by = p.refBy && db.profiles[p.refBy]; if (!by || p.refPaid || refCount(by) >= D.INVITE_MAX) return; p.refPaid = Date.now();
+  const give = (q, cc) => { if (q.vehicles.includes('dhakad')) q.money += D.VEH.dhakad.price; else q.vehicles.push('dhakad'); if (cc) { send(cc, { t: 'toast', text: 'Dost ko bulane ka inaam: Dhakad 350 Bullet! 🏍', kind: 'money', sfx: 'level' }); sendProfile(cc); } };
+  give(p, c); give(by, conns.get(by.id)); announce(by.name + ' ne ' + p.name + ' ko Gurugram bulaya. Dono ko Bullet mili!', 'showoff'); dirty = true;
+}
+function warCheck() { // every Monday (Gurugram time) the crew holding the most areas wins the week: ₹ to each member, then the map resets
+  const wk = istWeek(); if (!db.war) { db.war = { wk, last: null }; dirty = true; return; } if (db.war.wk === wk) return;
+  const owned = {}; for (const t of Object.values(db.turf)) if (t.owner && db.crews[t.owner]) owned[t.owner] = (owned[t.owner] || 0) + 1;
+  let best = null, bn = 0; for (const [k, n] of Object.entries(owned)) if (n > bn) { bn = n; best = k; }
+  if (best) { const cr = db.crews[best]; db.war.last = { tag: cr.tag, name: cr.name, n: bn, wk: db.war.wk }; for (const id of cr.members) { const q = db.profiles[id]; if (q && !q.bot) { q.money += 5000; q.respect += 25; const cc = conns.get(id); if (cc) sendProfile(cc); } } announce('Hafte ki ilaaka jung: [' + cr.tag + '] ' + cr.name + ' jeeti (' + bn + ' areas)! Har member ko ₹5,000. Naya hafta, naya nakhsha!', 'crew'); }
+  for (const t of Object.values(db.turf)) { for (const k of Object.keys(t.pts)) t.pts[k] = Math.min(t.pts[k], 12); } db.war.wk = wk; dirty = true; broadcast({ t: 'turf', turf: turfView(), crews: crewList() });
+}
+
 // ------------------------------------------------------------------ connections
 // token -> profile index, and a per-IP cap on new accounts so nobody can flood the save file
 const byToken = new Map(Object.values(db.profiles).map(x => [x.token, x]));
@@ -760,7 +798,10 @@ function connect(out, closeFn, meta, outRaw) {
       if (m.color !== undefined) p.color = clamp(Math.floor(num(m.color, p.color)), 0, D.SHIRTS.length - 1);
       const old = conns.get(p.id); if (old) { send(old, { t: 'kicked', reason: 'Yeh account doosre tab mein khul gaya' }); old.close(); conns.delete(p.id); }
       c = { out, outRaw, close: closeFn, p, st: null, cool: {}, since: Date.now() }; conns.set(p.id, c);
-      p.lastSeen = Date.now(); p.visits = (p.visits || 0) + 1; ensureMissions(p); beltCheckDay();
+      const away = p.visits ? (Date.now() - (p.lastSeen || Date.now())) / 1000 : 0; // seconds since the last visit (0 for a new player)
+      if (!p.visits && typeof m.ref === 'string' && db.profiles[m.ref] && m.ref !== p.id && !db.profiles[m.ref].bot) p.refBy = m.ref; // invited by a friend
+      if (m.ab === 'cold' || m.ab === 'classic') p.ab = p.ab || m.ab;
+      p.lastSeen = Date.now(); p.visits = (p.visits || 0) + 1; ensureMissions(p); beltCheckDay(); seenToday(p);
       // daily reward (with PG rent)
       let daily = null; const td = today();
       upgrade(p);
@@ -769,12 +810,12 @@ function connect(out, closeFn, meta, outRaw) {
         const yd = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
         p.daily.streak = p.daily.last === yd ? p.daily.streak + 1 : 1; p.daily.last = td;
         let prop = 0; for (const h of p.houses) prop += D.HOUSES[h] ? D.HOUSES[h].daily : 0;
-        const base = 300 * Math.min(p.daily.streak, 10); const rent = p.home === 'pg' ? D.PG_RENT : 0;
-        const amt = base + prop - rent; p.money += amt; daily = { base, prop, rent, amt, streak: p.daily.streak };
+        const cd = D.calDay(p.daily.streak), CAL = D.CALENDAR[cd - 1]; const base = CAL.amt; if (CAL.skin) { p.skins = p.skins || []; if (!p.skins.includes(CAL.skin)) p.skins.push(CAL.skin); } const rent = p.home === 'pg' ? D.PG_RENT : 0;
+        const amt = base + prop - rent; p.money += amt; daily = { base, prop, rent, amt, streak: p.daily.streak, cal: cd, skin: CAL.skin || null };
       }
       dirty = true;
       send(c, {
-        t: 'welcome', id: p.id, token: p.token, profile: publicProfile(p), daily,
+        t: 'welcome', id: p.id, token: p.token, profile: publicProfile(p), daily, away: Math.round(away), bizDue: (p.biz || []).reduce((a, b) => a + D.bizDue(b, Date.now()), 0), today: todayCount(), refs: refCount(p),
         players: [...conns.values()].filter(x => x !== c).map(pinfo).concat([...ais.values()].map(aiInfo)), event: worldEvent, auction, party: partyView(), roast: roastState(),
         weather, turf: turfView(), crews: crewList(), ann: announcements.slice(-8), belt: db.belt, lb: lbCache || leaderboards(), serverTime: now(),
       });
@@ -833,13 +874,14 @@ function tick1s() {
   if (slow % 10 === 0) for (const o of conns.values()) { plotRents(o); if (o.p.missions.day !== D.gameDay()) { ensureMissions(o.p); sendProfile(o); send(o, { t: 'toast', text: 'Naya din! Aaj ke naye kaam aa gaye', kind: 'join' }); } } // a new 15-minute day: fresh kaam
   if (slow % 60 === 0) turfIncome();
   if (slow % 15 === 0) broadcast({ t: 'lb', lb: leaderboards() });
-  if (slow % 60 === 0) beltCheckDay();
+  if (slow % 60 === 0) { beltCheckDay(); warCheck(); }
+  if (slow % 20 === 0) broadcast({ t: 'pop', today: todayCount(), online: conns.size });
   botTick(); aiTalk();
 }
 
 function raceTops() { const o = {}; for (const R of D.RACES) o[R.id] = ((db.races || {})[R.id] || []).slice(0, 5).map(e => ({ name: e.name, ms: e.ms })); return o; }
 
-const FUNNEL = [['play', 'Pressed Khelo'], ['intro_play', 'Intro film started'], ['intro_done', 'Watched the whole intro film'], ['intro_skip', 'Skipped the intro film'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['start_other', 'Started somewhere else (no story)'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
+const FUNNEL = [['landing', 'Opened the page'], ['name_ok', 'Entered a name'], ['avatar_done', 'Made an avatar'], ['pick_shown', 'Saw the start picker'], ['ab_cold', 'A/B: cold open'], ['ab_classic', 'A/B: classic start'], ['play', 'Pressed Khelo'], ['first_move', 'Moved for the first time'], ['cold_go', 'Cold open: chase started'], ['cold_done', 'Cold open: got ₹1,000'], ['first_reward', 'First reward'], ['intro_play', 'Intro film started'], ['intro_done', 'Watched the whole intro film'], ['intro_skip', 'Skipped the intro film'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['start_other', 'Started somewhere else (no story)'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
 
 
 // ------------------------------------------------------------------ computer players: nobody should walk an empty city
@@ -904,8 +946,9 @@ function stats() {
   }
   list.sort((a, b) => b.lastSeen - a.lastSeen);
   const since = ms => list.filter(p => p.lastSeen > t - ms).length, joined = ms => list.filter(p => p.created > t - ms).length;
-  const real = Object.values(db.profiles).filter(p => !p.bot); const funnel = FUNNEL.map(([k, label]) => ({ k, label, n: real.filter(p => p.steps && p.steps[k]).length }));
-  return { funnel, total: list.length, online: conns.size, active24h: since(day), active7d: since(7 * day), new24h: joined(day), new7d: joined(7 * day), players: list };
+  const real = Object.values(db.profiles).filter(p => !p.bot); const has = (p, k) => !!(p.steps && p.steps[k]); const funnel = FUNNEL.map(([k, label]) => ({ k, label, n: real.filter(p => has(p, k)).length, cold: real.filter(p => p.ab === 'cold' && has(p, k)).length, classic: real.filter(p => p.ab === 'classic' && has(p, k)).length }));
+  const evc = {}; for (const p of real) for (const [k, v] of Object.entries(p.evc || {})) evc[k] = (evc[k] || 0) + v;
+  return { funnel, evc, today: todayCount(), total: list.length, online: conns.size, active24h: since(day), active7d: since(7 * day), new24h: joined(day), new7d: joined(7 * day), players: list };
 }
 
 return { connect, tick100, tick1s, persist, stats, players: () => conns.size };

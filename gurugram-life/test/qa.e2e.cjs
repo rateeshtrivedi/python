@@ -10,6 +10,7 @@ const results = []; let errs = [];
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
   const ctx = await b.newContext(PHONE ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 1366, height: 768 } });
   await ctx.addInitScript(() => localStorage.setItem('gl_intro', '1'));
+  await ctx.addInitScript(() => { localStorage.setItem('gl_ab', '"classic"'); }); // the classic start (start picker); the cold open has its own suite
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message + ' @ ' + (e.stack || '').split('\n')[1]));
   await p.route('**/api/stations', r => r.fulfill({ json: { har: [], pun: [], bol: [], eng: [] } })); await p.route('**/radio-browser.info/**', r => r.abort());
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'game.js'), 'utf8'); await p.route('**/js/game.js', r => r.fulfill({ body: src + HOOK, contentType: 'application/javascript' }));
@@ -17,7 +18,7 @@ const results = []; let errs = [];
   const step = async (name, fn) => { const e0 = errs.length; let ok = false, info = ''; try { const r = await fn(); ok = r.ok; info = r.info || ''; } catch (e) { info = 'EXC ' + e.message.split('\n')[0]; }
     if (errs.length > e0) { ok = false; info += ' · page error: ' + errs.slice(e0).join(' | ').slice(0, 200); } results.push({ name, ok, info }); console.log((ok ? 'PASS ' : 'FAIL ') + name + (info ? ' — ' + info : ''));
     await p.screenshot({ path: path.join(OUT, String(results.length).padStart(2, '0') + '-' + name.replace(/[^a-z0-9]+/gi, '_').slice(0, 40) + '.jpg'), type: 'jpeg', quality: 60 }).catch(() => {}); };
-  const join = async () => { await p.waitForFunction(() => window.__t && window.__t.G.started, null, { timeout: 60000 }); await W(4500); await E(() => { document.getElementById('raceres').hidden = true; const t = window.__t; t.closeModal(); t.G.donCallNext = 1e12; }); };
+  const join = async () => { await p.waitForFunction(() => window.__t && window.__t.G.started, null, { timeout: 60000 }); await W(4500); await E(() => { document.getElementById('raceres').hidden = true; const t = window.__t; t.closeModal(); t.G.donCallNext = 1e12; window.__t.G.calledBK = true; }); };
   await p.goto(URL); await W(1500); await p.fill('#nameIn', 'QA Tester'); await p.click('#playBtn'); await W(600); if (await p.$('#cNext:visible')) await p.click('#cNext'); await W(400); await p.click('.splace >> nth=0'); await join();
 
   // REG-04 / GL-004: every start point is inside its own district, on open ground

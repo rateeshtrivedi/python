@@ -12,6 +12,7 @@ const results = []; let errs = [], bad = [];
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const ctx = await b.newContext(PHONE ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 1366, height: 768 } });
+  await ctx.addInitScript(() => { localStorage.setItem('gl_ab', '"classic"'); }); // this walkthrough follows the classic start (film, picker, Day 1); the cold open has its own suite
   const p = await ctx.newPage();
   p.on('pageerror', e => errs.push('pageerror: ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' ').trim()));
   p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|TUNNEL|ERR_/.test(m.text())) errs.push('console: ' + m.text().slice(0, 300)); });
@@ -50,7 +51,7 @@ const results = []; let errs = [], bad = [];
   await step('"Pehle ghoom" closes the card; HUD shows Bada Kaam 1 and the 3 kaam', async () => { await tap('#raceres button >> nth=1'); await W(800); const r = await E(() => ({ card: !document.getElementById('raceres').hidden, hud: !document.getElementById('hud').hidden, chip: document.getElementById('mchip').textContent, tasks: window.__t.P.missions.active.length }));
     return { ok: !r.card && r.hud && /Bada Kaam 1/.test(r.chip) && r.tasks === 3, info: JSON.stringify(r) }; });
   await step('UI layout: nothing off-screen, no overlapping panels', async () => { await W(500); const r = await overlaps(); return { ok: !r.offscreen.length && !r.overlap.length, info: JSON.stringify(r) }; });
-  await E(() => { const t = window.__t; t.G.donCallNext = 1e12; t.DAY.fixed = true; t.DAY.t = 0.42; t.G.weather = { lvl: 0, since: 0, until: 1e12 }; t.WX.wl = t.WX.ww = 0; });
+  await E(() => { const t = window.__t; t.G.donCallNext = 1e12; window.__t.G.calledBK = true; t.DAY.fixed = true; t.DAY.t = 0.42; t.G.weather = { lvl: 0, since: 0, until: 1e12 }; t.WX.wl = t.WX.ww = 0; });
 
   // ---------------- 2. movement
   const pos = () => E(() => { const G = window.__t.G; return { x: G.x, z: G.z, y: window.__t.player.position.y, veh: G.veh }; });

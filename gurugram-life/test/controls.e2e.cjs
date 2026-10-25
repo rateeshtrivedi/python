@@ -8,14 +8,14 @@ const URL = process.env.URL || 'http://localhost:3000/'; const GAME_JS = path.jo
 const HOOK = '\nwindow.__t={G,FIGHTERS,REMOTES,PEDS,CROWD,DOORS,AKHARA,get P(){return P},get PV(){return playerVeh},get player(){return player}};';
 const results = []; const rec = (id, ok, info) => { results.push([id, ok, info]); console.log((ok ? 'PASS ' : 'FAIL ') + id + (info ? '  — ' + info : '')); };
 async function open(browser, opts, name, noLock, film) {
-  const ctx = await browser.newContext(opts); if (!film) await ctx.addInitScript(() => localStorage.setItem('gl_intro', '1')); /* the intro film has its own check (F1) */ if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
+  const ctx = await browser.newContext(opts); await ctx.addInitScript(() => { localStorage.setItem('gl_ab', '"classic"'); }); /* the classic start; the cold open has its own suite */ if (!film) await ctx.addInitScript(() => localStorage.setItem('gl_intro', '1')); /* the intro film has its own check (F1) */ if (process.env.GL_LANG) await ctx.addInitScript(l => localStorage.setItem('gl_lang', JSON.stringify(l)), process.env.GL_LANG); const p = await ctx.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' })); await p.route('**/api/stations', r => r.fulfill({ json: { har: [], pun: [] } })); await p.route('**/radio-browser.info/**', r => r.abort());
   await p.route('**/js/game.js', r => r.fulfill({ body: fs.readFileSync(GAME_JS, 'utf8') + HOOK, contentType: 'application/javascript' }));
   await p.route('**/models/rides/**', r => r.abort()); // input checks only: the box-built vehicles keep three software-rendered tabs fast enough
   if (noLock) await p.addInitScript(() => { HTMLCanvasElement.prototype.requestPointerLock = function () { setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 10); }; });
   await p.goto(URL); await p.waitForTimeout(1200); await p.fill('#nameIn', name).catch(() => {}); await p.click('#playBtn'); await p.waitForTimeout(500); if (await p.$('#cNext:visible')) await p.click('#cNext'); await p.waitForTimeout(300);
   await p.click('.splace >> text=Rajiv Chowk'); await p.waitForFunction(() => window.__t && window.__t.G.started, null, { timeout: 30000 }); await p.waitForTimeout(2500);
-  await p.evaluate(() => { document.querySelectorAll('#modal').forEach(m => m.hidden = true); const G = window.__t.G; G.story = null; G.tut = false; G.donCallNext = 1e12; }); // no Gali ke Don phone call during the checks
+  await p.evaluate(() => { document.querySelectorAll('#modal').forEach(m => m.hidden = true); const G = window.__t.G; G.story = null; G.tut = false; G.donCallNext = 1e12; window.__t.G.calledBK = true; }); // no Gali ke Don phone call during the checks
   return p;
 }
 const E = (p, f, a) => p.evaluate(f, a);
