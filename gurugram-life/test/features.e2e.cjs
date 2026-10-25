@@ -96,7 +96,8 @@ const results = []; let errs = [];
     return { ok: r.rob && r.picked && r.lost >= r.want && r.hp > 0, info: JSON.stringify(r) }; }); // lost = his share + the hospital bill
   // Bada Kaam 1, played: the pump job, three cars, the runner, back to Chaudhary Saab
   await step('Bada Kaam 1: the menu lists 7 missions and starts the first', async () => { await E(() => window.__t.openBade()); await W(500); const rows = await E(() => document.querySelectorAll('#mBody .item').length);
-    await E(() => [...document.querySelectorAll('#mBody .item button')].find(b => /Shuru/.test(b.textContent)).click()); await W(1500); const card = await E(() => document.querySelector('#raceres h2')?.textContent);
+    await E(() => [...document.querySelectorAll('#mBody .item button')].find(b => /Shuru/.test(b.textContent)).click()); await W(1500);
+    for (let k = 0; k < 20 && !(await E(() => [...document.querySelectorAll('#raceres button')].some(b => /Chalo/.test(b.textContent)) && !document.getElementById('raceres').hidden)); k++) { await E(() => document.getElementById('cutcap')?.click()); await W(600); } /* the giver's short cutscene comes first: tap through it */ const card = await E(() => document.querySelector('#raceres h2')?.textContent);
     await E(() => [...document.querySelectorAll('#raceres button')].find(b => /Chalo/.test(b.textContent)).click()); await W(800); const r = await E(() => ({ on: window.__t.BK.on, step: window.__t.BK.step, wp: window.__t.G.wp && window.__t.G.wp.name }));
     return { ok: rows === 7 && /Pehli Kamai/.test(card || '') && r.on && r.step === 0 && /Chaudhary/.test(r.wp || ''), info: rows + ' rows · ' + card + ' · ' + JSON.stringify(r) }; });
   const t0 = Date.now();
