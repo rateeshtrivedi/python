@@ -1,0 +1,7 @@
+[
+ {"sc": 0, "dur": 2.5, "pre": 0.6, "pov": "POV: Rating Gurugram's roads out of 10 🛣️", "time": "Footpath: 0/10", "cap": "Footpath? Ye to kooda-path hai 🗑️", "capAt": 0.4},
+ {"sc": 1, "dur": 2.4, "pre": 0.8, "time": "Sector chowk: 🐄/10", "cap": "Right of way: mataji ka 🐄", "capAt": 0.2},
+ {"sc": 2, "dur": 2.3, "pre": 0.6, "time": "Raat ki sadak: 👻/10", "cap": "Streetlight? Kaunsi streetlight? 🔦", "capAt": 0.2},
+ {"sc": 3, "dur": 2.3, "pre": 0.6, "time": "Golf Course Road: 10/10 ✨", "cap": "Finally ek proper road 😍", "capAt": 0.2},
+ {"sc": 4, "dur": 2.8, "pre": 0.4, "time": "Speed breaker: 🚀/10", "cap": "…aur bina board ka speed breaker 💀", "capAt": 0.5, "big": true}
+]
