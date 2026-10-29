@@ -1,0 +1,157 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Gurugram Life A3 Poster</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Baloo+2:wght@600;800&family=Courier+Prime:wght@700&family=Permanent+Marker&display=swap">
+<style>
+/* A3 portrait 297 x 420 mm + 3 mm bleed each side = 303 x 426 mm. Keep text 12 mm inside the trim (15 mm from the page edge). */
+@page { size: 303mm 426mm; margin: 0 }
+:root { --ink: #120c08; --yel: #ffd21f; --red: #e8262c; --pink: #ff2d95; --cyan: #19e3ff; --paper: #fffaf0 }
+* { margin: 0; padding: 0; box-sizing: border-box }
+html, body { width: 303mm; height: 426mm; background: var(--ink); overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+body { position: relative; font-family: "Baloo 2", sans-serif; color: #fff }
+.abs { position: absolute }
+
+/* background: night sky, neon glows, sunburst, halftone, skyline */
+.sky { inset: 0; background:
+  radial-gradient(120mm 90mm at 50% 34%, rgba(255,45,149,.55), transparent 70%),
+  radial-gradient(150mm 120mm at 8% 62%, rgba(25,227,255,.28), transparent 70%),
+  radial-gradient(150mm 120mm at 95% 70%, rgba(255,210,31,.22), transparent 70%),
+  linear-gradient(180deg, #1a0633 0%, #3a0b4d 34%, #6d1240 55%, #160a1f 78%, #0d0710 100%) }
+.burst { left: 50%; top: 128mm; width: 620mm; height: 620mm; margin: -310mm 0 0 -310mm; border-radius: 50%; opacity: .16;
+  background: repeating-conic-gradient(from 0deg, #fff 0 4deg, transparent 4deg 12deg);
+  -webkit-mask: radial-gradient(circle, #000 8%, transparent 62%); mask: radial-gradient(circle, #000 8%, transparent 62%) }
+.dots { inset: 0; opacity: .22; background-image: radial-gradient(rgba(255,255,255,.9) .55mm, transparent .6mm); background-size: 4.2mm 4.2mm;
+  -webkit-mask: linear-gradient(180deg, transparent 0, #000 25%, transparent 55%, transparent 100%); mask: linear-gradient(180deg, transparent 0, #000 25%, transparent 55%, transparent 100%) }
+#skyline { left: 0; right: 0; top: 168mm; height: 78mm; width: 303mm }
+
+/* hazard ticker */
+.tape { left: -10mm; right: -10mm; height: 16mm; display: flex; align-items: center; justify-content: center; gap: 5mm;
+  background: var(--yel); color: var(--ink); font: 400 7.2mm/1 "Bungee"; letter-spacing: .3mm; white-space: nowrap;
+  border-top: 1.6mm solid var(--ink); border-bottom: 1.6mm solid var(--ink); box-shadow: 0 1.5mm 0 rgba(0,0,0,.35) }
+.tape::before, .tape::after { content: ""; position: absolute; top: 0; bottom: 0; width: 28mm;
+  background: repeating-linear-gradient(-45deg, var(--ink) 0 4mm, var(--yel) 4mm 8mm) }
+.tape::before { left: 0 } .tape::after { right: 0 }
+.tape i { font-style: normal; color: var(--red) }
+.t1 { top: 9mm; transform: rotate(-2.2deg) }
+
+/* headline */
+.kick { left: 0; right: 0; top: 30mm; text-align: center; font: 400 11.5mm/1 "Permanent Marker"; color: #fff; transform: rotate(-2deg);
+  text-shadow: 0 0 4mm rgba(255,45,149,.9), .8mm .8mm 0 var(--ink) }
+.kick b { color: var(--yel); font-weight: 400 }
+.title { left: 0; right: 0; top: 43mm; text-align: center; font: 400 47mm/1 "Bungee"; color: var(--yel); letter-spacing: -.6mm;
+  -webkit-text-stroke: 1.6mm var(--ink); paint-order: stroke fill;
+  text-shadow: .7mm .7mm 0 var(--ink), 1.4mm 1.4mm 0 #c2410c, 2.1mm 2.1mm 0 #c2410c, 2.8mm 2.8mm 0 #9a3412, 3.5mm 3.5mm 0 #9a3412, 4.2mm 4.2mm 0 var(--ink), 4.9mm 4.9mm 0 var(--ink), 0 0 16mm rgba(255,210,31,.55) }
+.life { left: 50%; top: 89mm; transform: translateX(-50%) rotate(-4deg); background: var(--red); color: #fff; font: 400 30mm/1 "Bungee";
+  padding: 2mm 13mm 0; border: 1.8mm solid var(--ink); border-radius: 4mm; box-shadow: 2.4mm 2.4mm 0 var(--ink), 0 0 14mm rgba(232,38,44,.8); letter-spacing: 2mm }
+.life small { position: absolute; right: -16mm; top: -9mm; transform: rotate(14deg); background: var(--cyan); color: var(--ink); font: 800 6.4mm/1 "Baloo 2";
+  padding: 2.2mm 3.2mm 1.2mm; border-radius: 50%; border: 1.2mm solid var(--ink); letter-spacing: 0; text-align: center; width: 24mm; height: 24mm; display: flex; align-items: center; justify-content: center; line-height: .95 }
+.sub { left: 20mm; right: 20mm; top: 124.5mm; text-align: center; font: 800 8.6mm/1.1 "Baloo 2"; color: #fff; text-shadow: 0 .8mm 0 var(--ink), 0 0 5mm rgba(0,0,0,.8) }
+.sub em { font-style: normal; color: var(--cyan) }
+
+/* screenshot cards */
+.card { width: 84mm; height: 112mm; background: #fff; padding: 3mm 3mm 13mm; border-radius: 2.5mm; box-shadow: 2.5mm 3mm 0 rgba(0,0,0,.55), 0 0 0 .8mm var(--ink) }
+.card .img { width: 100%; height: 100%; background-size: cover; background-position: center; border-radius: 1mm }
+.card .cap { position: absolute; left: 0; right: 0; bottom: 2.6mm; text-align: center; font: 400 6.4mm/1 "Permanent Marker"; color: var(--ink) }
+.c1 { left: 13mm; top: 156mm; transform: rotate(-7deg) }
+.c2 { left: 109.5mm; top: 152mm; transform: rotate(1.5deg); z-index: 2 }
+.c3 { left: 206mm; top: 156mm; transform: rotate(7deg) }
+.tapebit { position: absolute; top: -5mm; left: 50%; width: 30mm; height: 9mm; margin-left: -15mm; background: rgba(255,210,31,.85); transform: rotate(-4deg); box-shadow: 0 .6mm 0 rgba(0,0,0,.25) }
+
+/* stickers */
+.stk { z-index: 5; font-family: "Bungee"; color: var(--ink); text-align: center; border: 1.4mm solid var(--ink); box-shadow: 1.8mm 1.8mm 0 var(--ink) }
+.wanted { right: 9mm; top: 222mm; transform: rotate(10deg); background: #fff; padding: 2mm 4mm 1mm; border-radius: 3mm; font-size: 5.6mm; line-height: 1.05 }
+.wanted span { display: block; color: var(--red); font-size: 8.4mm; letter-spacing: .6mm }
+.plate { left: 8mm; top: 224mm; transform: rotate(-8deg); background: #fff; padding: 1.2mm 4mm .2mm; border-radius: 2mm; font-size: 9mm; letter-spacing: .5mm; outline: .8mm solid #fff; outline-offset: -2.6mm }
+.plate small { display: block; font: 800 4mm/1 "Baloo 2"; color: var(--red); padding-bottom: .8mm }
+.free { left: 16mm; top: 100mm; transform: rotate(-9deg); background: var(--cyan); padding: 1.6mm 6mm .6mm; border-radius: 3mm; font-size: 8mm }
+
+/* feature chips */
+.chips { left: 15mm; right: 15mm; top: 275mm; display: flex; flex-wrap: wrap; justify-content: center; gap: 2.6mm }
+.chips span { background: rgba(18,12,8,.82); border: .7mm solid var(--yel); color: #fff; font: 800 5.4mm/1 "Baloo 2"; padding: 2mm 3.6mm 1mm; border-radius: 10mm; white-space: nowrap }
+.chips b { color: var(--yel) }
+
+/* challan + QR */
+.challan { left: 16mm; top: 314mm; width: 152mm; height: 80mm; background: var(--paper); color: var(--ink); transform: rotate(-2.5deg); padding: 6mm 7mm 5mm 9mm;
+  font-family: "Courier Prime", monospace; box-shadow: 3mm 3mm 0 rgba(0,0,0,.6);
+  -webkit-mask: radial-gradient(circle at 0 50%, transparent 1.6mm, #000 1.7mm) 0 0/100% 6mm repeat-y; mask: radial-gradient(circle at 0 50%, transparent 1.6mm, #000 1.7mm) 0 0/100% 6mm repeat-y }
+.challan h3 { font: 400 7.4mm/1 "Bungee"; color: var(--red); letter-spacing: .2mm }
+.challan .no { font-size: 4mm; margin: 1.6mm 46mm 2.6mm 0; border-bottom: .5mm dashed var(--ink); padding-bottom: 2mm; display: flex; justify-content: space-between }
+.challan table { border-collapse: collapse; width: 100%; font-size: 5.6mm; line-height: 1.3 }
+.challan td { padding: .5mm 0; vertical-align: top } .challan td:first-child { width: 29mm; color: #6b4a2e }
+.challan .fine { font: 400 9.6mm/1 "Bungee"; color: var(--red) }
+.challan .pay { margin-top: 5mm; font: 400 8.4mm/1 "Permanent Marker"; color: var(--ink) }
+.stamp { right: 6mm; top: 2.5mm; transform: rotate(-16deg); border: 1.2mm solid rgba(232,38,44,.85); color: rgba(232,38,44,.85); font: 400 5.6mm/1 "Bungee"; padding: 1.8mm 2.6mm 1mm; border-radius: 2mm; text-align: center }
+.stamp small { display: block; font-size: 3.6mm }
+.arrow { left: 154mm; top: 352mm; width: 34mm; height: 30mm; z-index: 6 }
+
+.qrbox { left: 188mm; top: 302mm; width: 100mm; background: var(--yel); border: 1.8mm solid var(--ink); border-radius: 5mm; padding: 5mm 5mm 4mm; text-align: center; transform: rotate(2deg);
+  box-shadow: 3mm 3mm 0 var(--ink), 0 0 20mm rgba(255,210,31,.55) }
+.qrbox .top { white-space: nowrap; font: 400 7.6mm/1 "Bungee"; color: var(--ink) }
+.qrframe { position: relative; margin: 3.4mm auto 3mm; width: 76mm; height: 76mm; background: #fff; padding: 6.2mm; border-radius: 2.5mm }
+.qrframe img { width: 100%; height: 100%; display: block; image-rendering: pixelated }
+.qrframe i { position: absolute; width: 12mm; height: 12mm; border: 1.6mm solid var(--red) }
+.qrframe i:nth-child(2) { left: -2.4mm; top: -2.4mm; border-right: 0; border-bottom: 0; border-radius: 3mm 0 0 0 }
+.qrframe i:nth-child(3) { right: -2.4mm; top: -2.4mm; border-left: 0; border-bottom: 0; border-radius: 0 3mm 0 0 }
+.qrframe i:nth-child(4) { left: -2.4mm; bottom: -2.4mm; border-right: 0; border-top: 0; border-radius: 0 0 0 3mm }
+.qrframe i:nth-child(5) { right: -2.4mm; bottom: -2.4mm; border-left: 0; border-top: 0; border-radius: 0 0 3mm 0 }
+.qrbox .url { font: 400 6.6mm/1 "Bungee"; text-transform: lowercase; color: var(--ink); letter-spacing: -.1mm }
+
+.foot { left: 16mm; width: 160mm; bottom: 15mm; text-align: center; white-space: nowrap; font: 800 4.3mm/1 "Baloo 2"; color: rgba(255,255,255,.85); letter-spacing: .3mm }
+.foot b { color: var(--yel) }
+</style></head>
+<body>
+<div class="abs sky"></div>
+<div class="abs burst"></div>
+<div class="abs dots"></div>
+<svg id="skyline" class="abs" viewBox="0 0 303 78" preserveAspectRatio="none"></svg>
+
+<div class="abs tape t1"><span>FREE</span><i>★</i><span>NO DOWNLOAD</span><i>★</i><span>PHONE + LAPTOP</span><i>★</i><span>MULTIPLAYER</span></div>
+
+<div class="abs kick">Shehar tera. <b>Rules</b> bhi tere.</div>
+<div class="abs title">GURUGRAM</div>
+<div class="abs life">LIFE<small>3D<br>GAME</small></div>
+<div class="abs sub">Kamao. Udao. Lado. <em>Raj karo.</em><br>Asli Gurugram ki galiyan, ab tumhare phone par.</div>
+
+<div class="abs stk wanted">WANTED<span>★★★★★</span></div>
+<div class="abs stk plate"><small>VIP AUCTION LIVE</small>HR26 0001</div>
+
+<div class="abs card c1"><div class="tapebit"></div><div class="img" style="background-image:url(shots/2026-10-24_s1_f60.jpg)"></div><div class="cap">Apni Thar, apna rule</div></div>
+<div class="abs card c2"><div class="tapebit"></div><div class="img" style="background-image:url(shots/2026-10-22_s5_f40.jpg)"></div><div class="cap">Baraat mein note udao</div></div>
+<div class="abs card c3"><div class="tapebit"></div><div class="img" style="background-image:url(shots/2026-10-21_s6_f50.jpg);background-position:50% 40%"></div><div class="cap">Don se panga?</div></div>
+<div class="abs stk free">100% FREE</div>
+
+<div class="abs chips">
+  <span><b>Thar</b>, Bullet &amp; VIP plates</span><span>Neon Nights <b>club</b></span><span>Iffco Chowk <b>naka</b></span><span><b>Crew</b> vs crew sector war</span>
+  <span>Cyber Hub, Sohna Road, <b>25 areas</b></span><span><b>Baraat</b> &amp; Holi</span><span>Haryanvi · Hindi · English</span>
+</div>
+
+<div class="abs challan">
+  <h3>GAME E-CHALLAN</h3>
+  <div class="no"><span>No. GL/HR26/0001 &nbsp;·&nbsp; Iffco Chowk</span></div>
+  <table>
+    <tr><td>Offence:</td><td><b>Abhi tak Gurugram Life<br>nahi khela</b></td></tr>
+    <tr><td>Fine:</td><td><span class="fine">₹0</span> &nbsp;<b>(free hai bhai)</b></td></tr>
+  </table>
+  <div class="pay">Bharo challan, scan karo &rarr;</div>
+  <div class="abs stamp">KHELNA<br>ZAROORI<small>HAI</small></div>
+</div>
+<svg class="abs arrow" viewBox="0 0 34 30"><path d="M3 6 C 12 2, 22 6, 26 17" fill="none" stroke="#ffd21f" stroke-width="2.6" stroke-linecap="round"/><path d="M19 15 L27 20 L30 10" fill="none" stroke="#ffd21f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+<div class="abs qrbox">
+  <div class="top">SCAN KARO · KHELO</div>
+  <div class="qrframe"><img src="qr.svg" alt="QR code to gurugramlife.com"><i></i><i></i><i></i><i></i></div>
+  <div class="url">gurugramlife.com</div>
+</div>
+
+<div class="abs foot">Browser mein khelo &nbsp;<b>★</b>&nbsp; Koi app download nahi &nbsp;<b>★</b>&nbsp; Phone · Laptop · PC</div>
+
+<script>
+// procedural night skyline with lit windows (seeded so every render is identical)
+(() => { let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647; const svg = document.getElementById('skyline'); let x = -2, out = '';
+  while (x < 305) { const w = 8 + r() * 16, h = 18 + r() * 56, y = 78 - h; const c = ['#1d0b2e', '#240d36', '#170925'][Math.floor(r() * 3)];
+    out += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`;
+    for (let wy = y + 3; wy < 76; wy += 3.6) for (let wx = x + 1.6; wx < x + w - 2; wx += 3) if (r() < .32) out += `<rect x="${wx}" y="${wy}" width="1.4" height="1.8" fill="${r() < .75 ? '#ffd76a' : '#7ef3ff'}" opacity="${.5 + r() * .5}"/>`;
+    if (r() < .25) out += `<rect x="${x + w / 2 - .3}" y="${y - 6}" width=".6" height="6" fill="#2a0f3d"/><circle cx="${x + w / 2}" cy="${y - 6}" r=".9" fill="#ff3b5c"/>`;
+    x += w + r() * 1.5; }
+  svg.innerHTML = out + '<rect x="0" y="70" width="303" height="8" fill="#0d0710"/>'; })();
+</script>
+</body></html>
