@@ -1,6 +1,6 @@
 // Hi-res stills from the real game, reusing the reel kit's scripted scenes. usage: DIR=<days/DAY> PICK=scene:frame,... node stills.cjs
 const { chromium } = require('playwright'); const fs = require('fs'); const path = require('path');
-const KIT = path.join(__dirname, '..'), GAME = '/home/user/python/gurugram-life'; const DIR = process.env.DIR; const TAG = path.basename(DIR);
+const KIT = path.join(__dirname, '..'), GAME = path.join(__dirname, '../..'); const DIR = process.env.DIR; const TAG = path.basename(DIR);
 const seed = JSON.parse(fs.readFileSync(path.join(KIT, 'seed.json'), 'utf8')); const SC = JSON.parse(fs.readFileSync(path.join(DIR, 'scenes.json'), 'utf8'));
 const PICK = process.env.PICK.split(',').map(s => s.split(':').map(Number));
 const extra = `\nwindow.__g = { goInside: typeof goInside === 'function' ? goInside : null, setP: o => Object.assign(P, o), G, keys, DAY, WX, setWeather, mount, dismount, startChase, CARS, FIGHTERS, startJack, takeJacked, carAt, punch, toggleDance, enterInterior, exitInterior, DOORS, INTERIOR, AKHARA, say, bigText, firework, burst, camera, PERF, scene, PEDS, CROWD, makeFighter, makeChar, setLook, JAM, COWS, startRace, serverNow, applyMyLook, syncGang, GANG, makeVehicle, get CJ() { return chaseJeep; }, get PEHLWAN() { return PEHLWAN; }, get PV() { return playerVeh; }, get player() { return player; } }; PERF.n = -1e12; PERF.acc = -1e15;`;
