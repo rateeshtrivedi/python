@@ -1,0 +1,7 @@
+[
+ {"sc": 0, "dur": 2.6, "pre": 0.6, "pov": "POV: You became a delivery boy in Gurugram 🛵", "time": "📲 New order: ₹38 · 9 km", "cap": "\"10 minute delivery\" 🙂", "capAt": 0.3},
+ {"sc": 1, "dur": 2.3, "pre": 0.6, "time": "★ 4.8 · ETA 2 min", "cap": "Trala ke peeche. ETA: \"2 min\" since 20 min 🚛", "capAt": 0.2},
+ {"sc": 2, "dur": 2.3, "pre": 0.6, "time": "★ 4.2 · \"Gate pe aa jao\"", "cap": "Guard: register, ID, aadhaar, blood group 📋", "capAt": 0.2},
+ {"sc": 3, "dur": 2.3, "pre": 0.6, "time": "★ 3.1 · \"24th floor, bhaiya\"", "cap": "Lift: \"under maintenance\" 🏢", "capAt": 0.2},
+ {"sc": 4, "dur": 3.0, "pre": 0.6, "time": "★ 1.0 · Tip ₹0", "cap": "\"Thanda ho gaya.\" Order cancel 🙃", "capAt": 0.6, "big": true}
+]

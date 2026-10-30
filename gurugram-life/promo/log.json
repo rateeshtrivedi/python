@@ -143,6 +143,16 @@
    "beat": "action seed 29 (whooshes per number)",
    "song": "Kajra Re (Bunty Aur Babli)",
    "backup": "Ghungroo (War)"
+  },
+  {
+   "date": "2026-10-30",
+   "day": 14,
+   "pov": "POV: You became a delivery boy in Gurugram",
+   "format": "delivery-app pings with a falling rating badge (★4.8 → ★1.0, tip ₹0)",
+   "scenes": "order ping on the Scooty outside Sher-e-Haryana Dhaba (hook), stuck behind a trala, society guard at the TechNova gate asking for a register entry, looking up the Golf Course Road towers for the 24th floor, alone on the Scooty under a streetlight at night: 'Khud kha lunga'",
+   "beat": "gangster seed 30 (app dings, horn, chatter)",
+   "song": "Mauja Hi Mauja (Jab We Met)",
+   "backup": "Aankh Marey (Simmba)"
   }
  ]
 }
