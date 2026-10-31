@@ -1,0 +1,7 @@
+[
+ {"sc": 0, "dur": 2.6, "pre": 0.6, "pov": "POV: Halloween in Gurugram hits different 🎃", "time": "🎃 1: Cyber Hub, 3 AM", "cap": "Na chai, na log. Sirf Monday ka darr 👻", "capAt": 0.4, "filter": "brightness(0.85) contrast(1.2) saturate(0.45) hue-rotate(160deg)"},
+ {"sc": 1, "dur": 2.4, "pre": 1.4, "inside": true, "time": "🎃 2: PG mein light gayi", "cap": "Inverter bhi gaya. AC bhi 🕯️", "capAt": 0.2, "filter": "brightness(0.28) contrast(1.35) saturate(0.5)"},
+ {"sc": 2, "dur": 2.3, "pre": 0.6, "time": "🎃 3: Raat 12 baje ka auto", "cap": "\"Meter? Woh kya hota hai?\" 🛺", "capAt": 0.2, "filter": "brightness(0.9) contrast(1.2) saturate(0.5) hue-rotate(160deg)"},
+ {"sc": 3, "dur": 2.5, "pre": 0.6, "time": "🎃 4: Landlord", "cap": "1 tarikh aa gayi 🏚️", "capAt": 0.3, "filter": "brightness(0.85) contrast(1.25) saturate(0.35)"},
+ {"sc": 4, "dur": 2.6, "pre": 0.4, "time": "🩸 THE FINAL BOSS", "cap": "EMI DUE TOMORROW 😱", "capAt": 0.5, "big": true, "filter": "brightness(0.7) contrast(1.4) saturate(1.6) sepia(0.6) hue-rotate(-30deg)"}
+]
