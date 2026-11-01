@@ -210,15 +210,6 @@ export function auto(g) {
   wheel(g, 0, 0.32, 1.3, 0.32, 0.18); wheel(g, -0.62, 0.32, -0.9, 0.32, 0.2); wheel(g, 0.62, 0.32, -0.9, 0.32, 0.2);
 }
 // desi cow: zebu hump, dewlap, short horns, swinging tail. children[1] is the head (the game bobs it)
-export function cow(g) {
-  const tint = pick([0xf2efe6, 0xe9e2d2, 0xd9cbb0, 0x8a6a4a, 0xf2efe6]), W = matte(tint), D = matte(0x2b2622), H = matte(0xd8cdb6);
-  part(g, SPHG, W, 0.55, 0.52, 1.15, 0, 1.3, -0.05);
-  const head = new THREE.Group(); head.position.set(0, 1.7, 1.05); g.add(head);
-  part(head, SPHG, W, 0.24, 0.26, 0.36, 0, 0, 0.22).rotation.x = 0.5; part(head, SPHG, D, 0.16, 0.13, 0.12, 0, -0.18, 0.5); for (const s of [-1, 1]) { const hn = part(head, new THREE.ConeGeometry(0.05, 0.28, 8), H, 1, 1, 1, s * 0.13, 0.2, 0.08); hn.rotation.z = -s * 0.5; const e = part(head, SPHG, W, 0.12, 0.05, 0.08, s * 0.25, 0.06, 0.1); e.rotation.z = s * 0.4; part(head, SPHG, D, 0.03, 0.03, 0.03, s * 0.13, 0.03, 0.4); }
-  part(g, SPHG, W, 0.3, 0.32, 0.3, 0, 1.75, 0.6); part(g, SPHG, W, 0.08, 0.32, 0.25, 0, 1.15, 0.75);
-  for (const [x, z] of [[-0.3, 0.7], [0.3, 0.7], [-0.3, -0.75], [0.3, -0.75]]) { part(g, CYLG, W, 0.09, 0.85, 0.09, x, 0.6, z); part(g, CYLG, D, 0.08, 0.12, 0.08, x, 0.12, z); }
-  const t = part(g, CYLG, W, 0.03, 0.85, 0.03, 0, 1.0, -1.18); t.rotation.x = 0.15; part(g, SPHG, D, 0.06, 0.12, 0.06, 0, 0.55, -1.25);
-}
 // leafy canopy: three lumpy blobs merged into one geometry, for instanced trees
 export function canopy() {
   const parts = [[0, 0, 0, 1], [0.9, -0.3, 0.4, 0.75], [-0.8, -0.2, -0.5, 0.8], [0.1, 0.6, -0.3, 0.7]], pos = [];
