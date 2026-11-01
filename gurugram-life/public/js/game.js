@@ -6,7 +6,6 @@ import * as A from './audio.js';
 import * as I18N from './i18n.js';
 import * as HU from './humans.js';
 import * as RL from './realism.js';
-import * as DG from './dogs.js';
 import * as RD from './rides.js';
 import * as HM from './homes.js';
 import { VOICES, VOX_N, VOX_VER, GRUNTS } from './voices.js';
@@ -327,7 +326,6 @@ function buildVehicle(g, type, colorOverride, mods, plate) {
     if (pol) { bx(g, 0.5, 0.2, 0.3, 0xd7331f, -0.3, 1.5, 0.8, { mat: glow(0xff2020) }); bx(g, 0.5, 0.2, 0.3, 0x2563b8, 0.3, 1.5, 0.8, { mat: glow(0x2060ff) }); sign(g, 'JAL POLICE', null, '#2563b8', '#ffffff', 3.2, 0.5, 1.01, 0.55, 0, Math.PI / 2); }
     else { bx(g, 0.05, 1.6, 0.05, 0x333333, 0.7, 1.6, 1.6); bx(g, 0.7, 0.45, 0.03, 0xf6c026, 0.37, 2.2, 1.6); sign(g, 'JUGAADU', null, '#1b1410', '#f6c026', 2.6, 0.45, 1.01, 0.55, 0, Math.PI / 2); }
     g.userData.len = 4.8; g.userData.rad = 1.9; return g; }
-  if (type === 'horse') { const w = mat(0xf5f5f5); bx(g, 0.9, 1.0, 2.2, w, 0, 1.6, 0); bx(g, 0.5, 1.2, 0.6, w, 0, 2.4, 1.1).rotation.x = -0.5; bx(g, 0.4, 0.4, 0.8, w, 0, 2.9, 1.5); for (const a of [[-0.3, -0.8], [0.3, -0.8], [-0.3, 0.8], [0.3, 0.8]]) bx(g, 0.18, 1.2, 0.18, w, a[0], 0.6, a[1]); bx(g, 1.0, 0.1, 1.2, 0xd7331f, 0, 2.15, 0, { mat: glow(0xd7331f) }); g.userData.len = 2.4; g.userData.rad = 1.2; return g; }
   const kind = V ? V.kind : 4;
   if (kind === 2) {
     bx(g, 0.45, 0.5, 1.5, col, 0, 0.7, 0); bx(g, 0.5, 0.25, 0.7, 0x1b1b1b, 0, 1.05, -0.25); bx(g, 0.08, 0.8, 0.08, 0x444444, 0, 1.1, 0.7); bx(g, 0.9, 0.06, 0.06, 0x444444, 0, 1.5, 0.7);
@@ -1095,7 +1093,7 @@ function fadeTo(text, ms, cb) { const f = $('fade'); f.textContent = text; f.cla
 function resolve(o, r) {
   const list = COL[G.inside || 'out']; let hit = false;
   for (const c of list) { if (o.x + r > c.x0 && o.x - r < c.x1 && o.z + r > c.z0 && o.z - r < c.z1) { const a = o.x + r - c.x0, b = c.x1 - (o.x - r), cc = o.z + r - c.z0, d = c.z1 - (o.z - r); const m = Math.min(a, b, cc, d); if (m === a) o.x -= a; else if (m === b) o.x += b; else if (m === cc) o.z -= cc; else o.z += d; hit = true; } }
-  if (!G.inside) { o.x = clamp(o.x, -445, 445); o.z = clamp(o.z, -445, 445); for (const c of COWS) { const dx = o.x - c.x, dz = o.z - c.z, dd = Math.hypot(dx, dz), rr = r + 1.3; if (dd < rr && dd > 0.01) { o.x = c.x + dx / dd * rr; o.z = c.z + dz / dd * rr; hit = true; if (G.veh && Math.abs(G.vs) > 8 && !c.mooT) { c.mooT = 2; A.sfx('moo'); } } } }
+  if (!G.inside) { o.x = clamp(o.x, -445, 445); o.z = clamp(o.z, -445, 445); for (const c of RD.cowReady() ? COWS : []) { const dx = o.x - c.x, dz = o.z - c.z, dd = Math.hypot(dx, dz), rr = r + 1.3; if (dd < rr && dd > 0.01) { o.x = c.x + dx / dd * rr; o.z = c.z + dz / dd * rr; hit = true; if (G.veh && Math.abs(G.vs) > 8 && !c.mooT) { c.mooT = 2; A.sfx('moo'); } } } }
   return hit;
 }
 
@@ -1779,31 +1777,7 @@ function checkBump() {
 
 // ================================================================ AMBIENT NPCs
 const PEDS = [], CARS = [], COWS = [], MALLNPC = [];
-// street dogs patrol a stretch of footpath around a block: walk, stop to sniff, bark at the player up close, bolt from speeding
-// vehicles or a running player. p = position along the block edge (-60..60), side = which edge of the block
-function spawnDogs() {
-  const phone = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 520;
-  for (let k = 0; k < (phone ? 8 : 14); k++) { const dd = pick(DIST.filter(q => q[3] !== 'forest')), d = DG.makeDog(); scene.add(d.mesh); DG.play(d, 'Walk');
-    DOGS.push(Object.assign(d, { cx: dd[0] * 150, cz: dd[1] * 150, side: irnd(0, 3), p: rnd(-58, 58), dir: Math.random() < 0.5 ? 1 : -1, st: 'walk', t: rnd(3, 9), barkT: 0 })); }
-}
-const DOGS = [];
-function updateDogs(dt) {
-  const out = !G.inside, cx = camera.position.x, cz = camera.position.z, fast = G.veh ? Math.abs(G.vs) > 5 : keys.ShiftLeft || keys.ShiftRight || runBtn;
-  for (const d of DOGS) {
-    const off = 66.5, x0 = d.side < 2 ? d.cx + d.p : d.cx + (d.side === 2 ? off : -off), z0 = d.side < 2 ? d.cz + (d.side === 0 ? off : -off) : d.cz + d.p;
-    const near = Math.abs(x0 - cx) + Math.abs(z0 - cz); d.mesh.visible = out && near < 120; if (!d.mesh.visible) continue;
-    const dp = Math.hypot(x0 - G.x, z0 - G.z); d.t -= dt; d.barkT -= dt;
-    if (dp < (G.veh ? 7 : 4) && fast && d.st !== 'run') { d.st = 'run'; d.t = 2.5; const ax = d.side < 2 ? x0 - G.x : z0 - G.z; d.dir = ax >= 0 ? 1 : -1; A.sfx('yelp'); }
-    else if (d.t <= 0) { if (d.st === 'walk') { d.st = 'sniff'; d.t = rnd(3, 7); } else { d.st = 'walk'; d.t = rnd(5, 12); if (Math.random() < 0.4) d.dir *= -1; } }
-    if (!G.veh && dp < 5 && d.st !== 'run' && d.barkT <= 0) { d.barkT = rnd(5, 10); if (Math.random() < 0.55) { A.sfx('bark'); d.st = 'sniff'; d.t = 2.5; d.look = true; } }
-    const sp = d.st === 'run' ? 7 : d.st === 'walk' ? 1.3 : 0; d.p += d.dir * sp * dt; if (Math.abs(d.p) > 60) { d.p = Math.sign(d.p) * 60; d.dir *= -1; if (d.st === 'run') d.st = 'walk'; }
-    const x = d.side < 2 ? d.cx + d.p : x0, z = d.side < 2 ? z0 : d.cz + d.p; d.mesh.position.set(x, 0.2, z);
-    const yaw = d.side < 2 ? (d.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (d.dir > 0 ? 0 : Math.PI);
-    d.mesh.rotation.y = angLerp(d.mesh.rotation.y, d.st === 'sniff' && d.look && dp < 8 ? Math.atan2(G.x - x, G.z - z) : yaw, Math.min(1, dt * 6)); if (dp >= 8) d.look = false;
-    DG.play(d, d.st === 'run' ? 'Run' : d.st === 'walk' ? 'Walk' : 'Survey', d.st === 'walk' ? 0.8 : 1); if (near < 70) d.mixer.update(dt);
-  }
-}
-function makeCow() { const g = new THREE.Group(); if (RD.cowReady()) g.userData.cow = RD.addCow(g); else RL.cow(g); return g; }
+function makeCow() { const g = new THREE.Group(); if (RD.cowReady()) g.userData.cow = RD.addCow(g); return g; } // no stand-in: a cow appears only once the real model has loaded
 function spawnAmbient() {
   for (let k = 0; k < 26; k++) { const d = pick(DIST); const c = makeChar(pick(D.SHIRTS)); if (Math.random() < 0.25) setLook(c, { shirt: c.userData.torso.material.color.getHex(), hat: pick(['pagdi', 'cap', 'none']) }); scene.add(c); PEDS.push({ mesh: c, cx: d[0] * 150, cz: d[1] * 150, t: rnd(0, 4), dir: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.6, 2.4), talkT: rnd(5, 30) }); }
   for (let k = 0; k < 28; k++) { const along = Math.random() < 0.5 ? 'x' : 'z'; const r = pick(ROADS); const dir = Math.random() < 0.5 ? 1 : -1; const type = k < 11 ? 'auto' : k < 13 ? 'bus' : k < 15 ? 'truck' : pick(['chhotu', 'desert', 'cruiser', 'chhotu']); const v = makeVehicle(type, ['chhotu', 'desert', 'cruiser'].includes(type) ? pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0x151515, 0xf3b61f, 0xffffff]) : null); scene.add(v); CARS.push({ mesh: v, along, line: r + dir * 3.2, dir, p: rnd(-440, 440), sp: type === 'bus' || type === 'truck' ? 11 : rnd(12, 18), honkT: 0, type }); }
@@ -1828,7 +1802,7 @@ function updateAmbient(dt) {
     if (c.taken) { c.mesh.visible = false; continue; }
     c.mesh.visible = out && Math.abs(c.mesh.position.x - ccx) + Math.abs(c.mesh.position.z - ccz) < (RL.Q.phone ? 200 : 300); /* phones: fewer far-off real models */ if (!out) continue; let x = c.along === 'x' ? c.line : c.p, z = c.along === 'x' ? c.p : c.line;
     const fx = c.along === 'x' ? 0 : c.dir, fz = c.along === 'x' ? c.dir : 0; const dx = G.x - x, dz = G.z - z; const ahead = dx * fx + dz * fz, lat = Math.abs(dx * fz - dz * fx);
-    let blocked = ahead > 0 && ahead < (c.mesh.userData.len / 2 + 5) && lat < 2.4; for (const cw of COWS) { const ax = (cw.x - x) * fx + (cw.z - z) * fz, al = Math.abs((cw.x - x) * fz - (cw.z - z) * fx); if (ax > 0 && ax < c.mesh.userData.len / 2 + 4 && al < 2.4) blocked = true; }
+    let blocked = ahead > 0 && ahead < (c.mesh.userData.len / 2 + 5) && lat < 2.4; for (const cw of RD.cowReady() ? COWS : []) { const ax = (cw.x - x) * fx + (cw.z - z) * fz, al = Math.abs((cw.x - x) * fz - (cw.z - z) * fx); if (ax > 0 && ax < c.mesh.userData.len / 2 + 4 && al < 2.4) blocked = true; }
     if (jam && Math.hypot(x - D.SPOTS.naka.x, z - D.SPOTS.naka.z) < 80) blocked = true;
     if (blocked) { c.honkT -= dt; if (c.honkT < 0) { c.honkT = rnd(3, 6); if (Math.hypot(dx, dz) < 25) { A.sfx('horn'); say(c, pick(['Pee pee! Side ho ja!', 'Abe hatt, bhai!', 'Horn OK Please!', 'Gaay ko hata bhai!']), 2); } } }
     else if (!c.held) { c.p += c.dir * c.sp * dt; if (c.p > 445) c.p = -445; if (c.p < -445) c.p = 445; }
@@ -1840,7 +1814,7 @@ function updateAmbient(dt) {
         if (Math.abs(G.vs) > 5 && (c.crashCD || 0) < now()) { c.crashCD = now() + 2; A.sfx('crash'); flashHit(); G.vs *= G.race ? 0.45 : -0.25; G.jolt = 0.4; c.stopT = now() + 2.5; if (Math.abs(G.vs) > 3) G.hp = Math.max(5, G.hp - 4); say(c, pick(['Abe andhe! Gaadi thok di!', 'Insurance tera baap bharega?', 'Ruk ja, utar neeche!', 'Kahan se licence liya?']), 2.2); } else G.vs *= 0.6; } }
     if (c.stopT && c.stopT > now() && !c.held) { c.p -= c.dir * c.sp * dt; }
   }
-  for (const c of COWS) { c.mesh.visible = out; if (!out) continue; c.t += dt; const cw = c.mesh.userData.cow; if (cw) { if (Math.abs(c.x - ccx) + Math.abs(c.z - ccz) < 90) RD.tickCow(cw, dt); } else c.mesh.children[1].position.y = 1.7 + Math.sin(c.t * 1.5) * 0.08; if (c.mooT > 0) c.mooT -= dt; }
+  for (const c of COWS) { c.mesh.visible = out && !!c.mesh.userData.cow; if (!c.mesh.visible) continue; c.t += dt; const cw = c.mesh.userData.cow; if (cw) { if (Math.abs(c.x - ccx) + Math.abs(c.z - ccz) < 90) RD.tickCow(cw, dt); } else c.mesh.children[1].position.y = 1.7 + Math.sin(c.t * 1.5) * 0.08; if (c.mooT > 0) c.mooT -= dt; }
   for (const n of MALLNPC) { const vis = G.inside === n.s.zone; n.mesh.visible = vis; if (!vis) continue; const dx = n.tx - n.x, dz = n.tz - n.z, d = Math.hypot(dx, dz); if (d < 0.6 || n.t <= 0) { n.tx = rnd(n.s.x0, n.s.x1); n.tz = rnd(n.s.z0, n.s.z1); n.t = 8; } else { n.x += dx / d * 1.8 * dt; n.z += dz / d * 1.8 * dt; n.mesh.rotation.y = Math.atan2(dx, dz); } n.t -= dt; n.mesh.position.set(n.x, 0, n.z); animChar(n.mesh, dt, d >= 0.6 ? 1 : 0); }
   if (G.inside === 'club') { const t = now(); CLUB.tiles.forEach((tl, i) => { const h = ((i * 0.13 + t * 0.6) % 1); tl.material.color.setHSL(h, 1, 0.25 + 0.25 * (Math.sin(t * 8 + i) > 0.6 ? 1 : 0)); }); CLUB.ball.rotation.y += dt; CLUB.lasers.forEach((l, i) => { l.rotation.y = t * (0.5 + i * 0.1) + i; }); CLUB.dancers.forEach(c => animChar(c, dt, 3)); }
 }
@@ -1883,8 +1857,8 @@ const serverNow = () => Date.now() / 1000 + G.timeOffset;
 let baraatG = null, floodMeshes = [];
 function buildBaraat() {
   const g = new THREE.Group(); scene.add(g); g.visible = false;
-  const horse = makeVehicle('horse'); g.add(horse); const groom = makeChar(0xf5e6c8, { pants: 0xf5e6c8 }); setLook(groom, { shirt: 0xf5e6c8, hat: 'sehra', bling: ['chain'] }); groom.position.set(0, 1.4, 0); sitChar(groom); g.add(groom);
-  const lbl = labelSprite('Dulha: Rohit weds Simran', { fs: 34, scale: 0.6, bg: 'rgba(215,51,31,.85)' }); lbl.position.y = 4.8; g.add(lbl);
+  const groom = makeChar(0xf5e6c8, { pants: 0xf5e6c8, g: 'm' }); groom.userData.dress.top = 1; setLook(groom, { shirt: 0xf5e6c8, hat: 'sehra', bling: ['chain'] }); dressFrom(groom, null, 0xf5e6c8); groom.position.set(0, 0, 0); g.add(groom); // the dulha walks at the head of his baraat, in a cream kurta-pyjama and sehra
+  const lbl = labelSprite('Dulha: Rohit weds Simran', { fs: 34, scale: 0.6, bg: 'rgba(215,51,31,.85)' }); lbl.position.y = 3.6; g.add(lbl);
   const dancers = []; for (let k = 0; k < 10; k++) { const c = makeChar(pick([0xd7331f, 0xf6c026, 0xff6fa5, 0x2e6bd1, 0x1d8a4e]), {}); if (k % 3 === 0) setLook(c, { shirt: 0xf28c1b, hat: 'safa' }); c.position.set(rnd(-4, 4), 0, -4 - k * 1.4); g.add(c); dancers.push(c); }
   for (let k = 0; k < 6; k++) { const side = k % 2 ? 1 : -1; const lamp = new THREE.Group(); lamp.position.set(side * 5, 0, 4 - k * 4); cyl(lamp, 0.08, 2.6, 0x8a7a5a, 0, 1.3, 0); sph(lamp, 0.35, 0, 0, 2.8, 0, glow(0xfff1b0)); g.add(lamp); }
   const dhol = makeChar(0xffffff); dhol.position.set(0, 0, 3); g.add(dhol); cyl(g, 0.4, 0.8, 0xd7331f, 0, 1.4, 3.5).rotation.z = Math.PI / 2;
@@ -3509,7 +3483,7 @@ function loop(t) {
       const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
     } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateDogs(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); updateDrops(dt); if (G.inside) for (const r of EXIT_RINGS) r.material.opacity = 0.55 + Math.sin(now() * 4) * 0.35; } updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
+  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); updateDrops(dt); if (G.inside) for (const r of EXIT_RINGS) r.material.opacity = 0.55 + Math.sin(now() * 4) * 0.35; } updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
@@ -3522,7 +3496,6 @@ ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); 
 function boot() { loadStep(0.3); buildGround(); districtBuilders(); HM.buildCamp(KIT, world); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); buildRamps(); buildGolgappa(); loadStep(0.6); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
-DG.loadDogs('/models/dog.glb').then(() => { if (!DOGS.length) spawnDogs(); }).catch(e => console.warn('Gurugram Life: street dogs not loaded', e)); // 160 KB
 const HUMANS_P = /[?&]simple\b/.test(location.search) ? null : HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~6 MB gzipped, cached after the first visit
 if (HUMANS_P) HUMANS_P.then(() => { loadStep(0.9); if (LITE) return loadStep(1); /* lite: simple cars */ RD.loadRides('/models/rides/', upgradeRides); setTimeout(() => loadStep(1), 4000); }); else loadStep(1); // ~4.5 MB after the people, one model at a time, traffic first
 window.addEventListener('pagehide', saveLocal);
