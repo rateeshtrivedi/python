@@ -162,6 +162,7 @@ function typeLines(file, lines, then) { ED.file = file; if (!ED.files.includes(f
 let CODE = null; // { where, su, busy }
 async function sitAndCode(where) {
   if (CODE || X.G().seat) return; const P = X.P(); if (!P) return;
+  if (!P.su || !P.su.idea) { const g = await X.net.req('su', { op: 'get' }); if (g && g.ok) { setSu(g.su); P.laptop = g.laptop; } } // the cached profile can be a step behind
   if (!P.su || !P.su.idea || (P.su.launched && P.su.dealDone)) return openStartup(true);
   if (P.su.launched) { X.toast(lang() === 'en' ? P.su.name + ' is already live. Call investors from the phone.' : P.su.name + ' live ho chuka. Phone se investors ko call karo.'); return; }
   const r = await X.net.req('su', { op: 'sit' }); if (!r.ok) { X.toast(r.error, 'bad'); X.A.sfx('err'); return; }
