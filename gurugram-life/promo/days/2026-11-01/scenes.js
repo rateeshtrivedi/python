@@ -5,7 +5,7 @@ window.__SCENES = h => { const { g, G, S, V } = h; const F = window.__FD, net = 
   const prompt = text => { const i = document.getElementById('suIn'); if (!i) return false; i.value = text; F.sendPrompt(); return true; };
   const idle = () => F.CODE && !F.CODE.busy && !F.ED.typing; // the AI finished writing
   const screen = () => { const s = desk().laptop.userData.screen; s.updateMatrixWorld(true); return s.getWorldPosition(new V()); };
-  const over = (k) => { const sp = screen(), b = L(0.3, 1.6, 0.74), w = L(0.08, 1.38, 0.42); h.camAt(b.x + (w.x - b.x) * k, b.y + (w.y - b.y) * k, b.z + (w.z - b.z) * k, sp.x, sp.y - 0.02, sp.z, 1); }; // over the shoulder, pushing in on the screen
+  const over = (k) => { const sp = screen(), b = L(0.42, 1.8, 1.3), w = L(0.26, 1.64, 0.95); h.camAt(b.x + (w.x - b.x) * k, b.y + (w.y - b.y) * k, b.z + (w.z - b.z) * k, sp.x, sp.y - 0.02, sp.z, 1); }; // over the shoulder, pushing in on the screen
   const queue = list => { // run prompts one after another (the server wants a short gap between features)
     if (!S.q) S.q = { list: list.slice(), wait: 0 }; const q = S.q; if (!q.list.length) return true;
     if (!idle()) return false; q.wait += 1 / 30; if (q.wait < 3.3) return false; q.wait = 0; if (F.ED.bug) prompt('fix the bug'); else prompt(q.list.shift()); return false;
