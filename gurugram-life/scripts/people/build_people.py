@@ -117,10 +117,14 @@ def build(g):
     BR = pk.man['bodyVertexRange']; BP = P[BR[0]:BR[1] + 1]
     def behind(pos, idx, t):
         """body vertices right under this garment (within 2 cm and not in front of it): hidden, so tight fits never show skin through"""
-        used = np.unique(t); gp = pos[used]; gn = mhpkg.normals(pos, idx)[used]; out = np.zeros(N, bool); g2 = (gp ** 2).sum(1)
+        # garment edges (collar, cuffs, hem) and two rings around them never hide skin: there the body must show
+        e = np.sort(np.concatenate([t[:, [0, 1]], t[:, [1, 2]], t[:, [2, 0]]]), 1); ue, cnt = np.unique(e, axis=0, return_counts=True)
+        edge = np.zeros(len(pos), bool); edge[ue[cnt == 1].ravel()] = True
+        for _ in range(2): edge[e[edge[e].any(1)].ravel()] = True
+        used = np.unique(t); gp = pos[used]; gn = mhpkg.normals(pos, idx)[used]; ge = edge[used]; out = np.zeros(N, bool); g2 = (gp ** 2).sum(1)
         for a in range(0, len(BP), 1500):
             b = BP[a:a + 1500]; d2 = (b ** 2).sum(1)[:, None] + g2[None] - 2 * b @ gp.T; k = d2.argmin(1); dist = np.sqrt(np.maximum(d2[np.arange(len(b)), k], 0))
-            side = ((b - gp[k]) * gn[k]).sum(1); out[BR[0] + a:BR[0] + a + len(b)] = (dist < 0.02) & (side < 0.004)
+            side = ((b - gp[k]) * gn[k]).sum(1); out[BR[0] + a:BR[0] + a + len(b)] = (dist < 0.02) & (side < 0.004) & ~ge[k]
         return out
     def mat(name, t, rough):
         if name not in mat_cache: mat_cache[name] = W.material(name, t, rough=rough)
@@ -142,7 +146,7 @@ def build(g):
                 keep = cy > knee_y + 0.02; t = t[keep]; h &= P[:, 1] > knee_y + 0.03
             if part == 'bottomonly': t = t[cy < waist_y + 0.02]; h &= P[:, 1] < waist_y
             hidden |= h | behind(pos, idx, t)
-            pos = pos + mhpkg.normals(pos, idx) * 0.0015  # a hair off the skin
+            pos = pos + mhpkg.normals(pos, idx) * 0.003  # a hair off the skin
             tint_top = TINT.get(pid) == 'top' or part in ('kurta', 'top')
             if part in ('split', 'bottomonly'):
                 ty = pos[t].mean(1)[:, 1]; isbot = ty <= waist_y
