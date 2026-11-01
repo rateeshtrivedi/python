@@ -166,11 +166,11 @@ function humanize(g) {
   const u = g.userData; if (u.human || !HU.HUMANS.ready) return; const h = HU.makeHuman(u.dress.g); u.human = h;
   if (!u.blockG) { u.blockG = new THREE.Group(); for (const c of [...g.children]) if (c !== u.hatG && c !== u.blingG) u.blockG.add(c); g.add(u.blockG); }
   h.hatA.add(u.hatG); h.chestA.add(u.blingG); h.wristL.add(u.blingL); h.wristR.add(u.blingR); // accessories follow the real body
-  g.add(h.root); HU.dressHuman(h, u.dress); humanHair(u); if (u.sit) HU.play(h, 'sit', 0); h.mixer.update(0.01); setHumanVis(u, false);
+  g.add(h.root); HU.dressHuman(h, u.dress); humanHair(u); if (u.sit) HU.play(h, 'sit', 0); h.mixer.update(0.01); setHumanVis(u, false); if (u.noBlock) g.visible = true;
 }
 function unhumanize(g) { const u = g.userData, h = u.human; if (!h) return; g.remove(h.root); g.add(u.hatG); g.add(u.blingG); u.shL.add(u.blingL); u.shR.add(u.blingR); u.blockG.visible = true; u.human = null; }
 function humanHair(u) { const hide = u.dress.g !== 'f' && ['pagdi', 'safa', 'cap', 'sehra'].includes(u.hatType); HU.setHairVisible(u.human, !hide); }
-function setHumanVis(u, on) { if (u.human.root.visible === on && u.blockG.visible === !on) return; u.human.root.visible = on; u.blockG.visible = !on; }
+function setHumanVis(u, on) { const blk = !on && !u.noBlock; if (u.human.root.visible === on && u.blockG.visible === blk) return; u.human.root.visible = on; u.blockG.visible = blk; if (u.noBlock) u.hatG.visible = u.blingG.visible = on; } // noBlock: people inside cars never show the box figure (it would poke through the roof)
 let HFRAME = 0; const hFrustum = new THREE.Frustum(), hMat = new THREE.Matrix4(), hV = new THREE.Vector3(), hSph = new THREE.Sphere(new THREE.Vector3(), 2.2);
 function visibleChain(o) { for (let p = o; p; p = p.parent) { if (!p.visible) return false; if (p === scene) return true; } return false; }
 function updateHumans(dt) { // which characters show their real body: nearest ones in view, a few on phones
@@ -183,7 +183,7 @@ function updateHumans(dt) { // which characters show their real body: nearest on
     if (!u.human) humanize(g);
     if (!visibleChain(g)) { setHumanVis(u, false); continue; }
     g.getWorldPosition(hV); const d = hV.distanceTo(camera.position); hSph.center.copy(hV).setY(hV.y + 1.2);
-    if (g === player || g === PREVIEW) u.hd = -1; else if (d > R || !hFrustum.intersectsSphere(hSph)) { setHumanVis(u, false); continue; } else u.hd = d;
+    if (g === player || g === PREVIEW) u.hd = -1; else if (d > R || !hFrustum.intersectsSphere(hSph)) { setHumanVis(u, false); continue; } else u.hd = u.noBlock ? d * 0.2 : d; // riders first: they have no box figure to fall back on
     cand.push(g);
   }
   cand.sort((a, b) => a.userData.hd - b.userData.hd);
@@ -1857,19 +1857,46 @@ const serverNow = () => Date.now() / 1000 + G.timeOffset;
 let baraatG = null, floodMeshes = [];
 function buildBaraat() {
   const g = new THREE.Group(); scene.add(g); g.visible = false;
-  const groom = makeChar(0xf5e6c8, { pants: 0xf5e6c8, g: 'm' }); groom.userData.dress.top = 1; setLook(groom, { shirt: 0xf5e6c8, hat: 'sehra', bling: ['chain'] }); dressFrom(groom, null, 0xf5e6c8); groom.position.set(0, 0, 0); g.add(groom); // the dulha walks at the head of his baraat, in a cream kurta-pyjama and sehra
-  const lbl = labelSprite('Dulha: Rohit weds Simran', { fs: 34, scale: 0.6, bg: 'rgba(215,51,31,.85)' }); lbl.position.y = 3.6; g.add(lbl);
+  // the dulha rides at the back of his baraat in a white car decked with marigold and rose garlands, a driver at the wheel
+  const wc = new THREE.Group(); wc.position.set(0, 0, -21); g.add(wc); const car = makeVehicle('cruiser', 0xf4f4f0); wc.add(car);
+  const driver = makeChar(0xffffff, { g: 'm', pants: 0x2b2b2b }); wc.add(driver); rideChar(driver, 'cruiser', -0.36, 0.25, 0, -0.62); // seated low, inside the cabin
+  const groom = makeChar(0xf5e6c8, { pants: 0xf5e6c8, g: 'm' }); groom.userData.dress.top = 1; setLook(groom, { shirt: 0xf5e6c8, hat: 'sehra', bling: ['chain'] }); dressFrom(groom, null, 0xf5e6c8); wc.add(groom); rideChar(groom, 'cruiser', 0.36, -0.75, 0, -0.62); sitChar(groom); for (const c of [driver, groom]) { c.userData.noBlock = true; if (!c.userData.human) c.visible = false; } // back seat, kurta-pyjama and sehra
+  const lbl = labelSprite('Dulha: Rohit weds Simran', { fs: 34, scale: 0.6, bg: 'rgba(215,51,31,.85)' }); lbl.position.set(0, 3.4, 0); wc.add(lbl);
   const dancers = []; for (let k = 0; k < 10; k++) { const c = makeChar(pick([0xd7331f, 0xf6c026, 0xff6fa5, 0x2e6bd1, 0x1d8a4e]), {}); if (k % 3 === 0) setLook(c, { shirt: 0xf28c1b, hat: 'safa' }); c.position.set(rnd(-4, 4), 0, -4 - k * 1.4); g.add(c); dancers.push(c); }
   for (let k = 0; k < 6; k++) { const side = k % 2 ? 1 : -1; const lamp = new THREE.Group(); lamp.position.set(side * 5, 0, 4 - k * 4); cyl(lamp, 0.08, 2.6, 0x8a7a5a, 0, 1.3, 0); sph(lamp, 0.35, 0, 0, 2.8, 0, glow(0xfff1b0)); g.add(lamp); }
   const dhol = makeChar(0xffffff); dhol.position.set(0, 0, 3); g.add(dhol); cyl(g, 0.4, 0.8, 0xd7331f, 0, 1.4, 3.5).rotation.z = Math.PI / 2;
   sign(g, 'BAND BAAJA BARAAT', 'Masterji Band, Old Gurgaon', '#d7331f', '#f6c026', 6, 1.2, 0, 3.5, 6, 0);
-  baraatG = { g, dancers, beatT: 0 };
+  baraatG = { g, dancers, beatT: 0, wc, car, decor: null };
+}
+// Flowers follow the car's real surface (a height map of its vertices: the car models use quantized positions, which r128's raycaster can't read): garlands from the windscreen corners
+// to the grille, a heart of red roses ringed with white on the bonnet, marigold strings round the roof and across the boot.
+function decorWeddingCar(B) {
+  if (B.decor) B.wc.remove(B.decor); B.wc.updateWorldMatrix(true, true); // parents too: the baraat has just moved this frame
+  const box = new THREE.Box3().setFromObject(B.car), o = B.wc.getWorldPosition(new THREE.Vector3()); box.min.sub(o); box.max.sub(o);
+  const W = box.max.x - box.min.x, L = box.max.z - box.min.z, zf = box.max.z, zb = box.min.z, top = box.max.y;
+  const CS = 0.08, NX = Math.ceil(W / CS) + 1, NZ = Math.ceil(L / CS) + 1, HM = new Float32Array(NX * NZ).fill(-1), v = new THREE.Vector3();
+  B.car.traverse(m => { if (!m.isMesh) return; const a = m.geometry.attributes.position, k = a.normalized ? (a.array instanceof Int16Array ? 1 / 32767 : a.array instanceof Uint16Array ? 1 / 65535 : a.array instanceof Int8Array ? 1 / 127 : 1 / 255) : 1;
+    for (let i = 0; i < a.count; i++) { v.set(a.getX(i) * k, a.getY(i) * k, a.getZ(i) * k).applyMatrix4(m.matrixWorld).sub(o); const ix = Math.round((v.x - box.min.x) / CS), iz = Math.round((v.z - box.min.z) / CS); if (ix >= 0 && ix < NX && iz >= 0 && iz < NZ && v.y > HM[iz * NX + ix]) HM[iz * NX + ix] = v.y; } });
+  const surf = (x, z) => { const ix = Math.round((x - box.min.x) / CS), iz = Math.round((z - box.min.z) / CS); let y = -1; for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { const jx = ix + dx, jz = iz + dz; if (jx >= 0 && jx < NX && jz >= 0 && jz < NZ) y = Math.max(y, HM[jz * NX + jx]); } return y > 0 ? y : null; };
+  const P = [], C = [], add = (x, z, col, lift) => { const y = surf(x, z); if (y != null && y > 0.3) { P.push(x, y + (lift || 0.04), z); C.push(col); } };
+  const MARI = [0xf28c1b, 0xf6a21b, 0xf6c026], ROSE = 0xc4122a, WHITE = 0xfff6e0;
+  // bonnet: find where the windscreen starts (the surface steps up) going back from the nose
+  let zw = zf - L * 0.3; { const y0 = surf(0, zf - L * 0.08) || 0; for (let z = zf - L * 0.1; z > zf - L * 0.55; z -= 0.05) { const y = surf(0, z); if (y != null && y > y0 + 0.18) { zw = z + 0.05; break; } } }
+  const bz = (zf + zw) / 2;
+  for (let i = 0; i < 4; i++) { const sx = i % 2 ? 1 : -1, sp = i < 2 ? 0.4 : 0.47; for (let t = 0; t <= 1; t += 0.03) { const x = sx * W * sp * (1 - t * 0.9), z = zw - 0.05 + (zf - 0.08 - zw) * t; add(x, z, (Math.round(t / 0.03) % 4 === 3) ? WHITE : MARI[Math.round(t / 0.03) % 3]); } } // two garlands on each side, windscreen corners to the nose
+  const hs = Math.min(W * 0.22, (zf - zw) * 0.36); for (let a = 0; a < Math.PI * 2; a += 0.16) { const hx = 16 * Math.sin(a) ** 3, hz = 13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a); add(hx / 17 * hs, bz + hz / 17 * hs, WHITE, 0.06); } // heart outline
+  for (let x = -hs; x <= hs; x += 0.07) for (let z = -hs; z <= hs; z += 0.07) { const u = x / hs, v = z / hs; if ((u * u + v * v - 1) ** 3 - u * u * v ** 3 * 1.3 < -0.02 && Math.abs(u) < 0.95) add(x, bz + z * 0.9, ROSE, 0.07); } // filled with roses
+  const ry = top - 0.02; for (let t = 0; t < 1; t += 0.02) { for (const [x0, z0, x1, z1] of [[-1, 1, 1, 1], [1, 1, 1, -1], [1, -1, -1, -1], [-1, -1, -1, 1]]) { const x = (x0 + (x1 - x0) * t) * W * 0.36, zc = (zw + zb) / 2, zl = (zw - zb) * 0.22, z = zc + (z0 + (z1 - z0) * t) * zl; const y = surf(x, z); if (y != null && y > ry - 0.25) { P.push(x, y + 0.04, z); C.push(MARI[Math.floor(t * 50) % 3]); } } } // round the roof
+  for (let t = 0; t <= 1; t += 0.04) add((t - 0.5) * W * 0.8, zb + 0.25 - Math.sin(t * Math.PI) * 0.06, t * 25 % 2 < 1 ? MARI[0] : WHITE); // across the boot
+  const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.065, 6, 4), new THREE.MeshLambertMaterial(), P.length / 3), m4 = new THREE.Matrix4(), col = new THREE.Color();
+  for (let i = 0; i < P.length / 3; i++) { m4.makeTranslation(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); mesh.setMatrixAt(i, m4); mesh.setColorAt(i, col.setHex(C[i])); }
+  B.decor = mesh; B.wc.add(mesh); B.decorFor = B.car.children.length + ':' + RD.has('cruiser');
 }
 function baraatZ() { if (!G.ev || G.ev.type !== 'baraat') return -420; const p = clamp((serverNow() - G.ev.start) / (G.ev.end - G.ev.start), 0, 1); return -420 + 840 * p; }
 function buildFlood() { for (const m of floodMeshes) scene.remove(m); floodMeshes = []; if (G.ev?.type !== 'flood') return; for (const name of G.ev.data.districts) { const d = DIST.find(x => x[2] === name); if (!d) continue; const m = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), new THREE.MeshLambertMaterial({ color: 0x5a7f8f, transparent: true, opacity: 0.75 })); m.rotation.x = -Math.PI / 2; m.position.set(d[0] * 150, 0.55, d[1] * 150); scene.add(m); floodMeshes.push(m); } }
 function updateEvents(dt) {
   const e = G.ev; const out = !G.inside;
-  if (baraatG) { baraatG.g.visible = out && e?.type === 'baraat'; if (baraatG.g.visible) { const z = baraatZ(); baraatG.g.position.set(-222, 0, z); baraatG.dancers.forEach(c => animChar(c, dt, 3)); baraatG.beatT -= dt; const near = Math.hypot(G.x + 222, G.z - z) < 18; if (near && baraatG.beatT < 0) { baraatG.beatT = 0.45; A.sfx('bass', 0.5); } if (near && G.dance && !G.baraatT) { G.baraatT = now() + 10; } if (G.baraatT && now() > G.baraatT) { G.baraatT = 0; if (near && G.dance) { ev('baraat'); toast('Baraat mein naache! +respect'); } } if (near && !G.baraatTip) { G.baraatTip = 1; toast('Baraat aa gayi! B se naach, Action se ₹1,000 ke note udao'); } } }
+  if (baraatG) { baraatG.g.visible = out && e?.type === 'baraat'; if (baraatG.g.visible) { const z = baraatZ(); baraatG.g.position.set(-222, 0, z); if (baraatG.decorFor !== baraatG.car.children.length + ':' + RD.has('cruiser')) decorWeddingCar(baraatG); baraatG.dancers.forEach(c => animChar(c, dt, 3)); baraatG.beatT -= dt; const near = Math.hypot(G.x + 222, G.z - z) < 18; if (near && baraatG.beatT < 0) { baraatG.beatT = 0.45; A.sfx('bass', 0.5); } if (near && G.dance && !G.baraatT) { G.baraatT = now() + 10; } if (G.baraatT && now() > G.baraatT) { G.baraatT = 0; if (near && G.dance) { ev('baraat'); toast('Baraat mein naache! +respect'); } } if (near && !G.baraatTip) { G.baraatTip = 1; toast('Baraat aa gayi! B se naach, Action se ₹1,000 ke note udao'); } } }
   if (out && e?.type === 'holi' && Math.random() < dt * 2) burst(150 + rnd(-60, 60), 1, rnd(-60, 60), pick([0xff2bd6, 0x39ff14, 0xffd400, 0x00b4ff]), 12, { speed: 4 });
   if (out && e?.type === 'diwali' && Math.random() < dt * 0.8) firework(G.x + rnd(-120, 120), G.z + rnd(-120, 120));
   if (e?.type === 'ipl' && G.inside == null && blockOf(G.x, G.z)?.[2] === 'Cyber Hub' && (!G.iplT || now() > G.iplT)) { G.iplT = now() + 30; ev('ipl_watch'); }
