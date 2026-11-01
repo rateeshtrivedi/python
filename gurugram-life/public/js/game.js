@@ -4,6 +4,7 @@ import * as D from '../shared/data.js';
 import { net } from './net.js';
 import * as A from './audio.js';
 import * as I18N from './i18n.js';
+import * as FD from './founder.js';
 import * as HU from './humans.js';
 import * as RL from './realism.js';
 import * as RD from './rides.js';
@@ -41,8 +42,8 @@ const SHOP_COLORS = ['#d7331f', '#1a8a4a', '#2563b8', '#f6c026', '#8b3fc4', '#e8
 const XROAD = { '-375': 'Southern Peripheral Road', '-225': 'Golf Course Road', '-75': 'MG Road', '75': 'Sohna Road', '225': 'Old Railway Road', '375': 'Badshahpur Road' };
 const ZROAD = { '-375': 'NH-48', '-225': 'Dwarka Expressway', '-75': 'Huda City Centre Road', '75': 'Sheetla Mata Road', '225': 'Basai Road', '375': 'Golf Course Ext. Road' };
 const ROADS = D.ROADS, DIST = D.DIST;
-const INTERIOR_NAMES = { mall: 'Ambience Mall', office: 'TechNova Towers, Floor 7', theka: 'Desi Theka No.1', dhaba: 'Sher-e-Haryana Dhaba', club: 'Neon Nights, Sector 29' };
-const DOOR_NAMES = { mall: 'Ambience Island', office: 'DLF Cyber City', theka: 'Sohna Road', dhaba: 'Sector 29', club: 'Sector 29' };
+const INTERIOR_NAMES = { mall: 'Ambience Mall', office: 'TechNova Towers, Floor 7', theka: 'Desi Theka No.1', dhaba: 'Sher-e-Haryana Dhaba', club: 'Neon Nights, Sector 29', cowork: 'Hustle Hub Co-working', vc: 'Skyline Tower, Floor 21' };
+const DOOR_NAMES = { mall: 'Ambience Island', office: 'DLF Cyber City', theka: 'Sohna Road', dhaba: 'Sector 29', club: 'Sector 29', cowork: 'DLF Cyber City', vc: 'DLF Cyber City' };
 
 // ================================================================ LOCAL STATE (per device)
 const L = Object.assign({ hunger: 80, tut: 0, drinks: 0 }, lsGet('gl_local') || {});
@@ -187,7 +188,7 @@ function updateHumans(dt) { // which characters show their real body: nearest on
     cand.push(g);
   }
   cand.sort((a, b) => a.userData.hd - b.userData.hd);
-  cand.forEach((g, i) => { const u = g.userData, on = i < cap; setHumanVis(u, on); if (on && u.animF !== HFRAME - 1 && u.animF !== HFRAME) u.human.mixer.update(dt); }); // idle breathing for people nobody animates
+  cand.forEach((g, i) => { const u = g.userData, on = i < cap || !!u.noBlock; setHumanVis(u, on); if (on && u.animF !== HFRAME - 1 && u.animF !== HFRAME) u.human.mixer.update(dt); }); // idle breathing for people nobody animates
 }
 const GOLD = 0xe8b923;
 // Avatar: body type, skin, hair, clothes style. Shared by the creator preview, your player and everyone else.
@@ -418,7 +419,10 @@ function districtBuilders() {
       case 'office': {
         building(world, cx, cz - 14, 34, 28, 64, 'glass'); sign(world, 'TECHNOVA TOWERS', 'IT Park · Tower A · Floors 1-18', '#0f2740', '#8fe0ff', 22, 3.6, cx, 8, cz + 0.06);
         door(world, cx, cz, 6); DOORS.office = { x: cx, z: cz + 3 }; zone('out', cx, cz + 2.5, 4.5, () => 'Enter TechNova Towers (office)', () => enterInterior('office'));
-        building(world, cx - 48, cz - 42, 20, 20, 48, 'glass'); building(world, cx + 48, cz - 42, 20, 20, 56, 'glass'); building(world, cx + 45, cz + 40, 18, 18, 30, 'white'); for (let k = 0; k < 6; k++) tree(cx - 50 + k * 8, cz + 30); break;
+        building(world, cx - 48, cz - 42, 20, 20, 48, 'glass'); building(world, cx + 48, cz - 42, 20, 20, 56, 'glass'); building(world, cx + 45, cz + 40, 18, 18, 30, 'white');
+        // startups: Hustle Hub co-working (code your product) and Skyline Tower (the investors' boardroom)
+        sign(world, 'HUSTLE HUB', 'Co-working · Hot desk ' + fmt(150), '#111827', '#22d3ee', 12, 2.4, cx + 45, 7, cz + 49.06); door(world, cx + 45, cz + 49, 4); DOORS.cowork = { x: cx + 45, z: cz + 52 }; zone('out', cx + 45, cz + 51, 4, () => 'Enter Hustle Hub co-working', () => enterInterior('cowork'));
+        sign(world, 'SKYLINE TOWER', 'Sharma Angels · Bansal Ventures · Skyline Capital', '#0f172a', '#e2e8f0', 16, 2.6, cx + 48, 8, cz - 31.94); door(world, cx + 48, cz - 32, 5); DOORS.vc = { x: cx + 48, z: cz - 29 }; zone('out', cx + 48, cz - 30, 4, () => 'Enter Skyline Tower (investors)', () => enterInterior('vc')); for (let k = 0; k < 6; k++) tree(cx - 50 + k * 8, cz + 30); break;
       }
       case 'cyberhub': {
         const eats = [['The Brew Yard', 'Craft beer · Desi bites', '#3b1d0e', '#f6c026'], ['Socha Social', 'Rooftop · Live music', '#1b1410', '#ff6fa5'], ['Dosa Dynasty', 'South ka swaad', '#0f766e', '#fff4d8'], ['Biryani Bawli', 'Dum biryani · Kebabs', '#7c2d12', '#ffd27a']];
@@ -580,6 +584,7 @@ function table(g, x, z, w, d, c) { bx(g, w, 0.12, d, c || 0x7c4a2b, x, 1.0, z); 
 function chair(g, x, z, c) { bx(g, 0.7, 0.1, 0.7, c, x, 0.6, z); bx(g, 0.7, 0.8, 0.1, c, x, 1.0, z - 0.3); for (const a of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(g, 0.08, 0.6, 0.08, c, x + a[0] * 0.3, 0.3, z + a[1] * 0.3); }
 let G_WHEEL = null; const CLUB = { tiles: [], lasers: [], ball: null, dancers: [] };
 function buildInteriors() {
+  FD.buildInteriors(); // Hustle Hub co-working + the Skyline Tower boardroom
   { // MALL
     const ox = 2000, oz = 2000, W = 100, D2 = 70, H = 16; const g = makeRoom('mall', ox, oz, W, D2, H, 'marble', 0xe6dccb, 8);
     bx(g, W, 1, 6, 0xcfc4ae, ox, 8, oz - D2 / 2 + 3); bx(g, W, 1.2, 0.2, 0x9fd3f0, ox, 9.1, oz - D2 / 2 + 6);
@@ -873,7 +878,7 @@ function openPhone() {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     { const live = el('p', { class: 'menuclock' }); const tick = () => { if (!live.isConnected && live.dataset.on) return; live.dataset.on = 1; const bits = []; if (G.ev) bits.push('⏱ ' + G.ev.name + ' · ' + mmss(Math.max(0, Math.round(G.ev.end - serverNow())))); if (BK.on && BK.deadline) bits.push('⏱ Bada Kaam · ' + mmss(timeLeft())); live.textContent = bits.join('  ·  '); live.hidden = !bits.length; setTimeout(tick, 1000); }; tick(); b.append(live); } // the clock doesn't stop for the menu, so the menu shows it
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]); apps.splice(7, 0, ['Khel', '#e8590c', '🎯', appKhel], ['Dhanda', '#2b8a3e', '💼', appDhanda], ['Calendar', '#5f3dc4', '🗓', appCalendar], ['Dost bulao', '#25d366', '📨', inviteFriend]);
+    const apps = [['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Startup', '#0f766e', '💻', () => FD.openStartup()], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]); apps.splice(7, 0, ['Khel', '#e8590c', '🎯', appKhel], ['Dhanda', '#2b8a3e', '💼', appDhanda], ['Calendar', '#5f3dc4', '🗓', appCalendar], ['Dost bulao', '#25d366', '📨', inviteFriend]);
     const LOCK = { Gang: 'gang', Zameen: 'land', Hathiyaar: 'guns' }; const grid = el('div', { class: 'apps' }); for (const a of apps) { const lk = LOCK[a[0]] && !D.unlocked(P, LOCK[a[0]]); grid.append(el('button', { class: 'app' + (lk ? ' locked' : ''), title: lk ? 'Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] + ' ke baad khulega' : '', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0], lk ? el('small', { class: 'lockb', text: '🔒 Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] }) : '')); } b.append(grid); /* a lock badge on what the story hasn't opened yet */
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(itemRow('🗓 Login streak: ' + P.daily.streak + ' din', 'Kal ka inaam: ' + fmt(D.CALENDAR[D.calDay(P.daily.streak + 1) - 1].amt) + ' · 7ve din sone ka wrap', 'Calendar', appCalendar));
@@ -1100,7 +1105,7 @@ function resolve(o, r) {
 // ---------------- input
 const keys = {}; let joyX = 0, joyY = 0, runBtn = false;
 window.addEventListener('keydown', e => {
-  if (document.activeElement && (document.activeElement.tagName === 'INPUT')) { if (e.key === 'Escape') { closeChat(); document.activeElement.blur(); } return; }
+  if (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) { if (e.key === 'Escape') { closeChat(); document.activeElement.blur(); } return; }
   if (G.minigame && e.key.startsWith('Arrow')) { G.minigame.press(e.key); e.preventDefault(); return; }
   if (e.key === 'Escape' || (e.code === 'KeyM' && G.map)) { if (G.map) { closeMap3D(); return; } if (!$('modal').hidden) closeModal(); else if (G.selfie) endSelfie(); else if (!$('raceres').hidden) cleanupRace(); return; }
   if (!$('raceres').hidden && $('modal').hidden && G.race) { if (e.key === 'Enter') { e.preventDefault(); return startRace(G.race.R.id); } if (e.code === 'KeyN' && D.RACES[G.race.i + 1] && raceUnlocked(G.race.i + 1)) return startRace(D.RACES[G.race.i + 1].id); }
@@ -1161,7 +1166,7 @@ function doAction() {
 function updateZones() {
   let best = null, bd = 1e9; const z = G.inside || 'out';
   let label = null;
-  if (!(G.cold && !G.cold.won)) for (const Z of ZONES) { if (Z.zone !== z) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } } /* no shop prompts in the middle of the opening chase */
+  if (!(G.cold && !G.cold.won) && !G.seat) for (const Z of ZONES) { if (Z.zone !== z) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } } /* no shop prompts in the middle of the opening chase */
   nearZone = best; const p = $('prompt');
   if (!label) { const jt = jackTarget(); if (jt) label = jackLabel(jt); }
   if (!label && G.ev?.type === 'jam' && !G.veh && !G.inside && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 70) label = 'Sell chai to stuck drivers';
@@ -1171,6 +1176,7 @@ function updateZones() {
 function inFlood(x, z) { if (G.wet) return true; if (G.ev?.type !== 'flood') return false; const d = blockOf(x, z); return d && G.ev.data.districts.includes(d[2]); }
 function updatePlayer(dt) {
   if (G.selfie) return;
+  if (G.seat) { const s = G.seat; G.x = s.x; G.z = s.z; G.r = s.r; player.position.set(s.x, s.y, s.z); player.rotation.y = s.r; sitChar(player); G.moving = false; return; } // at a desk or the boardroom table
   let ix = 0, iy = 0; const blocked = G.frozen || G.modal || G.map || !$('chatbar').hidden;
   if (!blocked) { ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joyX; iy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joyY; }
   ix = clamp(ix, -1, 1); iy = clamp(iy, -1, 1); if (G.tipsy > now()) ix += Math.sin(now() * 2.3) * 0.35;
@@ -1221,6 +1227,7 @@ function footsteps() {
 function groundY(x, z) { return blockOf(x, z) ? 0.2 : 0; }
 const camTarget = new THREE.Vector3(), camWant = new THREE.Vector3();
 function updateCamera(dt) {
+  if (G.camFix) { camera.position.lerp(G.camFix.p, Math.min(1, dt * 5)); camera.lookAt(G.camFix.t); return; }
   if (G.selfie) { const f = 5.5; camWant.set(G.x + Math.sin(G.r) * f, 2.6, G.z + Math.cos(G.r) * f); camera.position.lerp(camWant, Math.min(1, dt * 6)); camTarget.set(G.x, 2.0, G.z); camera.lookAt(camTarget); return; }
   const h = G.veh ? (D.VEH[G.veh].kind === 4 ? 2.2 : 1.8) : 1.9; const dist = G.veh ? G.dist + 3 : G.dist;
   let cx = G.x - Math.sin(G.yaw) * Math.cos(G.pitch) * dist, cz = G.z - Math.cos(G.yaw) * Math.cos(G.pitch) * dist, cy = h + Math.sin(G.pitch) * dist + 0.5;
@@ -2835,7 +2842,7 @@ function ensureHome() { // (re)builds the home interior when the home, the jewel
   if (HOME) { scene.remove(HOME.g); for (let i = ZONES.length - 1; i >= 0; i--) if (ZONES[i].zone === 'home') ZONES.splice(i, 1); COL.home = []; }
   INTERIOR_NAMES.home = D.HOUSES[P.home].name; DOOR_NAMES.home = houseDistrict(P.home); DOORS.home = homePos();
   const b = HM.buildHome(KIT, P.home, P); HOME = { key, g: b.g, spot: b.spot, spouse: null }; INTERIOR.home.name = INTERIOR_NAMES.home;
-  trophyHome(b.g, b.spot); zone('home', b.spot.wake.x, b.spot.wake.z, 3, () => 'So jao: subah tak, poori health', () => sleepNow());
+  FD.homeDesk(b.g, HM.homeSpec(P.home), HM.HOME_O); trophyHome(b.g, b.spot); zone('home', b.spot.wake.x, b.spot.wake.z, 3, () => 'So jao: subah tak, poori health', () => sleepNow());
   zone('home', b.spot.wake.x - 2, b.spot.wake.z + 2.5, 2.5, () => 'Sapne dekho (5 sapne, kahani)', () => appSapne());
   if (married()) { const s = makeSpouse(); s.position.set(b.spot.spouse.x, 0, b.spot.spouse.z); s.rotation.y = Math.PI; b.g.add(s); HOME.spouse = s; zone('home', b.spot.spouse.x, b.spot.spouse.z, 3, () => 'Baat karo: ' + P.spouse.name, () => spouseTalk()); }
   return HOME;
@@ -3503,7 +3510,7 @@ function loop(t) {
     updatePlayer(dt); footsteps(); if (G.map) updateMap3D(); else { updateCamera(dt); if (G.film) updateFilm(dt); else speedCamera(dt); roadHazards(dt); } updateRace(dt); updateRaceSpots(dt); updateStory(dt); updateFloodRun(); boatPolice(dt); updateZones(); updateJob(); checkNakaToll(); updateChase(dt); updateHangover(); updateEvents(dt); retTick(dt);
     hungerT += dt; if (hungerT > 14) { hungerT = 0; L.hunger = Math.max(0, L.hunger - 1); if (L.hunger === 20 || (L.hunger < 20 && now() > (G.foodTip || 0))) foodTip(); saveLocal(); }
     regenT += dt; if (regenT > 2.5) { regenT = 0; if (L.hunger > 30 && G.hp < 100 && G.hp > 0) G.hp = Math.min(100, G.hp + 1); if (L.hunger <= 0 && G.hp > 1) G.hp = Math.max(1, G.hp - 1); /* starving wears you down to 1, it never knocks you out */ }
-    updateRishta(dt); hudT += dt; if (hudT > 0.25) { hudT = 0; A.setCity(cityMix()); updateHUD(); renderSapna(); updateHomeDoor(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
+    updateRishta(dt); FD.tick(dt); hudT += dt; if (hudT > 0.25) { hudT = 0; A.setCity(cityMix()); updateHUD(); renderSapna(); updateHomeDoor(); const mins = (now() - G.startedAt) / 60; for (const m of [1, 2, 5, 10]) if (mins >= m) step('min' + m); $('bRun').firstChild.textContent = G.veh ? 'NOS' : 'Jump'; renderJob(); updateBanner(); if (G.roast) renderRoastTimer(); const ln = G.inside ? INTERIOR[G.inside].name : locName(G.x, G.z); const wtxt = (G.weather?.lvl || 0) ? ' · ' + D.WEATHER[G.weather.lvl].short : ''; const lt = ln + '|' + clockText() + wtxt; if (lt !== G.lastLoc) { G.lastLoc = lt; $('loc').textContent = ln; $('loc').append(el('small', { text: clockText() + wtxt })); } if (G.minigame) G.minigame.tick(); }
     sendState(); if ((G.miniF = (G.miniF || 0) + 1) % 3 === 0) drawMini();
   } else if (G.creating && PREVIEW) { const p = previewPos(); const mob = innerWidth < 700; previewYaw += dt * 0.25; PREVIEW.rotation.y = previewYaw; animChar(PREVIEW, dt, 0);
     if (mob) { // the panel covers the bottom 58%: frame the whole avatar in the strip above it, whatever the phone's shape
@@ -3520,6 +3527,13 @@ function loop(t) {
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
 ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); }, r: 16, label: () => G.ev?.type === 'baraat' ? 'Baraat: note udao (₹1,000)' : null, act: async () => { if (G.ev?.type !== 'baraat') return; const r = await buy('misc', 'notes'); if (r.ok) { G.dance = true; toast('Note udaye! Sab dekh rahe hain'); } } });
+FD.init({ bx, cyl, sph, sign, labelSprite, disposeSprite, texFrom, glow, mat, makeRoom, zone, addCol, npcStatic, makeChar, sitChar, dressFrom, pick, SHIRTS: D.SHIRTS, fmt, el, toast, openModal, closeModal, itemRow, net, A,
+  P: () => P, G: () => G, lang: () => I18N.LANG, say: (o, t, s) => say(o, t.length > 70 ? t.slice(0, 68) + '…' : t, s),
+  seat: (s, cam) => { G.seat = s; G.camFix = cam; G.frozen = true; G.dance = false; document.body.classList.add('suseat'); }, unseat: () => { G.seat = null; G.camFix = null; G.frozen = false; document.body.classList.remove('suseat'); const u = player.userData; u.sit = false; player.position.y = 0; },
+  goHome: () => fadeTo('Ghar ja rya se...', 1200, () => { if (G.inside) { G.inside = null; setIndoor(false); } if (P.home === 'street' || !goInside(false)) { const p = homePos(); teleport(p.x, p.z, 0); } }),
+  gps: (key, name) => { const d = DOORS[key]; if (d) setWaypoint(d.x, d.z, name, 'obj'); },
+  snapCam: () => { if (G.camFix) { camera.position.copy(G.camFix.p); camera.lookAt(G.camFix.t); } },
+  card: (title, sub, buttons, foot) => showCard(title, sub, buttons.map(([t, fn, cls]) => [t, () => { $('raceres').hidden = true; fn(); }, cls]), foot) });
 function boot() { loadStep(0.3); buildGround(); districtBuilders(); HM.buildCamp(KIT, world); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); buildRamps(); buildGolgappa(); loadStep(0.6); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();

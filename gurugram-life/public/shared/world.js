@@ -1,8 +1,9 @@
 // Gurugram Life world rules, shared by the Node server (multiplayer) and the browser (solo mode).
 // Owns money, purchases, missions, leaderboards, auctions, crews, turf, the belt, battles and events.
 import * as D from './data.js';
+import * as SU from './startup.js';
 
-const INTERIORS = ['mall', 'office', 'theka', 'dhaba', 'club', 'home'];
+const INTERIORS = ['mall', 'office', 'theka', 'dhaba', 'club', 'home', 'cowork', 'vc'];
 
 // opts: { rid(n) -> random id string, load() -> saved world object or null, save(jsonString), bots: boolean }
 export function createWorld(opts) {
@@ -29,7 +30,7 @@ function newProfile(name, color) {
     daily: { last: '', streak: 0 }, blessed: '', party: 0, tutDone: false, created: Date.now(), lastSeen: Date.now(),
   };
 }
-function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); if ((p.bk >= 1 || p.cold) && !D.hasCar(p) && !p.vehicles.includes('khatara')) { p.vehicles.push('khatara'); if (!p.cur) p.cur = 'khatara'; } /* a car early: anyone past the first kaam without one gets Chacha's Khatara */ p.trophies = p.trophies || []; p.mini = p.mini || {}; p.biz = p.biz || []; if (p.bkOn && (p.bkOn.i !== p.bk || now() - p.bkOn.at > 6 * 3600)) p.bkOn = null; /* a kaam left overnight starts fresh */ p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; }
+function upgrade(p) { if (p.bk == null) p.bk = D.homeRank(p); if ((p.bk >= 1 || p.cold) && !D.hasCar(p) && !p.vehicles.includes('khatara')) { p.vehicles.push('khatara'); if (!p.cur) p.cur = 'khatara'; } /* a car early: anyone past the first kaam without one gets Chacha's Khatara */ p.trophies = p.trophies || []; p.mini = p.mini || {}; p.biz = p.biz || []; if (p.bkOn && (p.bkOn.i !== p.bk || now() - p.bkOn.at > 6 * 3600)) p.bkOn = null; /* a kaam left overnight starts fresh */ p.gang = p.gang || []; p.guns = p.guns || []; p.ammo = p.ammo || {}; if (!p.su) p.su = { idea: null, name: '', feats: [], launched: false, funded: 0, equity: 100, raised: 0, deals: [], calls: {}, meet: null, offer: null, products: 0 }; }
 function publicProfile(p) { const { token, ...rest } = p; return rest; }
 
 
@@ -443,6 +444,72 @@ function handleEarn(c, m) {
   return { ok: true, amount: amt, mult, streak: c.jobStreak ? c.jobStreak.n : 0 };
 }
 
+// ------------------------------------------------------------------ startup: vibe-code a product, call investors, pitch, take a deal
+// The client shows the laptop and the boardroom; every rule (where you may code, the hot-desk fee, which features count,
+// who takes your call, the marks for each typed answer and the money) is decided here.
+function startup(c, m) {
+  const p = c.p, su = p.su, op = String(m.op || ''), where = c.st ? c.st.in : '', T = now(); const fail = error => ({ ok: false, error });
+  const view = () => ({ ok: true, su: { ...su, q: su.idea ? SU.quality(su) : 0, canLaunch: SU.canLaunch(su) }, laptop: !!p.laptop, money: p.money });
+  switch (op) {
+    case 'get': return view();
+    case 'laptop': { if (p.laptop) return fail('Laptop pehle se hai'); if (!charge(c, SU.LAPTOP_PRICE)) return fail('Laptop ke liye ' + fmt(SU.LAPTOP_PRICE) + ' chahiye'); p.laptop = true; track(c, 'laptop'); dirty = true; sendProfile(c); return view(); }
+    case 'idea': { // start a new product (the old one must be launched and funded, or never launched)
+      const I = SU.IDEAS.find(i => i.id === m.idea); if (!I) return fail('Idea chuno');
+      const name = D.cleanName(String(m.name || ''), 18).trim(); if (name.length < 2) return fail('Product ka naam likho');
+      Object.assign(su, { idea: I.id, name, feats: [], launched: false, meet: null, offer: null, dealDone: false, sess: null, own: I.id === 'own' ? D.cleanText(String(m.pitch || ''), 80) : '' }); dirty = true; return view();
+    }
+    case 'sit': { // sit down to code: at home with your own laptop and a room, or at Hustle Hub for a fee
+      if (!su.idea) return fail('Pehle idea chuno');
+      if (where === 'home') { if (!p.laptop) return fail('Laptop nahi hai. Hustle Hub co-working jao ya laptop kharido'); if (p.home === 'street') return fail('Footpath pe kaise code karoge? Hustle Hub jao'); su.sess = { at: T, where: 'home' }; }
+      else if (where === 'cowork') { if (!charge(c, SU.COWORK_FEE)) return fail('Hot desk ke liye ' + fmt(SU.COWORK_FEE) + ' chahiye'); su.sess = { at: T, where: 'cowork' }; send(c, { t: 'toast', text: 'Hustle Hub hot desk: -' + fmt(SU.COWORK_FEE), kind: 'money' }); sendProfile(c); }
+      else return fail('Ghar ke laptop pe ya Hustle Hub co-working mein baitho');
+      dirty = true; return view();
+    }
+    case 'feat': {
+      if (!su.sess || T - su.sess.at > SU.SESSION_SECS) return fail('Session khatam. Dobara baitho');
+      if (su.launched) return fail('Product launch ho chuka');
+      const f = SU.feature(m.f); if (!f) return fail('Yeh feature nahi bana sakte'); if (su.feats.includes(f.id)) return { ...view(), dup: true };
+      if (su.feats.length >= SU.MAX_FEATS) return fail('Bas, ab launch karo');
+      if (T - (su.lastFeat || 0) < SU.FEAT_GAP) return fail('Thoda ruko, AI abhi likh raha hai');
+      su.feats.push(f.id); su.lastFeat = T; addXP(c, 8); dirty = true; return view();
+    }
+    case 'launch': { if (!SU.canLaunch(su)) return fail('Launch ke liye ' + SU.NEED_FEATS + ' features chahiye, dono zaroori wale bhi'); if (su.launched) return view(); su.launched = true; su.products = (su.products || 0) + 1; su.sess = null; track(c, 'launch'); addXP(c, 120); p.respect += 10; announce(p.name + ' ne apna product "' + su.name + '" launch kar diya!', 'showoff'); dirty = true; sendProfile(c); return view(); }
+    case 'call': {
+      const v = SU.investor(m.inv); if (!v) return fail('Kaun?'); const L = SU.LINES.call, ln = k => ({ key: k, line: L[k] });
+      if (!su.launched) return { ...view(), call: ln('nobuild') };
+      if (su.dealDone) return { ...view(), call: ln('funded') };
+      if (v.rounds > 1 && !(su.funded > 0)) return { ...view(), call: ln('later') };
+      if (su.calls[v.id] === istDay()) return { ...view(), call: ln('busy') };
+      su.calls[v.id] = istDay(); dirty = true;
+      if (SU.quality(su) < v.minQ) return { ...view(), call: ln('weak') };
+      su.meet = { inv: v.id, until: T + 3 * 3600 }; return { ...view(), call: { key: 'yes', line: L.yes, office: v.office, who: v.who } };
+    }
+    case 'pitchstart': { // in the boardroom: the investor picks the questions (kept on the connection, so answers can't be shopped)
+      if (!su.meet || su.meet.until < T) return fail('Koi meeting nahi hai. Pehle investor ko phone karo');
+      if (where !== 'vc') return fail('Meeting Skyline Tower mein hai'); c.pitch = { inv: su.meet.inv, qs: SU.pickQuestions(su.meet.inv), at: T }; return { ...view(), qs: c.pitch.qs, inv: c.pitch.inv };
+    }
+    case 'pitch': {
+      const P = c.pitch; if (!P) return fail('Pitch shuru nahi hui'); const ans = Array.isArray(m.a) ? m.a.slice(0, SU.PITCH_QS).map(x => String(x || '').slice(0, 500)) : [];
+      if (ans.length !== P.qs.length) return fail('Saare sawaalon ke jawab do'); if (T - P.at < 20) return fail('Itni jaldi? Dhang se jawab do');
+      const marks = P.qs.map((id, i) => SU.scoreAnswer(SU.question(id), ans[i], su, ans.slice(0, i)));
+      const off = SU.decide(P.inv, su, marks.map(x => x.s), ans[P.qs.indexOf(SU.ASK_Q)] || ''); c.pitch = null; su.meet = null;
+      su.offer = off.kind === 'pass' ? null : { inv: P.inv, amount: off.amount, equity: off.equity, kind: off.kind, haggled: false, at: T }; track(c, 'pitches'); addXP(c, 40); dirty = true;
+      return { ...view(), marks, decision: off };
+    }
+    case 'deal': {
+      const o = su.offer; if (!o || T - o.at > 1800) { su.offer = null; return fail('Offer khatam ho gaya'); } const v = SU.investor(o.inv);
+      if (m.do === 'walk') { su.offer = null; dirty = true; return { ...view(), done: 'walk' }; }
+      if (m.do === 'counter') { if (o.haggled) return fail('Yeh aakhri offer tha'); const h = SU.haggle(o, m.equity); if (h.kind === 'bad') return fail('Equity 1 se 99 ke beech likho'); o.haggled = true; if (h.kind === 'final') { dirty = true; return { ...view(), counter: 'final', offer: o }; } o.equity = h.equity; dirty = true; return { ...view(), counter: 'yes', offer: o }; }
+      if (m.do !== 'accept') return fail('?');
+      su.offer = null; su.dealDone = true; su.funded = (su.funded || 0) + 1; su.equity = Math.max(1, Math.round(su.equity * (1 - o.equity / 100) * 10) / 10); su.raised += o.amount;
+      su.deals.push({ inv: v.id, name: v.name, amount: o.amount, equity: o.equity, product: su.name, day: istDay() }); su.deals = su.deals.slice(-10);
+      credit(c, o.amount, v.name + ' ne ' + su.name + ' mein paisa lagaya'); track(c, 'funded'); addXP(c, 300); p.respect += 40; announce(p.name + ' ke startup "' + su.name + '" ko ' + v.name + ' se ' + fmt(o.amount) + ' ki funding!', 'showoff');
+      dirty = true; sendProfile(c); return { ...view(), done: 'deal', deal: su.deals[su.deals.length - 1] };
+    }
+  }
+  return fail('?');
+}
+
 function handle(c, m) {
   const p = c.p; const t = m.t;
   const reply = data => { if (m.rid) send(c, { t: 'reply', rid: m.rid, ...data }); };
@@ -544,6 +611,7 @@ function handle(c, m) {
       break;
     }
     case 'buy': reply(handleBuy(c, m)); break;
+    case 'su': reply(rateOk(c, 'su', 0.3) || m.op === 'get' ? startup(c, m) : { ok: false, error: 'Thoda ruko' }); break;
     case 'earn': reply(handleEarn(c, m)); break;
     case 'ev': {
       const e = EV[m.k]; if (!e) return; if (!rateOk(c, 'ev:' + m.k, e.cd)) return;
