@@ -54,6 +54,7 @@ function deskSet(parent, x, z, ry, live, col) { // desk (1.8 x 0.9), office chai
   X.cyl(g, 0.32, 0.08, 0x2b2b2b, 0, 0.62, 0.95); X.bx(g, 0.62, 0.1, 0.6, col || 0x2f3a4a, 0, 0.66, 0.95); X.bx(g, 0.6, 0.7, 0.08, col || 0x2f3a4a, 0, 1.05, 1.25); X.cyl(g, 0.04, 0.6, 0x555555, 0, 0.3, 0.95);
   return { g, laptop: lt };
 }
+const SIT = 0.45; // the seated pose puts the hips this far behind a character's feet, so seat them this much in front of the chair's centre
 const local = (g, lx, ly, lz) => g.localToWorld(new THREE.Vector3(lx, ly, lz)); // a point in a desk set's space, in world space
 
 // ---------------------------------------------------------------- the rooms
@@ -71,7 +72,7 @@ export function buildInteriors() {
     for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { const x = ox - 4 + c * 4.2, z = oz - 6 + r * 5; const hot = r === 2 && c === 3; const d = deskSet(g, x, z, 0, hot, hot ? 0xf6c026 : null); X.addCol('cowork', x - 0.95, x + 0.95, z - 0.5, z + 0.5);
       if (hot) { DESKS.cowork = d; const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.9, 32), new THREE.MeshBasicMaterial({ color: 0xf6c026, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.04, z + 1.6); g.add(ring); const l = X.labelSprite('💻 Hot desk · ' + X.fmt(S.COWORK_FEE), { fs: 34, scale: 0.55, bg: 'rgba(15,118,110,.92)' }); l.position.set(x, 2.6, z + 0.2); g.add(l); d.sign = l; d.ring = ring; }
       else if (k++ % 2 === 0 && people.length < 6) people.push([x, z]); }
-    for (const [x, z] of people) { const p = X.makeChar(X.pick(X.SHIRTS), {}); p.position.set(x, -0.12, z + 0.85); p.rotation.y = Math.PI; g.add(p); X.sitChar(p); }
+    for (const [x, z] of people) { const p = X.makeChar(X.pick(X.SHIRTS), {}); p.position.set(x, -0.12, z + 0.95 - SIT); p.rotation.y = Math.PI; g.add(p); X.sitChar(p); }
     // beanbags, phone booths, a whiteboard full of sticky notes, plants
     for (const [bx2, bz, c] of [[ox + 14, oz + 4, 0xd7331f], [ox + 16, oz + 6, 0x2563b8], [ox + 13, oz + 8, 0xf6c026]]) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 8), X.mat(c)); s.scale.set(1, 0.55, 1); s.position.set(bx2, 0.42, bz); g.add(s); }
     const glassM = new THREE.MeshLambertMaterial({ color: 0xbfe3f2, transparent: true, opacity: 0.3 });
@@ -108,7 +109,7 @@ export function buildInteriors() {
 }
 function seatInvestor(g, s, gender, old) {
   const f = gender === 'f', shirt = f ? 0xf5f5f5 : 0x1b1b1b; const c = X.makeChar(shirt, { g: gender, pants: 0x1b1b1b }); c.userData.dress.outfit = f ? 'shirt' : 'office'; c.userData.dress.old = !!old; c.userData.noBlock = true;
-  X.dressFrom(c, null, shirt); c.position.set(s.x, -0.1, s.z + 0.1); g.add(c); X.sitChar(c); return c;
+  X.dressFrom(c, null, shirt); c.position.set(s.x, -0.1, s.z + SIT); g.add(c); X.sitChar(c); return c;
 }
 const INV_G = { sharma: 'm', bansal: 'f', skyline: 'm' };
 // a desk at home (front-left corner of every home, facing the left wall)
@@ -167,9 +168,9 @@ async function sitAndCode(where) {
   if (P.su.launched) { X.toast(lang() === 'en' ? P.su.name + ' is already live. Call investors from the phone.' : P.su.name + ' live ho chuka. Phone se investors ko call karo.'); return; }
   const r = await X.net.req('su', { op: 'sit' }); if (!r.ok) { X.toast(r.error, 'bad'); X.A.sfx('err'); return; }
   setSu(r.su); const d = DESKS[where]; if (!d) return; d.g.updateMatrixWorld(true);
-  const seat = local(d.g, 0, 0, 1.02);
+  const seat = local(d.g, 0, 0, 0.95 - SIT); // hips over the chair, not through its back
   const scr = d.laptop.userData.screen; scr.updateMatrixWorld(true); const sp = scr.getWorldPosition(new THREE.Vector3());
-  const back = local(d.g, 0.36, 1.66, 0.82), wide = local(d.g, 1.9, 2.5, 2.9); // a wide shot of you sitting down, then just over the right shoulder
+  const back = local(d.g, 0.38, 1.78, 1.2), wide = local(d.g, 1.9, 2.5, 2.9); // a wide shot of you sitting down, then just over the right shoulder
   const cam = { p: wide.clone(), t: seat.clone().setY(1.4) }; X.seat({ x: seat.x, z: seat.z, y: -0.12, r: d.g.rotation.y + Math.PI }, cam); X.snapCam && X.snapCam();
   setTimeout(() => { if (CODE) { cam.p.copy(back); cam.t.copy(sp).add(new THREE.Vector3(0, -0.1, 0)); } }, 1800); // aimed a little low so the screen sits above the panel
   CODE = { where, busy: false, desk: d }; if (d.sign) d.sign.visible = d.ring.visible = false; ED.name = r.su.name; ED.files = ED.files.length && ED.name === r.su.name ? ED.files : []; ED.term = [{ t: '$ npx create-app ' + slug(r.su.name), c: '#89ddff' }, { t: '✓ ready on http://localhost:3000' }];
@@ -275,7 +276,7 @@ async function startPitch() {
   for (const p of B.plates) X.disposeSprite(p); B.plates = [X.labelSprite(v.who + ' · ' + v.name, { fs: 26, scale: 0.3, bg: 'rgba(15,118,110,.92)' })]; B.plates[0].position.set(B.invSeats[0].x, 2.75, B.invSeats[0].z); B.g.add(B.plates[0]);
   if (B.invs[0]) B.g.remove(B.invs[0]); B.invs[0] = seatInvestor(B.g, B.invSeats[0], INV_G[v.id] || 'm', v.id === 'skyline');
   drawTV(su);
-  X.seat({ x: B.me.x, z: B.me.z - 0.05, y: -0.1, r: Math.PI }, { p: new THREE.Vector3(B.me.x + 1.4, 2.7, B.me.z + 2.6), t: new THREE.Vector3(B.bx0 - 0.3, 1.9, B.bz0 - 2.4) });
+  X.seat({ x: B.me.x, z: B.me.z - SIT, y: -0.1, r: Math.PI }, { p: new THREE.Vector3(B.me.x + 1.4, 2.7, B.me.z + 2.6), t: new THREE.Vector3(B.bx0 - 0.3, 1.9, B.bz0 - 2.4) });
   PITCH = { inv: v, qs: r.qs, i: 0, a: [], marks: [], t0: Date.now() }; pitchUI(); X.A.sfx('click');
   X.say(B.invs[0], lang() === 'en' ? 'Welcome! Let\'s begin.' : 'Aao baitho! Shuru karte hain.', 3);
 }
