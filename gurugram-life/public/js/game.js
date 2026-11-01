@@ -283,6 +283,7 @@ function rideChar(ch, type, x, z, r, y0) {
   const u = ch.userData; u.sit = true; if (u.human && u.human.cur !== 'drive') { HU.play(u.human, 'drive', 0.15); u.human.mixer.update(0.02); }
   u.hipL.rotation.x = -1.2; u.hipR.rotation.x = -1.2; u.shL.rotation.x = -1.3; u.shR.rotation.x = -1.3; u.shL.rotation.z = 0; u.shR.rotation.z = 0;
 }
+const SIT_BACK = 0.45, SEAT_Y = top => top - 0.82; // the seated pose puts the hips 0.45 behind and 0.82 above a character's feet
 function sitChar(ch) { const u = ch.userData; u.sit = true; if (u.human && u.human.cur !== 'sit') { HU.play(u.human, 'sit', 0.15); u.human.mixer.update(0.02); } u.hipL.rotation.x = -1.3; u.hipR.rotation.x = -1.3; u.shL.rotation.x = -0.9; u.shR.rotation.x = -0.9; u.shL.rotation.z = 0; u.shR.rotation.z = 0; }
 
 function plateMesh(text) { const t = new THREE.CanvasTexture(signCanvas(text, null, '#ffffff', '#111111', 256, 64)); return new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), new THREE.MeshBasicMaterial({ map: t })); }
@@ -581,7 +582,7 @@ function makeRoom(key, ox, oz, W, D2, H, fkind, wall, fr) {
 }
 function bottles(g, x0, x1, y, z, n) { for (let k = 0; k < n; k++) { const x = x0 + (x1 - x0) * k / (n - 1); const c = pick([0x5a2d0c, 0x1f5f2a, 0xc9c3b5, 0x7a1c1c, 0xd9a520, 0x2a3d6b]); cyl(g, 0.13, 0.7, c, x, y + 0.35, z); cyl(g, 0.05, 0.25, c, x, y + 0.82, z); } }
 function table(g, x, z, w, d, c) { bx(g, w, 0.12, d, c || 0x7c4a2b, x, 1.0, z); for (const a of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(g, 0.12, 1, 0.12, 0x3a2a1a, x + a[0] * (w / 2 - 0.15), 0.5, z + a[1] * (d / 2 - 0.15)); }
-function chair(g, x, z, c) { bx(g, 0.7, 0.1, 0.7, c, x, 0.6, z); bx(g, 0.7, 0.8, 0.1, c, x, 1.0, z - 0.3); for (const a of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(g, 0.08, 0.6, 0.08, c, x + a[0] * 0.3, 0.3, z + a[1] * 0.3); }
+function chair(g, x, z, c, ry) { const q = new THREE.Group(); q.position.set(x, 0, z); q.rotation.y = ry || 0; g.add(q); bx(q, 0.7, 0.1, 0.7, c, 0, 0.6, 0); bx(q, 0.7, 0.8, 0.1, c, 0, 1.0, -0.3); for (const a of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) bx(q, 0.08, 0.6, 0.08, c, a[0] * 0.3, 0.3, a[1] * 0.3); } // faces local +z (the backrest is behind); ry turns it
 let G_WHEEL = null; const CLUB = { tiles: [], lasers: [], ball: null, dancers: [] };
 function buildInteriors() {
   FD.buildInteriors(); // Hustle Hub co-working + the Skyline Tower boardroom
@@ -602,7 +603,7 @@ function buildInteriors() {
     });
     const stalls = [['CHOLE BHATURE EXPRESS', '#d7331f', 'chole'], ['MOMO POINT', '#1a8a4a', 'momo'], ['PIZZA PAO', '#2563b8', 'pizza']];
     stalls.forEach((s, k) => { const sz = oz - 12 + k * 12, sx = ox + W / 2 - 3; bx(g, 5, 1.1, 8, 0x6b4a2b, sx - 1, 0.55, sz, { col: 'mall' }); sign(g, s[0], 'Food court', '#1b1410', s[1], 8, 1.6, sx - 3.6, 4, sz, -Math.PI / 2); npcStatic(g, sx + 1, sz, -Math.PI / 2, 0xffffff, 'Cook'); zone('mall', sx - 5, sz, 3, () => s[0].charAt(0) + s[0].slice(1).toLowerCase() + ': menu', () => openFood(s[0], 'Metro Grand Mall food court', s[2])); });
-    for (let k = 0; k < 6; k++) { const tx = ox + 22 + (k % 2) * 10, tz = oz - 14 + Math.floor(k / 2) * 12; table(g, tx, tz, 3, 3, 0xf5f5f5); chair(g, tx - 2, tz, 0xd7331f); chair(g, tx + 2, tz, 0xd7331f); addCol('mall', tx - 1.5, tx + 1.5, tz - 1.5, tz + 1.5); }
+    for (let k = 0; k < 6; k++) { const tx = ox + 22 + (k % 2) * 10, tz = oz - 14 + Math.floor(k / 2) * 12; table(g, tx, tz, 3, 3, 0xf5f5f5); chair(g, tx - 2, tz, 0xd7331f, Math.PI / 2); chair(g, tx + 2, tz, 0xd7331f, -Math.PI / 2); addCol('mall', tx - 1.5, tx + 1.5, tz - 1.5, tz + 1.5); }
     const fo = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.5, 1, 24), mat(0xcfc4ae)); fo.position.set(ox - 5, 0.5, oz + 5); g.add(fo);
     const wa = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 5.6, 0.2, 24), new THREE.MeshLambertMaterial({ color: 0x3fa9d6, emissive: 0x0b3a55 })); wa.position.set(ox - 5, 1, oz + 5); g.add(wa);
     cyl(g, 0.6, 4, 0xe6dccb, ox - 5, 2.5, oz + 5); sph(g, 1, 0xf6c026, ox - 5, 4.8, oz + 5); addCol('mall', ox - 11, ox + 1, oz - 1, oz + 11);
@@ -619,9 +620,9 @@ function buildInteriors() {
     for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
       const dx = ox - 21 + c * 11, dz = oz - 8 + r * 8;
       bx(g, 4.2, 0.12, 2, 0xf5f5f5, dx, 1.1, dz); bx(g, 0.1, 1.1, 2, 0x999999, dx - 2, 0.55, dz); bx(g, 0.1, 1.1, 2, 0x999999, dx + 2, 0.55, dz);
-      bx(g, 1.6, 1, 0.1, 0x111111, dx, 1.75, dz - 0.6); bx(g, 1.4, 0.85, 0.02, 0, dx, 1.75, dz - 0.54, { mat: glow(0x4aa8ff) }); bx(g, 4.4, 1.6, 0.1, 0x9aa6b0, dx, 0.8, dz - 1.05); addCol('office', dx - 2.1, dx + 2.1, dz - 1.1, dz + 1); chair(g, dx, dz + 1.6, 0x1b1b1b);
+      bx(g, 1.6, 1, 0.1, 0x111111, dx, 1.75, dz - 0.6); bx(g, 1.4, 0.85, 0.02, 0, dx, 1.75, dz - 0.54, { mat: glow(0x4aa8ff) }); bx(g, 4.4, 1.6, 0.1, 0x9aa6b0, dx, 0.8, dz - 1.05); addCol('office', dx - 2.1, dx + 2.1, dz - 1.1, dz + 1); chair(g, dx, dz + 1.6, 0x1b1b1b, Math.PI);
       if (r === 1 && c === 1) { sign(g, 'YOUR DESK', null, '#f6c026', '#1b1410', 1.6, 0.5, dx, 2.5, dz - 0.5); OFFICE_DESK.x = dx; OFFICE_DESK.z = dz + 2.2; }
-      else if (Math.random() < 0.7) { const n = npcStatic(g, dx, dz + 1.4, Math.PI, pick(D.SHIRTS)); sitChar(n); n.position.y = -0.35; }
+      else if (Math.random() < 0.7) { const n = npcStatic(g, dx, dz + 1.6 - SIT_BACK, Math.PI, pick(D.SHIRTS)); sitChar(n); n.position.y = SEAT_Y(0.65); } // hips on the seat, facing the screen
     }
     zone('office', OFFICE_DESK.x, OFFICE_DESK.z, 2.5, () => G.shiftCD > now() ? 'Break time. Next shift in ' + Math.ceil(G.shiftCD - now()) + 's' : 'Start work shift (' + D.RANKS[P ? P.rank : 0][0] + ', ' + fmt(D.RANKS[P ? P.rank : 0][1]) + ')', () => startShift());
     const gm = new THREE.MeshLambertMaterial({ color: 0x9fd3f0, transparent: true, opacity: 0.35 });
@@ -648,8 +649,8 @@ function buildInteriors() {
     sign(g, 'SARKARI THEKA', 'Desi · Angrezi · Beer', '#1a8a4a', '#f6c026', 8, 1.6, ox, H - 1.6, oz - 1.7);
     sign(g, 'PEEKE GAADI NA CHALAO!', 'Iffco Chowk pe naka lagta se', '#d7331f', '#ffffff', 8, 1.6, ox - W / 2 + 0.35, 3, oz + 5, Math.PI / 2);
     sign(g, 'AHATA', 'Baith ke aaram se', '#f6c026', '#1b1410', 5, 1.2, ox + W / 2 - 0.35, 3, oz + 5, -Math.PI / 2);
-    for (let k = 0; k < 2; k++) { const tx = ox + 7, tz = oz + 3 + k * 4; table(g, tx, tz, 2, 2, 0xd7331f); chair(g, tx - 1.6, tz, 0xd7331f); chair(g, tx + 1.6, tz, 0xd7331f); addCol('theka', tx - 1, tx + 1, tz - 1, tz + 1); }
-    const ah = npcStatic(g, ox + 5.4, oz + 3, Math.PI / 2, 0xf3b61f, 'Ramkishan Yadav'); sitChar(ah); ah.position.y = -0.4;
+    for (let k = 0; k < 2; k++) { const tx = ox + 7, tz = oz + 3 + k * 4; table(g, tx, tz, 2, 2, 0xd7331f); chair(g, tx - 1.6, tz, 0xd7331f, Math.PI / 2); chair(g, tx + 1.6, tz, 0xd7331f, -Math.PI / 2); addCol('theka', tx - 1, tx + 1, tz - 1, tz + 1); }
+    const ah = npcStatic(g, ox + 5.4 + SIT_BACK, oz + 3, Math.PI / 2, 0xf3b61f, 'Ramkishan Yadav'); sitChar(ah); ah.position.y = SEAT_Y(0.65);
     zone('theka', ox, oz + 0.8, 2.6, () => 'Bholu Bhaiya: counter (khidki)', () => openFood('Desi Theka No.1', 'Khidki se le, line mein lag ke', 'theka'));
   }
   { // DHABA
