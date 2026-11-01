@@ -1,0 +1,8 @@
+people-m.glb.gz and people-f.glb.gz (the realistic men and women of Gurugram Life) are built from MakeHuman / MPFB2
+assets: the base body, its shape targets, skin textures, clothes, hairstyles, eyes, eyebrows and eyelashes.
+MakeHuman community assets are released under CC0 1.0 Universal (public domain):
+https://creativecommons.org/publicdomain/zero/1.0/
+http://www.makehumancommunity.org
+Packaged for the web by humanforge 0.5.0 (https://github.com/abdulrehman043/humanforge).
+Their animations are the Quaternius Universal Animation Library (CC0, see LICENSE-Quaternius-CC0.txt), retargeted.
+Build script: scripts/people/ in this repository.

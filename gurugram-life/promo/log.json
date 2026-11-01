@@ -93,6 +93,76 @@
    "beat": "haryanvi seed 24 (plus engine, horn, clinks and camera clicks)",
    "song": "Tune Maari Entriyaan (Gunday)",
    "backup": "Swag Se Swagat (Tiger Zinda Hai)"
+  },
+  {
+   "date": "2026-10-25",
+   "day": 9,
+   "pov": "POV: Your Delhi friend said Gurugram is \"just 30 minutes away\"",
+   "format": "travel-time clock badge that keeps jumping (0h 30m → 4h 20m); silent version is the main deliverable",
+   "scenes": "Delhi-plate hatchback on NH-48 at sunset (hook), petrol pump stop, MG Road pothole jolt, night footpath 'shortcut' with street dogs chasing, Neon Nights door at 4h 20m: 'Bhai kahan ho?' party over",
+   "beat": "filmy seed 25 (barks, pump beep, thud)",
+   "song": "Dilli Wali Girlfriend (Yeh Jawaani Hai Deewani)",
+   "backup": "Abhi Toh Party Shuru Hui Hai (Khoobsurat)"
+  },
+  {
+   "date": "2026-10-26",
+   "day": 10,
+   "pov": "POV: HR said the Diwali bonus is \"coming soon\"",
+   "format": "HR's lines vs a running 'Kharcha' total going into the red, then the ₹501 reveal",
+   "scenes": "TechNova desk with the HR mail (hook), Neon Nights dance floor 'bonus ke bharose', Diwali rockets by Goyal Jewellers on Golf Course Road, walking into Goyal Jewellers for Mummy's kangan, back at the desk: ₹501 + dry-fruit box",
+   "beat": "item seed 26 (keys, beeps, rockets)",
+   "song": "Paisa Ye Paisa (Total Dhamaal)",
+   "backup": "Lungi Dance (Chennai Express)"
+  },
+  {
+   "date": "2026-10-27",
+   "day": 11,
+   "pov": "POV: Rating Gurugram's roads out of 10",
+   "format": "score badge per road (0/10, 🐄/10, 👻/10, 10/10, 🚀/10); the only 10/10 ends with the car airborne",
+   "scenes": "jumping rubbish bags on the footpath (hook), cows owning a sector chowk with the Khatara stopped, unlit night road, Golf Course Road NOS run, the car flying off a stunt-ramp 'speed breaker'",
+   "beat": "edm seed 27 (moo, horn, whoosh, landing)",
+   "song": "Zingaat (Dhadak)",
+   "backup": "Chaiyya Chaiyya (Dil Se)"
+  },
+  {
+   "date": "2026-10-28",
+   "day": 12,
+   "pov": "POV: You on the phone with Mummy",
+   "format": "what you tell Mummy (subtitle) vs what is on screen, a phone-call badge, ending on 12 missed calls",
+   "scenes": "street brawl with your gang of chele (hook), golgappa thela at Galleria Market, police jeep right behind your car at night, 2:07 AM inside Desi Theka No.1, lying outside Civil Hospital",
+   "beat": "retro seed 28 (phone ring, punches, siren)",
+   "song": "Ainvayi Ainvayi (Band Baaja Baaraat)",
+   "backup": "Sooraj Dooba Hain (Roy)"
+  },
+  {
+   "date": "2026-10-29",
+   "day": 13,
+   "pov": "POV: Things you only see in Gurugram",
+   "format": "countdown #5 → #1 badge, one 'wait, what?' shot each; #1 is the rent",
+   "scenes": "tractor parked next to a neon Chaudhary Cruiser at Cyber Hub (hook), ghodi parked at the Ambience Mall gate, VIP HR26 0007 on a Scooty, the Jugaadu Naav parked in a dry sector lane, a 1BHK interior at ₹45,000 rent",
+   "beat": "action seed 29 (whooshes per number)",
+   "song": "Kajra Re (Bunty Aur Babli)",
+   "backup": "Ghungroo (War)"
+  },
+  {
+   "date": "2026-10-30",
+   "day": 14,
+   "pov": "POV: You became a delivery boy in Gurugram",
+   "format": "delivery-app pings with a falling rating badge (★4.8 → ★1.0, tip ₹0)",
+   "scenes": "order ping on the Scooty outside Sher-e-Haryana Dhaba (hook), stuck behind a trala, society guard at the TechNova gate asking for a register entry, looking up the Golf Course Road towers for the 24th floor, alone on the Scooty under a streetlight at night: 'Khud kha lunga'",
+   "beat": "gangster seed 30 (app dings, horn, chatter)",
+   "song": "Mauja Hi Mauja (Jab We Met)",
+   "backup": "Aankh Marey (Simmba)"
+  },
+  {
+   "date": "2026-10-31",
+   "day": 15,
+   "pov": "POV: Halloween in Gurugram hits different",
+   "format": "horror title cards 1-4 with a dark colour grade, then a red push-in jump scare: THE FINAL BOSS, EMI due tomorrow",
+   "scenes": "empty Cyber Hub at 3 AM (hook), power cut in the Sharma PG, a midnight auto at Rajiv Chowk ('meter?'), a white-clad landlord walking up out of the dark ('kiraya badh gaya'), the EMI jump scare on Golf Course Road",
+   "beat": "gangster seed 31, darker (thuds, scratch hit)",
+   "song": "Ami Je Tomar (Bhool Bhulaiyaa)",
+   "backup": "Aayi Nai (Stree 2)"
   }
  ]
 }

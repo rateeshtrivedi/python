@@ -1,0 +1,7 @@
+[
+ {"sc": 0, "dur": 2.6, "pre": 0.8, "pov": "POV: You on the phone with Mummy 📞", "time": "📞 Mummy calling…", "cap": "\"Haan Mummy, office mein hoon\" 🙂", "capAt": 0.3},
+ {"sc": 1, "dur": 2.3, "pre": 0.6, "time": "📞 Mummy", "cap": "\"Ghar ka khana kha liya\" 🍽️", "capAt": 0.2},
+ {"sc": 2, "dur": 1.9, "pre": 0.8, "time": "📞 Mummy", "cap": "\"Bas ghar pahunch gaya\" 🏠", "capAt": 0.2},
+ {"sc": 3, "dur": 2.4, "pre": 1.4, "inside": true, "time": "📞 Mummy · 2:07 AM", "cap": "\"Jaldi so jaunga, pakka\" 😴", "capAt": 0.2},
+ {"sc": 4, "dur": 3.0, "pre": 0.8, "time": "📞 Mummy (12 missed calls)", "cap": "Mummy: \"Beta, kahan ho?\" 📍Civil Hospital", "capAt": 0.6, "big": true}
+]
