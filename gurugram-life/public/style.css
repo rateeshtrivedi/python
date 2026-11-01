@@ -431,3 +431,20 @@ body.cutscene #game::before,body.cutscene #game::after{content:'';position:absol
 body.cutscene #game::before{top:0}body.cutscene #game::after{bottom:0}
 #cutcap{position:absolute;left:50%;bottom:calc(13vh + 10px);transform:translateX(-50%);z-index:6;max-width:min(640px,calc(100% - 32px));background:rgba(0,0,0,.72);color:#fff;border-radius:12px;padding:8px 16px;text-align:center;cursor:pointer;visibility:visible!important}
 #cutcap b{display:block;font:800 13px var(--display);color:var(--sarson);text-transform:uppercase;letter-spacing:.06em}#cutcap span{font:600 17px var(--body)}
+/* startup: the coding panel under the laptop and the pitch panel in the boardroom */
+.supanel{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:40;width:min(760px,calc(100% - 24px));background:rgba(20,16,12,.94);color:#f4eadb;border:1px solid rgba(246,192,38,.35);border-radius:16px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 14px var(--body)}
+.supanel .surow{display:flex;gap:8px;align-items:center;margin-top:8px}
+.supanel input,.supanel textarea,.suname{flex:1;min-width:0;background:#fff8ea;color:#1b1410;border:2px solid #f6c026;border-radius:10px;padding:9px 11px;font:600 15px var(--body)}
+.suname{display:block;width:100%;margin:6px 0;box-sizing:border-box}
+.supanel textarea{width:100%;box-sizing:border-box;resize:none;margin-top:8px}
+.suchat{max-height:118px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.sumsg{background:#2b2118;border-radius:10px;padding:5px 9px;max-width:88%;line-height:1.35}.sumsg b{color:#22d3ee;font:800 12px var(--display)}
+.sumsg.me{align-self:flex-end;background:#0f766e}.sumsg.me b{color:#fef3c7}
+.suchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.suchip{background:#2b2118;color:#f4eadb;border:1px solid #5a4a3a;border-radius:999px;padding:4px 10px;font:700 12px var(--body)}.suchip.core{border-color:#f6c026;color:#f6c026}
+.suprog{flex:1;font:700 12px var(--body);color:#d9c7a3}
+.supanel.pitch .suq{font:700 18px var(--body);line-height:1.35;color:#fff;margin-top:4px}
+.sucard{background:#fff8ea;border:2px solid #0f766e;border-radius:12px;padding:8px 12px;margin-bottom:6px}.sucard p{margin:4px 0 0}
+@media (max-width:520px){.supanel{bottom:6px;padding:8px}.suchat{max-height:84px}.supanel.pitch .suq{font-size:16px}}
+body.suseat #hud > :not(#toasts):not(#raceres){visibility:hidden} /* seated at a laptop or the boardroom: only the scene, toasts and cards */
+.sureact{margin:0 0 4px;color:#99f6e4}
