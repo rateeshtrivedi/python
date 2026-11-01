@@ -162,7 +162,7 @@ function makeChar(shirt, o) {
 // ---- realistic bodies (humans.js). Every character keeps its box figure for far away / before the models load;
 // near the camera it shows the real body instead (see updateHumans for the distance and count limits).
 const HCHARS = [];
-function randomDress(shirt, o) { const f = o.g ? o.g === 'f' : Math.random() < 0.22; return { g: f ? 'f' : 'm', skin: o.skin || pick(SKINS.slice(1)), hair: irnd(0, f ? 3 : 2), hairColor: pick([0x1a1410, 0x1a1410, 0x2b1d14, 0x4a2c17]), top: f ? irnd(0, 2) : pick([0, 0, 1, 2]), shirt, pants: o.pants || pick(PANTS_C), pantsStyle: 0, beard: f ? 0 : pick([0, 0, 'moonchh', 'full']) }; }
+function randomDress(shirt, o) { const f = o.g ? o.g === 'f' : Math.random() < 0.22; return { g: f ? 'f' : 'm', skin: o.skin || pick(SKINS.slice(1)), hair: irnd(0, f ? 3 : 2), hairColor: pick([0x1a1410, 0x1a1410, 0x2b1d14, 0x4a2c17]), top: f ? irnd(0, 2) : pick([0, 0, 1, 2]), shirt, pants: o.pants || pick(PANTS_C), pantsStyle: 0, beard: f ? 0 : pick([0, 0, 'moonchh', 'full']), outfit: o.g ? null : f ? pick(['kurti', 'kurti', 'top', 'saree', 'shirt', 'sport']) : pick(['tee', 'tee', 'kurta', 'jacket', 'shirt', 'polo', 'office', 'work']), old: !o.g && Math.random() < 0.12 }; } // passers-by get every outfit of the realistic people; named characters keep the avatar ones
 function humanize(g) {
   const u = g.userData; if (u.human || !HU.HUMANS.ready) return; const h = HU.makeHuman(u.dress.g); u.human = h;
   if (!u.blockG) { u.blockG = new THREE.Group(); for (const c of [...g.children]) if (c !== u.hatG && c !== u.blingG) u.blockG.add(c); g.add(u.blockG); }
@@ -231,7 +231,7 @@ function applyBody(ch, b, shirt) {
 }
 function dressFrom(ch, b, shirt) { // the realistic body follows the same avatar choices as the box figure
   const u = ch.userData, d = u.dress; const prevG = d.g;
-  if (b) Object.assign(d, { g: b.g === 'f' ? 'f' : 'm', skin: SKINS[b.skin] || SKINS[2], hair: b.hair | 0, hairColor: HAIRC[b.hc] || HAIRC[0], top: b.top | 0, pants: PANTS_C[b.pants] || PANTS_C[0], pantsStyle: (b.pants | 0) === 1 ? 1 : 0, beard: b.g === 'f' ? 0 : [0, 'moonchh', 'full'][b.acc | 0] || 0 });
+  if (b) Object.assign(d, { g: b.g === 'f' ? 'f' : 'm', skin: SKINS[b.skin] || SKINS[2], hair: b.hair | 0, hairColor: HAIRC[b.hc] || HAIRC[0], top: b.top | 0, pants: PANTS_C[b.pants] || PANTS_C[0], pantsStyle: (b.pants | 0) === 1 ? 1 : 0, beard: b.g === 'f' ? 0 : [0, 'moonchh', 'full'][b.acc | 0] || 0, outfit: null, old: false });
   if (shirt != null) d.shirt = shirt;
   if (u.human && prevG !== d.g) { unhumanize(ch); humanize(ch); } else if (u.human) { HU.dressHuman(u.human, d); humanHair(u); }
 }
@@ -3523,7 +3523,7 @@ function boot() { loadStep(0.3); buildGround(); districtBuilders(); HM.buildCamp
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
 fontsReady.catch(() => {}).then(boot); A.loadSongs();
 DG.loadDogs('/models/dog.glb').then(() => { if (!DOGS.length) spawnDogs(); }).catch(e => console.warn('Gurugram Life: street dogs not loaded', e)); // 160 KB
-const HUMANS_P = /[?&]simple\b/.test(location.search) ? null : HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~2.7 MB, cached after the first visit
+const HUMANS_P = /[?&]simple\b/.test(location.search) ? null : HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~6 MB gzipped, cached after the first visit
 if (HUMANS_P) HUMANS_P.then(() => { loadStep(0.9); if (LITE) return loadStep(1); /* lite: simple cars */ RD.loadRides('/models/rides/', upgradeRides); setTimeout(() => loadStep(1), 4000); }); else loadStep(1); // ~4.5 MB after the people, one model at a time, traffic first
 window.addEventListener('pagehide', saveLocal);
 

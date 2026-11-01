@@ -5,6 +5,7 @@ import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createWorld } from '../public/shared/world.js';
@@ -131,6 +132,13 @@ app.get('/llms.txt', (req, res) => res.type('text/plain').send(llms()));
 app.get('/favicon.ico', (req, res) => res.redirect(301, '/img/favicon-32.png')); // browsers and feed readers ask for this path on their own
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(robots()));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(sitemap()));
+// The realistic people (MakeHuman, ~4 MB each) are stored gzipped and sent as they are to browsers that take gzip.
+app.get('/models/:f(people-[mf]\\.glb)', (req, res, next) => {
+  const gz = path.join(ROOT, 'public/models', req.params.f + '.gz'); if (!fs.existsSync(gz)) return next();
+  res.setHeader('Cache-Control', 'public, max-age=604800'); res.setHeader('Vary', 'Accept-Encoding'); res.type('model/gltf-binary');
+  if (/\bgzip\b/.test(req.headers['accept-encoding'] || '')) { res.setHeader('Content-Encoding', 'gzip'); return res.sendFile(gz); }
+  fs.createReadStream(gz).pipe(zlib.createGunzip()).pipe(res);
+});
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).
 app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', (file.includes(path.sep + 'models' + path.sep) || file.includes(path.sep + 'audio' + path.sep)) ? 'public, max-age=604800' : file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
 app.use((req, res) => { res.status(404).type('html').send(notFound(req)); });
