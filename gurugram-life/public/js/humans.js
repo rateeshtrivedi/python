@@ -51,7 +51,7 @@ function tinted(src, hex, key, extra) {
   const k = key + ':' + src.uuid + ':' + hex; if (MATS.has(k)) return MATS.get(k);
   const m = src.clone(); m.color.set(hex); if (extra) extra(m); MATS.set(k, m); return m;
 }
-const cloth = m => { m.polygonOffset = true; m.polygonOffsetFactor = -1; m.polygonOffsetUnits = -1; m.roughness = 0.88; };
+const cloth = m => { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -6; m.roughness = 0.88; };
 // skin tones of the avatar creator -> the closest scanned skin, with a tint for the exact tone
 const TONES = [[0xf1c7a3, 'young_asian', 0xfff4ec], [0xd9a07a, 'young_asian', 0xf0d4bc], [0xc68863, 'middleage_asian', 0xe6c0a2], [0xa86b45, 'young_african', 0xffe2cc], [0x7d4a2c, 'young_african', 0xe0b494]];
 function toneFor(hex) { let best = TONES[2], bd = 1e9; const c = new THREE.Color(hex); for (const t of TONES) { const d = new THREE.Color(t[0]); const e = (d.r - c.r) ** 2 + (d.g - c.g) ** 2 + (d.b - c.b) ** 2; if (e < bd) { bd = e; best = t; } } return best; }
