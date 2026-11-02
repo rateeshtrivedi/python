@@ -173,6 +173,16 @@
    "beat": "edm seed 32 (keys, beeps, ring, pops)",
    "song": "Kar Har Maidaan Fateh (Sanju)",
    "backup": "Zinda (Bhaag Milkha Bhaag)"
+  },
+  {
+   "date": "2026-11-02",
+   "day": 17,
+   "pov": "POV: Gurugram is an RPG and you're only Lv 3",
+   "format": "turn-based RPG battle UI over gameplay: battle flash on frame 1, enemy/player HP plates, move menu, typewriter text box, hit shake; five 'wild encounters', the police as final boss, 'YOU BLACKED OUT'",
+   "scenes": "wild cow on the road (HONK, not very effective), auto bhaiya at Rajiv Chowk ('meter kharab hai', wallet bar drains), pothole on MG Road (critical hit, Scooty fainted), baraat x200 on Golf Course Road (DHOL DHAMAKA, TIME bar drains), police jeep chase at night (CHALLAN ₹5,000)",
+   "beat": "action seed 33 (scratch hits, moo, horn, siren)",
+   "song": "Bhaag DK Bose, Aandhi Aayi (Delhi Belly)",
+   "backup": "Dhan Te Nan (Kaminey)"
   }
  ]
 }
