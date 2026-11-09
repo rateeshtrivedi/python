@@ -128,7 +128,7 @@ function clearView() { // hide whatever stands between the camera and the fighte
     for (const h of ray.intersectObjects(SF.near, false)) { const o = h.object; if (!o.visible) continue; let mine = false; for (let q = o; q; q = q.parent) if (q === SF.me.ch || q === SF.foe.ch || SF.crowd.some(c => c.mesh === q)) { mine = true; break; } if (mine) continue; o.visible = false; SF.hidden.add(o); } }
 }
 function placeCrowd() { // the chele stand on both sides of the street and cheer
-  const { C, A, N } = SF; SF.crowd.forEach((c, i) => { const side = i % 2 ? 1 : -1, along = (Math.floor(i / 2) - 0.5) * 2.2; c.x = C.x - N.x * 3.6 * side + A.x * along; c.z = C.z - N.z * 3.6 * side + A.z * along; c.r = Math.atan2(C.x - c.x, C.z - c.z); c.mesh.position.set(c.x, 0, c.z); c.mesh.rotation.set(0, c.r, 0); });
+  const { C, A, N } = SF; SF.crowd.forEach((c, i) => { const side = i % 2 ? 1 : -1, along = (Math.floor(i / 2) - 0.5) * 2.2; c.x = C.x - N.x * 3.6 * side + A.x * along; c.z = C.z - N.z * 3.6 * side + A.z * along; c.r = Math.atan2(C.x - c.x, C.z - c.z); c.mesh.position.set(c.x, X.groundY ? X.groundY(c.x, c.z) : 0, c.z); c.mesh.rotation.set(0, c.r, 0); });
 }
 function pickUI() {
   const box = X.el('div', { id: 'sfPick', class: 'sfpick' }); box.append(X.el('h2', { text: tx(T.pick) }));
@@ -252,16 +252,25 @@ function place(f, other, dt) {
   let rx = 0, y = 0, yaw = face + (cur.yaw || 0);
   if (f.thrown > 0) { const k = 1 - f.thrown / 1.1; const arc = Math.sin(Math.min(1, k * 1.2) * Math.PI); const off = (f.isP ? -1 : 1) * (0.9 + k * 0.9); pos.set(C.x + A.x * (other.s + off), 0, C.z + A.z * (other.s + off)); y = arc * 1.5; rx = -Math.min(1, k * 1.25) * Math.PI * 0.55; yaw = face; }
   else if (down) yaw = face;
-  f.ch.rotation.order = 'YXZ'; f.ch.rotation.set(rx, yaw, 0); f.ch.position.set(pos.x, y, pos.z);
+  const gy = X.groundY ? X.groundY(pos.x, pos.z) : 0; // paved blocks stand 0.2 m above the road
+  f.ch.rotation.order = 'YXZ'; f.ch.rotation.set(rx, yaw, 0); f.ch.position.set(pos.x, gy + y, pos.z);
   if (f.isP) { const G = X.G(); G.x = pos.x; G.z = pos.z; G.r = face; }
   if (!h) { f.ch.userData.punchT = f.act ? 0.2 : 0; return; }
   X.HU.play(h, down ? 'fall' : 'idle', down ? 0.12 : 0.35); h.mixer.update(dt); X.markAnim(f.ch.userData);
-  const B = h.bones; const footY = () => { f.ch.updateMatrixWorld(true); return Math.min(B.LeftFoot.getWorldPosition(va).y, B.RightFoot.getWorldPosition(vb).y) - f.ch.position.y; };
-  if (f.foot0 == null && !down) f.foot0 = footY(); // ankle height standing straight, before any pose
+  const B = h.bones; const PTS = ['LeftFoot', 'RightFoot', 'LeftToeBase', 'RightToeBase'];
+  const footY = () => { f.ch.updateMatrixWorld(true); let m = 1e9; for (const n of PTS) if (B[n]) m = Math.min(m, B[n].getWorldPosition(va).y); return m - f.ch.position.y; }; // lowest point of either shoe (heel or toe) above the body's origin
+  const slope = side => { B[side + 'Foot'].getWorldPosition(va); B[side + 'ToeBase'].getWorldPosition(vb); return vc.subVectors(vb, va).normalize().y; };
+  if (f.foot0 == null && !down) { f.foot0 = footY(); f.slope0 = (slope('Left') + slope('Right')) / 2; } // standing straight, before any pose: how high the shoes sit and how flat they lie
   if (f.pw > 0.02) applyPose(f, cur, f.pw);
-  // plant the feet: lift or lower the body so the lowest foot rests on the street (never through it)
+  if (f.pw > 0.02 && f.slope0 != null && B.LeftToeBase) { // feet that stand on the ground lie flat again (a bent knee tips the toes into the road otherwise)
+    f.ch.updateMatrixWorld(true); const ly = B.LeftFoot.getWorldPosition(va).y, ry = B.RightFoot.getWorldPosition(vb).y, lo = Math.min(ly, ry);
+    for (const [side, y] of [['Left', ly], ['Right', ry]]) { if (y - lo > 0.14) continue; // a raised (kicking) foot keeps its pose
+      const foot = B[side + 'Foot'], toe = B[side + 'ToeBase']; foot.getWorldPosition(va); toe.getWorldPosition(vb); const d = vc.subVectors(vb, va); d.y = 0; if (d.lengthSq() < 1e-6) continue;
+      d.normalize().multiplyScalar(Math.sqrt(1 - f.slope0 * f.slope0)); d.y = f.slope0; aimBone(foot, toe, d.normalize(), f.pw); }
+  }
+  // plant the feet: lift or lower the body so the shoes rest on the street exactly as they do standing (never through it)
   if (f.thrown <= 0) { const fy = footY();
-    if (f.foot0 != null && !down) f.ch.position.y = (f.foot0 - fy) * f.pw + (cur.lift || 0); else if (down) f.ch.position.y = Math.max(0, f.ch.position.y); }
+    if (f.foot0 != null && !down) f.ch.position.y = gy + (Math.max(f.foot0, 0) + 0.012 - fy) * f.pw + (cur.lift || 0); /* the toe joint never below the surface */ else if (down) f.ch.position.y = Math.max(gy, f.ch.position.y); }
 }
 function cheer(c, dt) { const h = c.mesh.userData.human; if (h) { X.HU.play(h, Math.floor(SF.t / 3 + c.x) % 2 ? 'dance' : 'talk', 0.3); h.mixer.update(dt); X.markAnim(c.mesh.userData); } }
 function camera(dt) {

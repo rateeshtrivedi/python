@@ -3535,7 +3535,7 @@ function loop(t) {
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
 ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); }, r: 16, label: () => G.ev?.type === 'baraat' ? 'Baraat: note udao (₹1,000)' : null, act: async () => { if (G.ev?.type !== 'baraat') return; const r = await buy('misc', 'notes'); if (r.ok) { G.dance = true; toast('Note udaye! Sab dekh rahe hain'); } } });
-SF.init({ el, toast, bigText, say, grunt, A, HU, burst, lang: () => I18N.LANG, P: () => P, G: () => G, player: () => player, markAnim: u => { u.animF = HFRAME; }, flash: () => flashHit() });
+SF.init({ el, toast, bigText, say, grunt, A, HU, burst, groundY, lang: () => I18N.LANG, P: () => P, G: () => G, player: () => player, markAnim: u => { u.animF = HFRAME; }, flash: () => flashHit() });
 FD.init({ bx, cyl, sph, sign, labelSprite, disposeSprite, texFrom, glow, mat, makeRoom, zone, addCol, npcStatic, makeChar, sitChar, dressFrom, pick, SHIRTS: D.SHIRTS, fmt, el, toast, openModal, closeModal, itemRow, net, A,
   P: () => P, G: () => G, lang: () => I18N.LANG, say: (o, t, s) => say(o, t.length > 70 ? t.slice(0, 68) + '…' : t, s),
   seat: (s, cam) => { G.seat = s; G.camFix = cam; G.frozen = true; G.dance = false; document.body.classList.add('suseat'); }, unseat: () => { G.seat = null; G.camFix = null; G.frozen = false; document.body.classList.remove('suseat'); const u = player.userData; u.sit = false; player.position.y = 0; },
