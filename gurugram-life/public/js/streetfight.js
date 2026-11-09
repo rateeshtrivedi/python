@@ -58,6 +58,13 @@ const STANCE = {
 };
 const BLOCK = P({ drop: 0.04, lean: 0.1, twist: -0.15, armL: [0.3, -0.35, 0.75], foreL: [-0.3, 0.9, 0.25], armR: [-0.3, -0.35, 0.75], foreR: [0.3, 0.9, 0.25] }); // both forearms up in front of the face
 const WIN = P({ drop: -0.12, armL: [0.3, 0.95, 0.1], foreL: [0.05, 1, 0], armR: [-0.3, -0.9, 0.1], foreR: [0, -1, 0.2] });
+const HIT = P({ lean: -0.4, twist: 0.25, roll: 0.12, armL: [0.55, -0.45, 0.35], foreL: [0.35, 0.3, 0.6], armR: [-0.55, -0.45, 0.35], foreR: [-0.35, 0.3, 0.6] }); // recoil: head back, guard knocked open
+function bendKnees(p, k, ph) { // crouch by bending the knees (feet stay planted), plus a shuffle-step when ph is set
+  const o = { ...p }; const sw = ph == null ? 0 : Math.sin(ph) * 0.28;
+  for (const [t, sh, sgn] of [['thighL', 'shinL', 1], ['thighR', 'shinR', -1]]) { if (!p[t] || !p[sh]) continue;
+    o[t] = p[t].clone().add(V(0, 0, k + sw * sgn)).normalize(); o[sh] = p[sh].clone().add(V(0, 0, -k * 0.9)).normalize(); }
+  return o;
+}
 const fullR = P({ armR: [-0.05, 0.05, 1], foreR: [-0.02, 0.06, 1] });
 // moves: keyframes over the move's whole duration (wind + act + rec), on top of the stance
 const MOVES = {
@@ -98,7 +105,7 @@ export function start(o) {
   const C = V((G.x + bx) / 2, 0, (G.z + bz) / 2), A = V(ax, 0, az); let N = V(-az, 0, ax);
   const near = pl.parent ? nearMeshes(C, pl.parent) : []; if (blockers(C, N, pl, o.boss.mesh, near).length > blockers(C, N.clone().negate(), pl, o.boss.mesh, near).length) { N.negate(); A.negate(); } // film from the clearer side (A flips too, so the player stays on the left)
   const lv = F.bossLevel(o.ch, X.P().level || 1); const bossStyle = F.BOSS_STYLE[o.ch % F.BOSS_STYLE.length];
-  const mk = (ch, isP, style, hp, dmg) => ({ ch, isP, style, hp, max: hp, dmg, s: isP ? -2.1 : 2.1, act: null, block: false, stun: 0, down: 0, thrown: 0, cd: 0, walk: 0, think: 0.6, aiBlock: 0, aiWalk: 0, aiDir: 0, wins: 0 });
+  const mk = (ch, isP, style, hp, dmg) => ({ ch, isP, style, hp, max: hp, dmg, s: isP ? -2.1 : 2.1, act: null, block: false, stun: 0, down: 0, thrown: 0, cd: 0, walk: 0, vel: 0, cur: null, pw: 1, ph: 0, foot0: null, think: 0.6, aiBlock: 0, aiWalk: 0, aiDir: 0, wins: 0 });
   SF = { o, C, A, N, lv, hidden: new Set(), near, phase: 'pick', t: 0, round: 1, clock: F.ROUND_SECS, banner: null, shake: 0, crowd: o.crowd || [], keys: {}, touch: {},
     me: mk(pl, true, null, F.HP, 1), foe: mk(o.boss.mesh, false, bossStyle, lv.hp, lv.dmg), name: o.name };
   o.boss.sfHold = true; for (const c of SF.crowd) c.sfHold = true; SF.wasNoBlock = o.boss.mesh.userData.noBlock; o.boss.mesh.userData.noBlock = true; pl.userData.noBlock = true;
@@ -157,7 +164,7 @@ function flee() { // Esc: run away; the boss laughs and the fight is off for now
 
 // ---------------------------------------------------------------- per frame (call after updateHumans, before render)
 export function tick(dt) {
-  if (!SF) return; const { me, foe } = SF; SF.t += dt;
+  if (!SF) return; const { me, foe } = SF; SF.t += dt; const realDt = dt; if (SF.stop > 0) { SF.stop -= dt; dt *= 0.06; } // hit-stop: a split-second freeze on impact
   if (SF.banner && (SF.banner.t -= dt) <= 0) { SF.banner = null; const b = document.getElementById('sfBanner'); if (b) b.style.opacity = '0'; }
   if (SF.phase === 'fight') {
     SF.clock -= dt; me.block = !!(SF.keys.KeyL || SF.touch.block) && !me.act && me.stun <= 0 && me.down <= 0;
@@ -165,8 +172,9 @@ export function tick(dt) {
     ai(foe, me, dt); for (const [a, b] of [[me, foe], [foe, me]]) step(a, b, dt);
     const w = F.roundWinner(me.hp, foe.hp, SF.clock); if (w) roundOver(w);
   } else for (const f of [me, foe]) { f.stun = Math.max(0, f.stun - dt); f.down = Math.max(0, f.down - dt); }
-  for (const f of [me, foe]) { f.cd = Math.max(0, f.cd - dt); if (f.thrown > 0) f.thrown = Math.max(0, f.thrown - dt); }
-  place(me, foe, dt); place(foe, me, dt); for (const c of SF.crowd) cheer(c, dt); camera(dt); clearView(); renderHud();
+  for (const f of [me, foe]) { f.cd = Math.max(0, f.cd - dt); if (f.thrown > 0) f.thrown = Math.max(0, f.thrown - dt);
+    if (f.vel) { const other = f.isP ? foe : me; let s2 = f.s + f.vel * dt; s2 = Math.max(-F.ARENA, Math.min(F.ARENA, s2)); if (f.isP ? other.s - s2 >= F.MIN_GAP : s2 - other.s >= F.MIN_GAP) f.s = s2; f.vel *= Math.exp(-dt * 9); if (Math.abs(f.vel) < 0.02) f.vel = 0; } } // knockback slides
+  place(me, foe, dt); place(foe, me, dt); for (const c of SF.crowd) cheer(c, realDt); sparks(realDt); camera(realDt); clearView(); renderHud();
 }
 function walk(f, dir, dt) {
   if (!dir || f.act || f.block || f.stun > 0 || f.down > 0 || f.thrown > 0) { f.walk = 0; return; }
@@ -190,12 +198,26 @@ function step(a, b, dt) { // advance a's move and land its hits on b
   if (A.t >= A.dur) a.act = null;
 }
 function land(a, b, r, A) {
-  b.hp = Math.max(0, b.hp - r.dmg); const push = r.kb * (b.isP ? -1 : 1); b.s = Math.max(-F.ARENA, Math.min(F.ARENA, b.s + push)); if (Math.abs(a.s - b.s) < F.MIN_GAP) b.s = a.s + (b.isP ? -F.MIN_GAP : F.MIN_GAP);
-  const p = b.ch.position; X.burst && X.burst(p.x, 1.5, p.z, r.blocked ? 0x9ad1ff : 0xffd21f, r.blocked ? 10 : 18, { speed: 3, life: 0.35, grav: 2 });
+  b.hp = Math.max(0, b.hp - r.dmg); b.vel = r.kb * (b.isP ? -1 : 1) * 7; // pushed back, sliding
+  spark(contact(a, A.kind), r.blocked ? 0.55 : r.thrown ? 1.3 : 0.9, r.blocked); SF.stop = r.blocked ? 0.04 : r.thrown || r.broke ? 0.11 : 0.07;
   if (r.blocked) { X.A.sfx('click', 0.5); pop(b, tx(T.blocked)); b.stun = 0.12; return; }
   X.A.sfx('punch'); X.grunt(b.ch, 'hit'); SF.shake = Math.max(SF.shake, r.thrown ? 0.35 : 0.15); if (b.isP) X.flash && X.flash();
   b.act = null; b.block = false; if (r.broke) pop(b, tx(T.broke)); if (r.thrown) { b.thrown = 1.1; b.down = 1.7; pop(b, tx(T.thrown)); A.throwT = 0; } else if (r.down) b.down = 1.3; else b.stun = 0.32;
 }
+let SPARK_T = null; const SPARKS = [];
+function sparkTex() { if (SPARK_T) return SPARK_T; const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.translate(64, 64);
+  const rg = g.createRadialGradient(0, 0, 0, 0, 0, 30); rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(0.4, 'rgba(255,236,190,.9)'); rg.addColorStop(1, 'rgba(255,150,40,0)'); g.fillStyle = rg; g.beginPath(); g.arc(0, 0, 30, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(255,245,220,.95)'; g.lineCap = 'round'; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + (i % 2) * 0.2, r0 = 14, r1 = i % 2 ? 44 : 60; g.lineWidth = i % 2 ? 3 : 5; g.beginPath(); g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); g.stroke(); }
+  SPARK_T = new THREE.CanvasTexture(c); return SPARK_T; }
+function contact(f, kind) { // where the blow lands: the striking hand or foot
+  const h = f.ch.userData.human; const n = kind === 'kick' || (kind === 'special' && f.style === 'kungfu' && f.act && f.act.t / f.act.dur > 0.6) ? 'RightFoot' : 'RightHand';
+  if (h && h.bones[n]) return h.bones[n].getWorldPosition(V(0, 0, 0)); const p = f.ch.position; return V(p.x, 1.4, p.z);
+}
+function spark(at, size, blocked) {
+  const m = new THREE.SpriteMaterial({ map: sparkTex(), color: blocked ? 0xbfe3ff : 0xffffff, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
+  const sp = new THREE.Sprite(m); sp.position.copy(at); sp.material.rotation = Math.random() * 3; SF.me.ch.parent.add(sp); SPARKS.push({ sp, t: 0, size });
+}
+function sparks(dt) { for (let i = SPARKS.length - 1; i >= 0; i--) { const s = SPARKS[i]; s.t += dt; const k = s.t / 0.16; s.sp.scale.setScalar(s.size * (0.35 + k * 0.9)); s.sp.material.opacity = Math.max(0, 1 - k); if (k >= 1) { s.sp.parent && s.sp.parent.remove(s.sp); s.sp.material.dispose(); SPARKS.splice(i, 1); } } }
 function pop(f, text) { SF.pops = SF.pops || []; SF.pops.push({ f, text, t: 0.9 }); }
 function roundOver(w) {
   const { me, foe } = SF; SF.phase = 'between'; const ko = me.hp <= 0 || foe.hp <= 0; banner(ko ? tx(T.ko) : tx(T.time), 1.4); X.A.sfx(ko ? 'ko' : 'click');
@@ -204,7 +226,7 @@ function roundOver(w) {
   setTimeout(() => { if (!SF) return; if (mw) { SF.phase = 'over'; const won = mw === 'a'; banner(won ? (me.hp >= me.max ? tx(T.perfect) : tx(T.youWin)) : tx(T.youLose), 2.2); X.A.sfx(won ? 'level' : 'ko'); setTimeout(() => end(won), 2300); } else { SF.round++; roundStart(); } }, 1800);
 }
 function end(won) {
-  if (!SF) return; const s = SF; SF = null; const G = X.G(); const pl = X.player(); for (const o of s.hidden) o.visible = true;
+  if (!SF) return; const s = SF; SF = null; const G = X.G(); const pl = X.player(); for (const o of s.hidden) o.visible = true; for (const k of SPARKS.splice(0)) k.sp.parent && k.sp.parent.remove(k.sp);
   for (const f of [s.me, s.foe]) f.ch.rotation.x = 0; s.o.boss.sfHold = false; for (const c of s.crowd) c.sfHold = false; s.o.boss.mesh.userData.noBlock = s.wasNoBlock; pl.userData.noBlock = false;
   G.sf = false; G.frozen = false; G.camFix = null; document.body.classList.remove('sfmode'); for (const id of ['sfHud', 'sfPick', 'sfPad']) { const e = document.getElementById(id); if (e) e.remove(); }
   const fx = s.me.ch.position; G.x = fx.x; G.z = fx.z; s.o.boss.x = s.foe.ch.position.x; s.o.boss.z = s.foe.ch.position.z;
@@ -215,20 +237,31 @@ function end(won) {
 function place(f, other, dt) {
   const { C, A } = SF; const face = Math.atan2(f.isP ? A.x : -A.x, f.isP ? A.z : -A.z); const h = f.ch.userData.human;
   const pos = V(C.x + A.x * f.s, 0, C.z + A.z * f.s);
-  const pose = f.style ? STANCE[f.style] : STANCE.karate; let full = pose;
-  if (f.act) full = sample(MOVES[f.style][f.act.kind], f.act.t / f.act.dur, pose);
-  else if (f.block) full = over(BLOCK, pose);
-  if (SF.phase === 'over' && f.hp > 0 && f.wins >= F.WINS) full = over(WIN, pose);
-  const yaw = face + (full.yaw || 0);
-  // the body: knocked down, thrown through the air, stunned, or on its feet
-  let clip = 'idle', y = -(full.drop || 0) + (full.lift || 0), rx = 0;
-  if (f.thrown > 0) { const k = 1 - f.thrown / 1.1; const thrower = other; const arc = Math.sin(Math.min(1, k * 1.2) * Math.PI); pos.set(C.x + A.x * (thrower.s + (f.isP ? -1 : 1) * (0.9 + k * 0.9)), 0, C.z + A.z * (thrower.s + (f.isP ? -1 : 1) * (0.9 + k * 0.9))); y = arc * 1.5; rx = -Math.min(1, k * 1.25) * Math.PI * 0.55; clip = 'fall'; }
-  else if (f.hp <= 0 || f.down > 0) clip = 'fall'; else if (f.stun > 0) clip = 'hit'; else if (f.walk) clip = 'walk';
-  f.ch.position.set(pos.x, Math.max(-0.4, y), pos.z); f.ch.rotation.order = 'YXZ'; f.ch.rotation.set(rx, clip === 'fall' && f.thrown <= 0 ? face : yaw, 0);
+  const base = f.style ? STANCE[f.style] : STANCE.karate;
+  // the guard bounces like a fighter on his toes; walking is a shuffle-step, not a stroll
+  if (f.walk) f.ph += dt * 11; const bounce = (Math.sin(SF.t * 5.2 + (f.isP ? 0 : 1.7)) * 0.5 + 0.5) * 0.07;
+  const stance = bendKnees(base, (base.drop || 0) * 1.6 + bounce, f.walk ? f.ph : null);
+  let want = stance;
+  if (f.act) want = sample(MOVES[f.style][f.act.kind], f.act.t / f.act.dur, stance);
+  else if (f.stun > 0) want = over(HIT, stance);
+  else if (f.block) want = over(BLOCK, stance);
+  if (SF.phase === 'over' && f.hp > 0 && f.wins >= F.WINS) want = over(WIN, stance);
+  // glide towards the wanted pose: strikes snap fast, everything else eases
+  const rate = f.act ? 30 : f.stun > 0 ? 26 : 14; f.cur = f.cur ? mix(f.cur, want, 1 - Math.exp(-dt * rate)) : want; const cur = f.cur;
+  const down = f.hp <= 0 || f.down > 0 || f.thrown > 0; f.pw += ((down ? 0 : 1) - f.pw) * Math.min(1, dt * (down ? 14 : 5)); // getting up blends back into the guard
+  let rx = 0, y = 0, yaw = face + (cur.yaw || 0);
+  if (f.thrown > 0) { const k = 1 - f.thrown / 1.1; const arc = Math.sin(Math.min(1, k * 1.2) * Math.PI); const off = (f.isP ? -1 : 1) * (0.9 + k * 0.9); pos.set(C.x + A.x * (other.s + off), 0, C.z + A.z * (other.s + off)); y = arc * 1.5; rx = -Math.min(1, k * 1.25) * Math.PI * 0.55; yaw = face; }
+  else if (down) yaw = face;
+  f.ch.rotation.order = 'YXZ'; f.ch.rotation.set(rx, yaw, 0); f.ch.position.set(pos.x, y, pos.z);
   if (f.isP) { const G = X.G(); G.x = pos.x; G.z = pos.z; G.r = face; }
-  if (h) { const k = clip === 'walk' ? 'walk' : clip; X.HU.play(h, k, clip === 'fall' ? 0.12 : 0.18, clip === 'walk' ? (f.walk < 0 ? -0.8 : 0.9) : 1); h.mixer.update(dt); X.markAnim(f.ch.userData);
-    if (clip === 'idle' || clip === 'walk') applyPose(f, full, clip === 'walk' ? 0.55 : 1); }
-  else f.ch.userData.punchT = f.act ? 0.2 : 0;
+  if (!h) { f.ch.userData.punchT = f.act ? 0.2 : 0; return; }
+  X.HU.play(h, down ? 'fall' : 'idle', down ? 0.12 : 0.35); h.mixer.update(dt); X.markAnim(f.ch.userData);
+  const B = h.bones; const footY = () => { f.ch.updateMatrixWorld(true); return Math.min(B.LeftFoot.getWorldPosition(va).y, B.RightFoot.getWorldPosition(vb).y) - f.ch.position.y; };
+  if (f.foot0 == null && !down) f.foot0 = footY(); // ankle height standing straight, before any pose
+  if (f.pw > 0.02) applyPose(f, cur, f.pw);
+  // plant the feet: lift or lower the body so the lowest foot rests on the street (never through it)
+  if (f.thrown <= 0) { const fy = footY();
+    if (f.foot0 != null && !down) f.ch.position.y = (f.foot0 - fy) * f.pw + (cur.lift || 0); else if (down) f.ch.position.y = Math.max(0, f.ch.position.y); }
 }
 function cheer(c, dt) { const h = c.mesh.userData.human; if (h) { X.HU.play(h, Math.floor(SF.t / 3 + c.x) % 2 ? 'dance' : 'talk', 0.3); h.mixer.update(dt); X.markAnim(c.mesh.userData); } }
 function camera(dt) {
