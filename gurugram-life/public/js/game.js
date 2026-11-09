@@ -5,6 +5,7 @@ import { net } from './net.js';
 import * as A from './audio.js';
 import * as I18N from './i18n.js';
 import * as FD from './founder.js';
+import * as SF from './streetfight.js';
 import * as HU from './humans.js';
 import * as RL from './realism.js';
 import * as RD from './rides.js';
@@ -773,11 +774,14 @@ function updateDon() {
     for (let i = 0; i < s.C.hench; i++) { const h = makeFighter(pick(['Chela', 'Chamcha', 'Chela No. ' + (i + 1)]), x + Math.cos(i * 2.1) * 3, z + Math.sin(i * 2.1) * 3, Math.round(45 * k), Math.max(3, Math.round(5 * soft)), 0x222222); h.don = true; h.donCh = s.ch; h.donSpot = s.d.spot; FIGHTERS.push(h); DONF.push(h); } }
   const boss = DONF.find(n => n.donBoss); if (!boss) return; const d = Math.hypot(G.x - boss.x, G.z - boss.z);
   if (!boss.seen && d < 45 && !G.inside) { boss.seen = true; bigText('CHAPTER ' + (s.ch + 1) + ': ' + s.C.boss.toUpperCase(), s.at[2] + ' · Gali ke Don', 2.2); }
-  if (d < 13 && !G.inside && !G.veh && G.hp > 0) for (const n of DONF) if (n.state === 'wander') { n.state = 'aggro'; if (n.donBoss && !n.taunted) { n.taunted = true; say(n, s.C.taunt, 3); } }
+  if (d < 13 && !G.inside && !G.veh && G.hp > 0 && !SF.active() && boss.state !== 'ko' && !G.race && !G.story && now() > (boss.faceCD || 0)) { // FACE-OFF: one on one, the chele stand round and watch
+    if (!boss.taunted) { boss.taunted = true; say(boss, s.C.taunt, 3); } for (const n of DONF) if (n.state === 'aggro') n.state = 'wander';
+    SF.start({ boss, ch: s.ch, name: s.C.boss, crowd: DONF.filter(n => n !== boss && n.state !== 'ko'),
+      onWin: () => { boss.hp = 0; npcKO(boss); }, onLose: () => { boss.faceCD = now() + 20; G.hp = 1; takeHit(5, s.C.boss, boss); }, onFlee: () => { boss.faceCD = now() + 15; } }); }
 }
 // the phone rings: how a new player finds the story. Accepting brings the boss to the nearest corner.
 function maybeDonCall(s) {
-  if (G.donCallOpen || G.film || G.story || G.cold || G.cut || G.wbOpen || BK.on || TRIAL.on || POT.on || G.minigame || !$('raceres').hidden || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return; // not over the intro film, the cold open, a cutscene or any card // not over the intro film or a story card
+  if (G.sf || G.donCallOpen || G.film || G.story || G.cold || G.cut || G.wbOpen || BK.on || TRIAL.on || POT.on || G.minigame || !$('raceres').hidden || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return; // not over the intro film, the cold open, a cutscene or any card // not over the intro film or a story card
   if (G.story || (G.race && G.race.phase !== 'done') || G.frun || G.map || G.inside || G.selfie || G.minigame || G.chase || !$('modal').hidden || !$('raceres').hidden || G.veh && Math.abs(G.vs) > 20) return;
   const day = P.missions && P.missions.day; const lc = L.donCalls && L.donCalls.day === day ? L.donCalls : { day, n: 0 }; if (lc.n >= 2) return;
   lc.n++; L.donCalls = lc; saveLocal(); showDonCall(s);
@@ -1107,6 +1111,7 @@ function resolve(o, r) {
 const keys = {}; let joyX = 0, joyY = 0, runBtn = false;
 window.addEventListener('keydown', e => {
   if (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) { if (e.key === 'Escape') { closeChat(); document.activeElement.blur(); } return; }
+  if (G.sf && SF.key(e.code, true)) { e.preventDefault(); return; } // street fight: its own keys (and Esc runs away)
   if (G.minigame && e.key.startsWith('Arrow')) { G.minigame.press(e.key); e.preventDefault(); return; }
   if (e.key === 'Escape' || (e.code === 'KeyM' && G.map)) { if (G.map) { closeMap3D(); return; } if (!$('modal').hidden) closeModal(); else if (G.selfie) endSelfie(); else if (!$('raceres').hidden) cleanupRace(); return; }
   if (!$('raceres').hidden && $('modal').hidden && G.race) { if (e.key === 'Enter') { e.preventDefault(); return startRace(G.race.R.id); } if (e.code === 'KeyN' && D.RACES[G.race.i + 1] && raceUnlocked(G.race.i + 1)) return startRace(D.RACES[G.race.i + 1].id); }
@@ -1117,7 +1122,7 @@ window.addEventListener('keydown', e => {
   if (k === 'KeyB') toggleDance(); if (k === 'KeyH') horn(); if (k === 'KeyC') startSelfie(); if (k === 'KeyG') throwColor();
   if (k.startsWith('Arrow') || k === 'Space') e.preventDefault();
 });
-window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('keyup', e => { keys[e.code] = false; if (G.sf) SF.key(e.code, false); });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 let drag = null;
 const locked = () => document.pointerLockElement === canvas;
@@ -1177,6 +1182,7 @@ function updateZones() {
 function inFlood(x, z) { if (G.wet) return true; if (G.ev?.type !== 'flood') return false; const d = blockOf(x, z); return d && G.ev.data.districts.includes(d[2]); }
 function updatePlayer(dt) {
   if (G.selfie) return;
+  if (G.sf) { G.moving = false; return; } // in a face-off the fight places and animates the player
   if (G.seat) { const s = G.seat; G.x = s.x; G.z = s.z; G.r = s.r; player.position.set(s.x, s.y, s.z); player.rotation.y = s.r; sitChar(player); G.moving = false; return; } // at a desk or the boardroom table
   let ix = 0, iy = 0; const blocked = G.frozen || G.modal || G.map || !$('chatbar').hidden;
   if (!blocked) { ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joyX; iy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joyY; }
@@ -1380,6 +1386,7 @@ async function startDangal() { if (G.veh) return; if (G.belt && G.belt.id !== P.
 function updateFighters(dt) {
   const gone = [];
   for (const n of FIGHTERS) {
+    if (n.sfHold) continue; // the face-off places, animates and scores these
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
     if (ROB && ROB.n === n && n.state !== 'ko') { const rx = ROB.x - n.x, rz = ROB.z - n.z, rd = Math.hypot(rx, rz), mv = rd > 0.5; if (mv) { n.x += rx / rd * Math.min(rd, 4.5 * dt); n.z += rz / rd * Math.min(rd, 4.5 * dt); n.r = Math.atan2(rx, rz); } m.position.set(n.x, groundY(n.x, n.z), n.z); m.rotation.y = n.r; animChar(m, dt, mv ? 1 : 0, 1.3); continue; } // the robber walks to your batua, nothing else
     if ((n.jack || n.badla || n.fromPed || n.don) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && !n.don && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
@@ -2661,7 +2668,7 @@ function updateRush() {
   const d = e.type === 'baraat' ? Math.abs(G.x - sp.x) : Math.hypot(G.x - sp.x, G.z - sp.z); if (d < (e.type === 'thaila' ? 6 : 20)) { G.evReached = true; net.send('evreach', {}); if (e.type === 'thaila') { BAG.visible = bagBeacon.visible = false; A.sfx('cash'); } }
 }
 function updateNav() {
-  const tg = !G.inside && !G.map && !raceArrow.visible ? navTarget() : null; const d = tg ? Math.hypot(tg.x - G.x, tg.z - G.z) : 0;
+  const tg = !G.inside && !G.map && !G.sf && !raceArrow.visible ? navTarget() : null; /* no GPS arrow in a face-off */ const d = tg ? Math.hypot(tg.x - G.x, tg.z - G.z) : 0;
   const st = tg && d > 9 ? routeStep(tg) : null; if (st) navPoint(wpArrow, st.x, st.z); else { wpArrow.visible = false; NAVT.wp = null; }
   drawNavRing();
   const chip = $('navchip'), show = !!tg && !(G.race && G.race.phase !== 'done');
@@ -3522,12 +3529,13 @@ function loop(t) {
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
-  updateHumans(dt); if ((shT += dt) > 2) { shT = 0; RL.shadowize(scene); }
+  updateHumans(dt); SF.tick(dt); if ((shT += dt) > 2) { shT = 0; RL.shadowize(scene); }
   Object.assign(DAYV, { wet: WX.wl, inside: !!G.inside, map: !!G.map, t: t / 1000, dt }); RL.frame(camera, G.started ? G.x : camera.position.x, G.started ? G.z : camera.position.z, DAYV); renderer.render(scene, camera);
 }
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
 // Notes and baraat: Action near the procession throws notes
 ZONES.push({ zone: 'out', get x() { return -222; }, get z() { return baraatZ(); }, r: 16, label: () => G.ev?.type === 'baraat' ? 'Baraat: note udao (₹1,000)' : null, act: async () => { if (G.ev?.type !== 'baraat') return; const r = await buy('misc', 'notes'); if (r.ok) { G.dance = true; toast('Note udaye! Sab dekh rahe hain'); } } });
+SF.init({ el, toast, bigText, say, grunt, A, HU, burst, lang: () => I18N.LANG, P: () => P, G: () => G, player: () => player, markAnim: u => { u.animF = HFRAME; }, flash: () => flashHit() });
 FD.init({ bx, cyl, sph, sign, labelSprite, disposeSprite, texFrom, glow, mat, makeRoom, zone, addCol, npcStatic, makeChar, sitChar, dressFrom, pick, SHIRTS: D.SHIRTS, fmt, el, toast, openModal, closeModal, itemRow, net, A,
   P: () => P, G: () => G, lang: () => I18N.LANG, say: (o, t, s) => say(o, t.length > 70 ? t.slice(0, 68) + '…' : t, s),
   seat: (s, cam) => { G.seat = s; G.camFix = cam; G.frozen = true; G.dance = false; document.body.classList.add('suseat'); }, unseat: () => { G.seat = null; G.camFix = null; G.frozen = false; document.body.classList.remove('suseat'); const u = player.userData; u.sit = false; player.position.y = 0; },

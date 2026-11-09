@@ -173,6 +173,36 @@
    "beat": "edm seed 32 (keys, beeps, ring, pops)",
    "song": "Kar Har Maidaan Fateh (Sanju)",
    "backup": "Zinda (Bhaag Milkha Bhaag)"
+  },
+  {
+   "date": "2026-11-02",
+   "day": 17,
+   "pov": "POV: Gurugram is an RPG and you're only Lv 3",
+   "format": "turn-based RPG battle UI over gameplay: battle flash on frame 1, enemy/player HP plates, move menu, typewriter text box, hit shake; five 'wild encounters', the police as final boss, 'YOU BLACKED OUT'",
+   "scenes": "wild cow on the road (HONK, not very effective), auto bhaiya at Rajiv Chowk ('meter kharab hai', wallet bar drains), pothole on MG Road (critical hit, Scooty fainted), baraat x200 on Golf Course Road (DHOL DHAMAKA, TIME bar drains), police jeep chase at night (CHALLAN ₹5,000)",
+   "beat": "action seed 33 (scratch hits, moo, horn, siren)",
+   "song": "Bhaag DK Bose, Aandhi Aayi (Delhi Belly)",
+   "backup": "Dhan Te Nan (Kaminey)"
+  },
+  {
+   "date": "2026-11-04",
+   "day": 18,
+   "pov": "POV: Your startup money ran out in Gurugram (Part 2)",
+   "format": "sequel to Day 16 (the best performer) in the same founder-story format: home PG desk at night, vibe-coding prompts on the live laptop screen, a 3:30 AM bug, launch, a ₹10 lakh pitch with a haggle punchline",
+   "scenes": "PG room at night, own laptop (hook: bank balance ₹1,430), over-the-shoulder vibe coding a tiffin app, bug then fix, TiffinWala live after 7 features, Bansal Ventures boardroom ('₹10 lakh for 20%' / 'Ma'am… 12%?'), 'Fine. 15%. Final!'",
+   "beat": "edm seed 34 (keys, beeps, ring, pops)",
+   "song": "Zinda (Bhaag Milkha Bhaag)",
+   "backup": "Lakshya (Lakshya)"
+  },
+  {
+   "date": "2026-11-06",
+   "day": 19,
+   "pov": "POV: First Diwali after raising ₹10 lakh (Part 3)",
+   "format": "Diwali special, Part 3 of the founder story: Diwali night rockets, gold chain for Mummy, 'investor ka paisa, rocket mein', then Mummy at home: 'Itne paise? Kahan se?' → 'Par naukri kab lagegi?' punchline",
+   "scenes": "founder silhouette under Diwali rockets (hook), Goyal Jewellers at night, rockets up close (burn rate), PG room with Mummy in a red saree (three-quarter shot), push-in on Mummy for the punchline",
+   "beat": "filmy seed 35 (pops, clink, crowd)",
+   "song": "Deepavali Manayi Suhani (Shirdi Wale Sai Baba)",
+   "backup": "Happy Diwali (Home Delivery)"
   }
  ]
 }
