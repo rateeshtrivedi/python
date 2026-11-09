@@ -448,3 +448,33 @@ body.cutscene #game::before{top:0}body.cutscene #game::after{bottom:0}
 @media (max-width:520px){.supanel{bottom:6px;padding:8px}.suchat{max-height:84px}.supanel.pitch .suq{font-size:16px}}
 body.suseat #hud > :not(#toasts):not(#raceres){visibility:hidden} /* seated at a laptop or the boardroom: only the scene, toasts and cards */
 .sureact{margin:0 0 4px;color:#99f6e4}
+/* ---- street fight mode (face-off with a Gali ke Don boss) ---- */
+body.sfmode #hud > :not(#toasts){visibility:hidden}
+body.sfmode #joy, body.sfmode .joy{visibility:hidden}
+#sfHud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:'Baloo 2',sans-serif}
+.sfbars{position:absolute;left:12px;right:12px;top:10px;display:flex;align-items:flex-start;gap:10px}
+.sfside{flex:1;min-width:0}.sfside b{display:block;color:#fff;font:800 18px/1.1 'Baloo 2';text-shadow:0 2px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sfside.foe{text-align:right}.sfside span{color:#ffd21f;font-size:14px;letter-spacing:2px;text-shadow:0 1px 0 #000}
+.sfbar{height:16px;border:3px solid #141414;border-radius:8px;background:#5a1414;overflow:hidden;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+.sfbar i{display:block;height:100%;width:100%;background:linear-gradient(#ffe066,#f59e0b);transition:width .15s}
+.sfside.foe .sfbar i{margin-left:auto}
+#sfClock{min-width:52px;text-align:center;font:800 30px/1 'Baloo 2';color:#fff;background:#141414;border-radius:10px;padding:6px 6px 2px;border:3px solid #ffd21f}
+#sfBanner{position:absolute;left:0;right:0;top:34%;text-align:center;font:800 64px/1 'Baloo 2';color:#ffd21f;-webkit-text-stroke:8px #141414;paint-order:stroke fill;text-shadow:0 6px 0 #141414;opacity:0;transition:opacity .25s}
+#sfBanner.pop{animation:sfpop .35s ease-out}
+@keyframes sfpop{0%{transform:scale(1.8)}100%{transform:scale(1)}}
+#sfPops{position:absolute;left:0;right:0;top:24%;display:flex;justify-content:space-between;padding:0 18%}
+.sfpop{font:800 22px 'Baloo 2';color:#fff;-webkit-text-stroke:5px #141414;paint-order:stroke fill}.sfpop.foe{margin-left:auto}
+#sfKeys{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;font:700 14px 'Baloo 2';text-shadow:0 1px 2px #000;opacity:.85}
+body.touch #sfKeys{display:none}
+.sfpick{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;width:min(760px,94vw);background:rgba(20,16,12,.94);border:3px solid #ffd21f;border-radius:18px;padding:16px;color:#fff;text-align:center;font-family:'Baloo 2',sans-serif}
+.sfpick h2{margin:0 0 4px;font:800 26px 'Baloo 2';color:#ffd21f}.sfpick .small{margin:0 0 12px;opacity:.85}
+.sfcards{display:flex;gap:10px}.sfcard{flex:1;position:relative;background:#2a2118;color:#fff;border:2px solid #6b5a3d;border-radius:14px;padding:12px 10px;text-align:left;cursor:pointer;font-family:inherit}
+.sfcard:hover,.sfcard:focus{border-color:#ffd21f;background:#3a2c1c}.sfcard b{display:block;font:800 22px 'Baloo 2'}.sfcard small{display:block;opacity:.85;margin:2px 0 6px}
+.sfcard ul{margin:0;padding-left:16px;font-size:13px;line-height:1.35}.sfcard i{position:absolute;right:10px;top:8px;font-style:normal;background:#ffd21f;color:#141414;border-radius:6px;padding:0 7px;font-weight:800}
+@media (max-width:600px){.sfcards{flex-direction:column}.sfcard{padding:8px 10px}.sfcard ul{display:none}}
+#sfPad{position:fixed;left:0;right:0;bottom:0;z-index:41;display:none;justify-content:space-between;align-items:flex-end;padding:0 12px 18px;pointer-events:none}
+body.touch #sfPad{display:flex}
+#sfPad .sfmove,#sfPad .sfacts{display:flex;gap:10px;pointer-events:auto}#sfPad .sfacts{display:grid;grid-template-columns:repeat(2,auto);gap:10px}
+.sfbtn{min-width:74px;height:64px;border-radius:16px;border:3px solid #141414;font:800 16px 'Baloo 2';color:#141414;box-shadow:0 4px 0 #141414;touch-action:none;user-select:none}
+.sfbtn.l,.sfbtn.r{width:70px;background:#fffdf4;font-size:26px}.sfbtn.p{background:#ffd21f}.sfbtn.k{background:#f97316}.sfbtn.b{background:#60a5fa}.sfbtn.s{background:#ef4444;color:#fff}.sfbtn.cd{opacity:.45}
+@media (max-width:700px){#sfKeys{display:none}#sfPad{display:flex}} /* phones: always the touch pad, even after a keyboard was used */
