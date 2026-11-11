@@ -191,6 +191,7 @@ function ai(f, foe, dt) {
 }
 function step(a, b, dt) { // advance a's move and land its hits on b
   a.stun = Math.max(0, a.stun - dt); a.down = Math.max(0, a.down - dt); const A = a.act; if (!A) return; A.t += dt; const m = A.m, n = m.hits || 1;
+  if (n > 1 && A.t >= m.wind && A.t < m.wind + m.act) { const gap = Math.abs(a.s - b.s), want = m.range - 0.3; if (gap > want) { const mv = Math.min(gap - want, dt * 4); a.s += a.isP ? mv : -mv; } } // a combo steps in after its target, so every hit connects
   while (A.hits < n && A.t >= m.wind + m.act * (A.hits / n)) {
     A.hits++; const gap = Math.abs(a.s - b.s); if (!F.inReach(m, gap + 0.05) || b.down > 0 || b.thrown > 0) continue;
     const r = F.resolveHit(m, b.block && (!b.act), a.dmg); land(a, b, r, A);
@@ -198,7 +199,8 @@ function step(a, b, dt) { // advance a's move and land its hits on b
   if (A.t >= A.dur) a.act = null;
 }
 function land(a, b, r, A) {
-  b.hp = Math.max(0, b.hp - r.dmg); b.vel = r.kb * (b.isP ? -1 : 1) * 7; // pushed back, sliding
+  const last = A.hits >= (A.m.hits || 1); // a combo's early hits only nudge, so the rest of the combo still connects; the last one knocks back
+  b.hp = Math.max(0, b.hp - r.dmg); b.vel = r.kb * (last ? 1 : 0.12) * (b.isP ? -1 : 1) * 7; // pushed back, sliding
   spark(contact(a, A.kind), r.blocked ? 0.55 : r.thrown ? 1.3 : 0.9, r.blocked); SF.stop = r.blocked ? 0.04 : r.thrown || r.broke ? 0.11 : 0.07;
   if (r.blocked) { X.A.sfx('click', 0.5); pop(b, tx(T.blocked)); b.stun = 0.12; return; }
   X.A.sfx('punch'); X.grunt(b.ch, 'hit'); SF.shake = Math.max(SF.shake, r.thrown ? 0.35 : 0.15); if (b.isP) X.flash && X.flash();
