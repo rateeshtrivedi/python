@@ -1,0 +1,8 @@
+[
+ {"sc": 0, "dur": 2.2, "pre": 1.6, "pov": "POV: You told Mummy you're quitting your job for a startup 💀", "time": "⚔️ FACE-OFF", "cap": "Mummy: \"Job CHHOD DI??\" 😠", "capAt": 0.3},
+ {"sc": 1, "dur": 1.9, "pre": 0.1, "time": "Mummy fights: 🐉 Kung Fu", "cap": "Me: Karate 🥋 (YouTube se seekha)", "capAt": 0.6},
+ {"sc": 2, "dur": 2.5, "pre": 0.1, "time": "My best punch 👊", "cap": "BLOCKED 😐", "capAt": 1.7},
+ {"sc": 3, "dur": 1.8, "pre": 0.1, "time": "My best kick 🦵", "cap": "Mummy: \"Bas itna hi?\" 🙂", "capAt": 0.6},
+ {"sc": 4, "dur": 2.9, "pre": 0.1, "time": "🐢 SLOW MO", "cap": "🩴 CHAPPAL COMBO x4 🩴", "capAt": 0.3},
+ {"sc": 5, "dur": 2.7, "pre": 0.1, "time": "Mummy: \"Kal se office jaana\" 🏢", "cap": "EMOTIONAL DAMAGE 💀", "capAt": 0.5, "big": true}
+]
