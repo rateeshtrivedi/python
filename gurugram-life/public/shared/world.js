@@ -830,7 +830,8 @@ function botTick() {
 }
 
 // ------------------------------------------------------------------ people today, invites, the weekly sector war
-function seenToday(p) { if (p.bot) return; const d = istDay(); if (!db.seen || db.seen.day !== d) db.seen = { day: d, ids: [] }; if (!db.seen.ids.includes(p.id)) { db.seen.ids.push(p.id); dirty = true; } }
+function seenToday(p) { if (p.bot) return; const d = istDay(); p.days = p.days || []; if (!p.days.includes(d)) { p.days.push(d); if (p.days.length > 120) p.days.splice(0, p.days.length - 120); } // which days they played (owner stats)
+  if (!db.seen || db.seen.day !== d) db.seen = { day: d, ids: [] }; if (!db.seen.ids.includes(p.id)) { db.seen.ids.push(p.id); dirty = true; } }
 const todayCount = () => (db.seen && db.seen.day === istDay() ? db.seen.ids.length : 0);
 const refCount = p => Object.values(db.profiles).filter(x => x.refBy === p.id && x.refPaid).length;
 function refReward(c) { // the invited friend finished their first kaam: both of them get a Bullet (or its price if they have one)
@@ -896,7 +897,7 @@ function connect(out, closeFn, meta, outRaw) {
     },
     close() {
       if (!c) return; if (conns.get(c.p.id) === c) { conns.delete(c.p.id); broadcast({ t: 'left', id: c.p.id }); }
-      c.p.lastSeen = Date.now(); c.p.playMs = (c.p.playMs || 0) + (Date.now() - c.since); dirty = true;
+      c.p.lastSeen = Date.now(); c.p.playMs = (c.p.playMs || 0) + (Date.now() - c.since); if (c.p.firstMs == null && (c.p.visits || 0) <= 1) c.p.firstMs = Date.now() - c.since; dirty = true; // first session length (owner stats)
     },
   };
 }
@@ -1016,7 +1017,13 @@ function stats() {
   const since = ms => list.filter(p => p.lastSeen > t - ms).length, joined = ms => list.filter(p => p.created > t - ms).length;
   const real = Object.values(db.profiles).filter(p => !p.bot); const has = (p, k) => !!(p.steps && p.steps[k]); const funnel = FUNNEL.map(([k, label]) => ({ k, label, n: real.filter(p => has(p, k)).length, cold: real.filter(p => p.ab === 'cold' && has(p, k)).length, classic: real.filter(p => p.ab === 'classic' && has(p, k)).length }));
   const evc = {}; for (const p of real) for (const [k, v] of Object.entries(p.evc || {})) evc[k] = (evc[k] || 0) + v;
-  return { funnel, evc, today: todayCount(), total: list.length, online: conns.size, active24h: since(day), active7d: since(7 * day), new24h: joined(day), new7d: joined(7 * day), players: list };
+  // coming back: a second visit at all, on a later day, and the very next day (from the visit days recorded from now on, else from join and last-seen days)
+  const plus1 = d => istDay(new Date(d + 'T12:00:00Z').getTime() + day); const med = a => { const b = a.filter(x => x != null).sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : null; };
+  const ret2 = real.filter(p => (p.visits || 0) > 1).length, later = real.filter(p => istDay(p.created) !== istDay(p.lastSeen) || (p.days || []).length > 1).length;
+  const d1Base = real.filter(p => istDay(p.created) < istDay(t)), d1 = d1Base.filter(p => { const j = istDay(p.created); return (p.days || []).includes(plus1(j)) || (istDay(p.lastSeen) === plus1(j)); }).length;
+  const weeks = []; for (let w = 5; w >= 0; w--) { const a = t - (w + 1) * 7 * day, b = t - w * 7 * day; const joinedW = real.filter(p => p.created > a && p.created <= b); weeks.push({ from: a, to: b, n: joinedW.length, back: joinedW.filter(p => (p.visits || 0) > 1).length }); }
+  const retention = { ret2, later, d1, d1Base: d1Base.length, medMin: med(list.map(p => p.playMin)), medFirst: med(real.map(p => p.firstMs == null ? null : Math.round(p.firstMs / 6e4))), firstN: real.filter(p => p.firstMs != null).length, weeks };
+  return { funnel, evc, retention, today: todayCount(), total: list.length, online: conns.size, active24h: since(day), active7d: since(7 * day), new24h: joined(day), new7d: joined(7 * day), players: list };
 }
 
 return { connect, tick100, tick1s, persist, stats, players: () => conns.size };
