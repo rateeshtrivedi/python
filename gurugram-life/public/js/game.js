@@ -974,7 +974,12 @@ async function appCrew() {
     b.append(el('p', { text: 'Crew ke log jis sector mein ghoomte hain aur jahan KO karte hain, wahan ki pakad badhti hai. Kabze wale sectors se har minute online members ko bonus milta hai. Minimap pe crew ke rang dikhte hain.' }));
     { const w = r.war, top = crews.slice().sort((x, y) => y.turf - x.turf)[0]; b.append(el('p', { class: 'warbox', text: '⚔ Hafte ki ilaaka jung: har Monday sabse zyada areas wali crew jeetti se, har member ko ' + fmt(5000) + '.' + (top && top.turf ? ' Abhi aage: [' + top.tag + '] ' + top.turf + ' areas.' : '') + (w && w.last ? ' Pichhle hafte: [' + w.last.tag + '] ' + w.last.name + '.' : '') })); }
     const mine = crews.find(c => c.id === P.crew);
-    if (mine) { b.append(el('h3', { text: 'Teri crew: [' + mine.tag + '] ' + mine.name }), el('p', { text: mine.members + ' members · ' + mine.turf + ' areas · leader ' + mine.leader }), itemRow('Leave crew', '', 'Leave', async () => { const x = await net.req('crew_leave', {}); if (x.ok) { toast('Crew chhod di'); appCrew(); } }, false, true)); }
+    if (mine) { b.append(el('h3', { text: 'Teri crew: [' + mine.tag + '] ' + mine.name }), el('p', { text: mine.members + ' members · ' + mine.turf + ' areas · leader ' + mine.leader }));
+      b.append(el('h3', { text: '📨 Crew mein bulao' }), itemRow('Invite link bhejo', 'WhatsApp pe dost ko: link khole, crew mein aaye (aur dono ko Bullet)', 'Share', () => crewLink(mine)));
+      const near = [...REMOTES.entries()].filter(([, R]) => R.visible && R.info && !R.info.ai && !R.info.crew && R.inn === (G.inside || '') && Math.hypot(R.mesh.position.x - G.x, R.mesh.position.z - G.z) < 40);
+      if (near.length) for (const [id, R] of near) b.append(itemRow(R.info.name + ' · Lv ' + R.info.level, 'Paas mein se, kisi crew mein nahi', 'Bulao', async () => { const x = await net.req('crew_invite', { target: id }); toast(x.ok ? R.info.name + ' ko invite bhej diya!' : x.error, x.ok ? 'money' : 'bad'); }));
+      else b.append(el('p', { class: 'fine', text: 'Paas mein koi bina-crew player nahi. Link bhej ke dost bulao, ya kisi player ke paas ja ke yahan se bulao.' }));
+      b.append( itemRow('Leave crew', '', 'Leave', async () => { const x = await net.req('crew_leave', {}); if (x.ok) { toast('Crew chhod di'); appCrew(); } }, false, true)); }
     else {
       b.append(el('h3', { text: 'Nayi crew banao (' + fmt(D.CREW_PRICE) + ')' }));
       const n = el('input', { class: 'field', id: 'crewName', maxlength: '18', placeholder: 'Crew name, e.g. Sector 29 Sher' }); const t = el('input', { class: 'field', id: 'crewTag', maxlength: '4', placeholder: 'Tag, e.g. S29' });
@@ -2060,8 +2065,15 @@ function openDanceOff() {
     b.append(itemRow(t ? 'Dance-off vs ' + REMOTES.get(t).info.name : 'Floor pe koi aur nahi', 'Winner: +20 party, +5 respect, announcement', 'Challenge', async () => { const r = await net.req('challenge', { kind: 'dance', target: t }); if (!r.ok) return toast(r.error, 'bad'); toast('Challenge bhej diya!'); closeModal(); }, !t));
   });
 }
+function crewLink(cr) { const url = location.origin + '/?crew=' + encodeURIComponent(cr.id) + '&ref=' + encodeURIComponent(P.id), text = 'Meri crew [' + cr.tag + '] ' + cr.name + ' join kar, Gurugram Life mein! Free 3D game 🏍 ' + url;
+  if (navigator.share) navigator.share({ title: 'Gurugram Life crew', text, url }).catch(() => {}); else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  try { if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {}); } catch {} toast('Crew invite link copy ho gaya'); }
+// opened someone's crew link: once you're in the city, offer to join
+async function crewLinkOffer() { const id = lsGet('gl_crewInv'); if (!id || !P || P.crew === id) return; lsSet('gl_crewInv', ''); const r = await net.req('crews', {}); const cr = ((r.ok && r.crews) || []).find(c => c.id === id); if (!cr || P.crew) return;
+  showCard('📨 Crew invite: [' + cr.tag + '] ' + cr.name, cr.members + ' members · ' + cr.turf + ' areas · leader ' + cr.leader + '. Dost ne bulaya se!', [['Join karo 🤝', async () => { $('raceres').hidden = true; const x = await net.req('crew_join', { id }); toast(x.ok ? 'Crew [' + cr.tag + '] mein swagat se!' : x.error, x.ok ? 'money' : 'bad'); }], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]); }
 function showInvite(m) {
   const box = $('invite'); box.hidden = false; box.textContent = '';
+  if (m.kind === 'crew') { box.append(el('b', { text: m.name + ' ne tujhe crew [' + m.crew.tag + '] ' + m.crew.name + ' (' + m.crew.members + ' members) mein bulaya!' })); const row = el('div', { class: 'row' }); row.append(el('button', { class: 'buy', text: 'Join 🤝', onclick: async () => { box.hidden = true; const r = await net.req('accept', { kind: 'crew' }); toast(r.ok ? 'Crew [' + m.crew.tag + '] mein swagat se!' : r.error, r.ok ? 'money' : 'bad'); } }), el('button', { class: 'buy alt', text: 'Nahi, shukriya', onclick: () => { box.hidden = true; } })); box.append(row); clearTimeout(G.inviteT); G.inviteT = setTimeout(() => { box.hidden = true; }, 55000); return; }
   box.append(el('b', { text: m.name + (m.kind === 'roast' ? ' ne roast battle ke liye lalkaara!' : ' ne dance-off ke liye lalkaara!') }));
   const row = el('div', { class: 'row' }); row.append(el('button', { class: 'buy', text: 'Accept', onclick: async () => { box.hidden = true; const r = await net.req('accept', { kind: m.kind }); if (!r.ok) toast(r.error, 'bad'); } }), el('button', { class: 'buy alt', text: 'Darr gaya (decline)', onclick: () => { box.hidden = true; } })); box.append(row);
   clearTimeout(G.inviteT); G.inviteT = setTimeout(() => { box.hidden = true; }, 28000);
@@ -3398,7 +3410,7 @@ function startGame(daily) {
   const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length); const cl = chapterLine();
   step('play'); if (fresh && NEWBIE) step('ab_' + AB); if (G.coldOpen) lsSet('gl_intro', 1); /* the cold open replaces the long film (Help → Intro film) */ lsSet('gl_home', P.home); const intro = fresh && !lsGet('gl_intro'); // the dream film plays once, for someone who has never played
   const begin = () => {
-    setTimeout(() => { restoreJob(); bkResume(); }, 3200); // a reload keeps the job and the Bada Kaam you were on
+    setTimeout(() => { restoreJob(); bkResume(); }, 3200); setTimeout(crewLinkOffer, 9000); // a crew link waits until the opening is over // a reload keeps the job and the Bada Kaam you were on
     if (st[0] === 'ghar' && P.home !== 'street' && goInside(true)) bigText(cl ? 'ADHYAY ' + cl.n + ' · ' + cl.C.title.toUpperCase() : 'SUBAH HO GAYI', D.HOUSES[P.home].name + ' · ' + clockText(), 2.6);
     else if (st[0] === 'ghar') bigText(cl ? 'ADHYAY ' + cl.n + ' · ' + cl.C.title.toUpperCase() : 'RAJIV CHOWK', 'Footpath, Rajiv Chowk · ' + clockText(), 2.6);
     else bigText(st[1].toUpperCase(), 'Gurugram · ' + clockText(), 2);
@@ -3419,6 +3431,7 @@ function evc(k) { net.send('evc', { k }); } // counts: deaths, a stuck camera
 const AB = (() => { const q = (location.search.match(/[?&]start=(cold|classic)\b/) || [])[1]; if (q) { lsSet('gl_ab', q); return q; } let v = lsGet('gl_ab'); if (v !== 'cold' && v !== 'classic') { v = Math.random() < 0.5 ? 'cold' : 'classic'; lsSet('gl_ab', v); } return v; })();
 const NEWBIE = !lsGet('gl_token'); // never connected from this browser
 { const r = (location.search.match(/[?&]ref=([\w-]{6,16})\b/) || [])[1]; if (r && NEWBIE) lsSet('gl_ref', r); } // invited by a friend
+{ const c = (location.search.match(/[?&]crew=([\w-]{4,16})\b/) || [])[1]; if (c) lsSet('gl_crewInv', c); } // a crew invite link: offered once you're in
 const coldFirst = () => NEWBIE && AB === 'cold';
 pre('landing');
 
