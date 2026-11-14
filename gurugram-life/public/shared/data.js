@@ -38,6 +38,9 @@ export const START_MONEY = 0; // khaali jeb: the first rupee comes from work
 // one game day (sun up to sun up, and one set of aaj ke kaam) is 15 real minutes, timed by the server so everyone shares it
 export const DAY_SECS = 2700; // a game day is 45 real minutes (32 game-minutes a real minute)
 export const gameDay = (ms = Date.now()) => Math.floor(ms / 1000 / DAY_SECS);
+// weekly season: Monday 00:00 IST to Sunday night
+export const weekId = (ms = Date.now()) => Math.floor((Math.floor((ms + 5.5 * 3600e3) / 86400e3) + 3) / 7);
+export const weekFrac = (ms = Date.now()) => { const t = (ms + 5.5 * 3600e3) / 86400e3; return ((Math.floor(t) + 3) % 7 + (t % 1)) / 7; };
 export const taskDay = (ms = Date.now()) => Math.floor((ms + 5.5 * 3600e3) / 86400e3); // aaj ke kaam: a real Gurugram day, new at midnight IST
 export const dayFrac = (ms = Date.now()) => (ms / 1000 % DAY_SECS) / DAY_SECS; // 0 = midnight, 0.5 = noon
 // chapter n is played on the way to LADDER[n]; the last chapter's prize is the diamond set
@@ -93,7 +96,7 @@ export const PLOTS = [
 export const plotPrice = (pl, day = gameDay()) => Math.round(pl.base * (1 + 0.22 * Math.sin(day * 0.9 + pl.ph) + 0.1 * Math.sin(day * 2.3 + pl.ph * 2)) / 1000) * 1000;
 export const plotRent = pl => Math.round(pl.base * 0.004 / 10) * 10; // paid every game day you own it
 // petrol: every motor vehicle has a tank; fill up at a petrol pump
-export const PETROL_RATE = 100; // ₹ a litre
+export const PETROL_RATE = 60; // ₹ a litre (a ride costs about ₹60-150 of petrol and pays ₹400-1,100)
 // a knocked-down NPC drops his batua (or her purse): a little cash to pick up. A player knocked down by an NPC loses a bit the same way.
 export const DROP = { min: 40, max: 160, perLevel: 5, big: [300, 900], keep: 120 };
 export const robAmount = money => Math.min(money, Math.max(50, Math.round(money * 0.04)), 1500); // the one who KOs you grabs 4% of your batua (max ₹1,500)
@@ -175,7 +178,8 @@ export const EARN = {
   ride: { max: 1100, cd: 14 }, delivery: { max: 700, cd: 10 }, loot: { max: 150, cd: 6 }, dangal: { max: 1000, cd: 45 },
   coldopen: { max: 1000, cd: 5 }, gift: { max: 1500, cd: 140 }, biz: { max: 40000, cd: 5 },
   quest: { max: 1600, cd: 90 }, flood: { max: 1200, cd: 30 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
-  holi: { max: 80, cd: 2.5 }, // gulal on a passer-by during Holi (up to 15 a Holi)
+  holi: { max: 80, cd: 2.5 },
+  naach: { max: 640, cd: 40 }, // the baraat dance mini-game: Rs 40 a beat you hit // gulal on a passer-by during Holi (up to 15 a Holi)
 };
 
 

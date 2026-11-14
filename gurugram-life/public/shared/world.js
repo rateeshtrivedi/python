@@ -68,7 +68,7 @@ function addXP(c, n) {
     if (!tasksDone(p)) { p.xp = D.xpNeed(p.level); if (n > 0 && rateOk(c, 'xpcap', 60)) send(c, { t: 'toast', text: 'XP full! Level ' + (p.level + 1) + ' ke liye aaj ke kaam mein se 2 poore kar' }); break; }
     p.xp -= D.xpNeed(p.level); p.level++; up = true; ensureMissions(p);
   }
-  if (up) { const bonus = 200 * p.level; p.money += bonus; send(c, { t: 'toast', text: 'Level up! Ab tu Level ' + p.level + ' se. Bonus ' + fmt(bonus), kind: 'money', sfx: 'level' }); broadcast(pinfo(c)); }
+  if (up) { const bonus = 200 * p.level; p.money += bonus; send(c, { t: 'levelup', level: p.level, bonus }); broadcast(pinfo(c)); } // the client throws the party (level-up screen)
   dirty = true;
 }
 function track(c, k, n = 1) {
@@ -315,7 +315,13 @@ let lbCache = null;
 function leaderboards() {
   const ps = Object.values(db.profiles).filter(p => !p.bot && p.lastSeen > Date.now() - 7 * 864e5 && (p.level > 1 || ((p.c || {}).earned || 0) > 0) && !D.badName(p.name)); // active players only: no idle starter accounts, no crude names
   const top = (fn, n = 10) => ps.map(p => ({ id: p.id, name: p.name, v: fn(p), crew: crewOf(p) ? crewOf(p).tag : null })).filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, n);
-  lbCache = { rich: top(D.netWorth), fight: top(p => p.c.kos || 0), party: top(p => p.party || 0), respect: top(p => p.respect || 0), crews: crewList().sort((a, b) => b.turf - a.turf || b.members - a.members).slice(0, 10) };
+  // the weekly season: money made since Monday; the AI rivals race you for it so the board is never empty
+  const wk = D.weekId(), fr = D.weekFrac(); for (const p of ps) { if (!p.wk || p.wk.id !== wk) { p.wk = { id: wk, base: (p.c || {}).earned || 0 }; dirty = true; } }
+  const hsh = s => { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 100003; return h / 100003; };
+  const week = ps.map(p => ({ id: p.id, name: p.name, v: ((p.c || {}).earned || 0) - p.wk.base, crew: crewOf(p) ? crewOf(p).tag : null }))
+    .concat(AI_NAMES.map(([nm]) => ({ id: 'ai:' + nm, name: nm + ' (AI)', v: Math.round((2000 + hsh(nm + wk) * 42000) * fr / 10) * 10, crew: null, ai: true }))) // the same AI rivals you meet on the street
+    .filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 10);
+  lbCache = { week, weekEnds: Math.round((1 - fr) * 7 * 86400), rich: top(D.netWorth), fight: top(p => p.c.kos || 0), party: top(p => p.party || 0), respect: top(p => p.respect || 0), crews: crewList().sort((a, b) => b.turf - a.turf || b.members - a.members).slice(0, 10) };
   return lbCache;
 }
 
@@ -426,6 +432,7 @@ function handleEarn(c, m) {
   if (!cap) return { ok: false, error: 'Unknown' };
   let max = cap.max; if (worldEvent?.type === 'flood' && (reason === 'ride' || reason === 'delivery')) max *= 2;
   if (!rateOk(c, 'earn:' + reason, cap.cd * 0.85)) return { ok: false, error: 'Thoda ruk ke' };
+  if (reason === 'naach') { if (worldEvent?.type !== 'baraat') return { ok: false, error: 'Baraat chali gayi' }; track(c, 'naach'); addXP(c, 20); p.respect += 3; }
   if (reason === 'holi') { if (worldEvent?.type !== 'holi') return { ok: false, error: 'Holi khatam' }; const hk = worldEvent.start || 0; if (c.holiEv !== hk) { c.holiEv = hk; c.holiN = 0; } if (++c.holiN > 15) return { ok: false, error: 'Bas! Sab rang gaye' }; track(c, 'holi'); addXP(c, 4); }
   if (reason === 'prasad') { if (p.blessed === today()) return { ok: false, error: 'Aaj ka aashirwad mil gaya' }; p.blessed = today(); }
   if (reason === 'dangal') { track(c, 'wrestle'); if (!db.belt || !conns.has(db.belt.id)) giveBelt(c); }

@@ -558,3 +558,30 @@ body.racing #evcard,body.cutscene #evcard,body.film #evcard{display:none!importa
 #hud:has(#evcard:not([hidden])) #obj,#hud:has(#evcard:not([hidden])) #banner{display:none!important}
 body.touch #evcard{top:calc(108px + env(safe-area-inset-top,0px));min-width:0;max-width:calc(100% - 24px)}
 @media (max-width:700px){#evcard{top:calc(240px + env(safe-area-inset-top,0px));left:12px;transform:none}}
+/* today's goal in the stats card: segments, next reward, reset countdown, streak (stays in calm mode) */
+#daybar{display:grid;gap:2px;width:100%;margin-top:2px;padding:5px 8px;border:1px solid rgba(246,192,38,.45);border-radius:9px;background:rgba(246,192,38,.08);color:var(--cream);text-align:left;cursor:pointer;font:inherit}
+#daybar .dt{display:flex;align-items:center;gap:7px}#daybar .dt b{font:800 13px var(--display)}#daybar .dt small{margin-left:auto;font:700 11px var(--body);opacity:.75}
+#daybar .segs{display:flex;gap:3px;flex:1}#daybar .segs em{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.15)}#daybar .segs em.on{background:#2fc46b}
+#daybar .dp{display:flex;justify-content:space-between;gap:6px;font:700 11.5px var(--body);color:#ffd27a}#daybar .dp strong{color:#ff9a3c;white-space:nowrap}
+body.touch #daybar{display:none!important}body.touch #stat.open #daybar:not([hidden]){display:grid!important}
+
+/* level-up moment */
+#lvlup{position:fixed;inset:0;z-index:70;display:grid;place-content:center;justify-items:center;gap:4px;background:radial-gradient(circle,rgba(27,20,16,.55),rgba(27,20,16,.85));color:var(--cream);text-align:center;overflow:hidden;cursor:pointer;animation:lvlin .4s cubic-bezier(.2,1.4,.4,1)}
+#lvlup small{font:800 22px var(--display);letter-spacing:.3em;color:var(--sarson)}
+#lvlup b{font:800 150px/0.9 var(--display);color:#fff;-webkit-text-stroke:6px var(--sarson);paint-order:stroke fill;text-shadow:0 10px 0 #1b1410}
+#lvlup span{font:800 22px var(--display);color:#ffd27a}
+#lvlup ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}#lvlup li{background:rgba(255,255,255,.1);border-radius:10px;padding:6px 14px;font:700 16px var(--body);animation:lvlin .4s backwards}#lvlup li:nth-child(2){animation-delay:.15s}#lvlup li:nth-child(3){animation-delay:.3s}#lvlup li:nth-child(4){animation-delay:.45s}#lvlup li:nth-child(5){animation-delay:.6s}
+#lvlup .cf{position:absolute;top:-20px;width:9px;height:14px;border-radius:2px;animation:cf linear forwards}
+#lvlup.out{transition:opacity .6s;opacity:0}
+@keyframes lvlin{from{transform:scale(.6);opacity:0}}
+@keyframes cf{to{transform:translateY(110vh) rotate(720deg)}}
+.pgrid{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.pgrid span{padding:4px 10px;border-radius:99px;background:rgba(0,0,0,.08);font:700 12.5px var(--body);opacity:.6}.pgrid span.on{opacity:1;background:rgba(47,196,107,.18)}.pgrid span.cur{opacity:1;background:rgba(246,192,38,.3)}
+
+/* baraat naach mini-game */
+#naach{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:grid;justify-items:center;gap:6px;padding:12px 18px;background:rgba(27,20,16,.88);border:3px solid #ff2bd6;border-radius:18px;color:var(--cream);z-index:15}
+#naach small{font:800 12px var(--display);letter-spacing:.08em;color:#ff9be8}
+#naach .nk{font:800 64px/1 var(--display);color:#fff;text-shadow:0 4px 0 #ff2bd6}#naach .nk.pop{animation:lvlin .25s}
+#naach .nbar{width:200px;height:6px;border-radius:3px;background:rgba(255,255,255,.15)}#naach .nbar i{display:block;height:100%;border-radius:3px;background:#ff2bd6}
+#naach .ns{font:800 15px var(--display);color:#ffd27a}
+#naach .npads{display:flex;gap:8px}#naach .npads button{width:48px;height:44px;border:0;border-radius:10px;background:#ff2bd6;color:#fff;font:800 22px var(--display);cursor:pointer}
+body:not(.touch) #naach .npads{display:none}
