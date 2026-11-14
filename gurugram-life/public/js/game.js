@@ -7,6 +7,7 @@ import * as I18N from './i18n.js';
 import * as FD from './founder.js';
 import * as SF from './streetfight.js';
 import * as RC from './realcity.js';
+import { startHUD } from './hud.js';
 const REAL = /[?&]real\b/.test(location.search); // preview of the real-map Gurugram (OpenStreetMap)
 import * as HU from './humans.js';
 import * as RL from './realism.js';
@@ -121,6 +122,14 @@ function facadeMat(style, rw, rh) {
 }
 // buildings the follow camera must not end up behind (outdoors): footprint and height
 const CAM_BLOCK = [];
+// lamp poles and tree trunks: how far along player → camera (0..1) the first one sits; 1 = clear
+function camPoles(x0, z0, x1, z1) {
+  const dx = x1 - x0, dz = z1 - z0, L2 = dx * dx + dz * dz; if (L2 < 1e-6) return 1; let best = 1;
+  const minX = Math.min(x0, x1) - 1, maxX = Math.max(x0, x1) + 1, minZ = Math.min(z0, z1) - 1, maxZ = Math.max(z0, z1) + 1;
+  const test = (px, pz, r) => { if (px < minX || px > maxX || pz < minZ || pz > maxZ) return; const t = ((px - x0) * dx + (pz - z0) * dz) / L2; if (t <= 0.05 || t >= best) return; const qx = x0 + dx * t - px, qz = z0 + dz * t - pz; if (qx * qx + qz * qz < r * r) best = t; };
+  for (const l of LAMPS) test(l[0], l[1], 0.45); for (const t of TREES) test(t[0], t[1], 0.35 + 0.25 * t[2]);
+  return best;
+}
 // how far along the line player → camera (0..1) the first building in the way starts; 1 = clear
 function camBlock(x0, z0, x1, z1, y) {
   const dx = x1 - x0, dz = z1 - z0, pad = 0.45; let best = 1;
@@ -740,8 +749,8 @@ function renderMissions() {
   const box = $('mlist'), act = dailyTasks(); if (!P) return; box.textContent = ''; const nd = act.filter(a => a.done).length;
   $('missions').querySelector('h4').textContent = 'Aaj ke kaam · ' + nd + '/' + act.length + (P.streak && P.streak.n ? ' · 🔥' + P.streak.n : '');
   const story = []; const ds = donState(); if (ds) story.push(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? (ds.called ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.at[2] + ')' : '📞 Golu ka call: Gali ke Don ch ' + (ds.ch + 1)) : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
-  for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
-  { const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1]; story.push(el('button', { type: 'button', class: 'm don bk', onclick: openBade }, el('i', { text: '💥' }), el('span', { text: 'Bada Kaam ' + cl.n + ': ' + B.title + ' → ' + cl.C.prize }), el('b', { text: BK.on ? 'chal rya' : 'shuru' }))); } }
+  const nx = BK.on ? null : act.find(a => !a.done); for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : '') + (a === nx ? ' next' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
+  { const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1]; story.push(el('button', { type: 'button', class: 'm don bk' + (BK.on ? ' next' : ''), onclick: openBade }, el('i', { text: '💥' }), el('span', { text: 'Bada Kaam ' + cl.n + ': ' + B.title + ' → ' + cl.C.prize }), el('b', { text: BK.on ? 'chal rya' : 'shuru' }))); } }
   if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Agle din (15 min) naye kaam' : nd < 2 ? (2 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Teeno = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
   if (story.length) { box.append(el('h5', { class: 'mhead', text: 'Kahani · level ke kaam se alag' })); for (const e of story) box.append(e); } // the 3 daily kaam count; the story rows sit under their own heading
   const cl = chapterLine(); $('mchip').textContent = (cl ? '💥 Bada Kaam ' + cl.n + ' · ' : '') + '📋 ' + nd + '/' + act.length + ' · ' + dayClock();
@@ -793,7 +802,8 @@ function showDonCall(s) {
   const box = el('div', { id: 'doncall' }); box.innerHTML = '<div class="dc-in"><div class="dc-face">' + face + '</div><div class="dc-who"></div><div class="dc-sub">📞 Incoming call · Gali ke Don ch ' + (s.ch + 1) + '</div><div class="dc-msg"></div><div class="dc-btns"><button type="button" class="dc-no">Baad mein</button><button type="button" class="dc-yes">Chal, aata hoon 👊</button></div></div>';
   box.querySelector('.dc-who').textContent = who; box.querySelector('.dc-msg').textContent = '"' + msg + '"'; document.body.append(box);
   let rings = 0; const ring = setInterval(() => { if (rings++ > 6 || !box.isConnected) return clearInterval(ring); A.sfx('beep'); setTimeout(() => A.sfx('beep'), 180); }, 1300);
-  const close = () => { clearInterval(ring); box.remove(); G.donCallOpen = false; };
+  const close = () => { clearInterval(ring); box.remove(); G.donCallOpen = false; G.donCallClose = null; };
+  G.donCallClose = () => { close(); G.donCallNext = now() + 90; if (L.donCalls && L.donCalls.n > 0) { L.donCalls.n--; saveLocal(); } }; // a cutscene took the screen: ring again later, it doesn't count
   box.querySelector('.dc-no').onclick = () => { close(); G.donCallNext = now() + 600; toast('Golu: "Theek se bhai, jab time ho phone (Tab) mein Gali ke Don dabana."'); };
   box.querySelector('.dc-yes').onclick = () => { close(); G.donCallNext = now() + 600; acceptDon(); }; // no second ring while the server confirms
 }
@@ -1188,7 +1198,8 @@ function updatePlayer(dt) {
   if (G.sf) { G.moving = false; return; } // in a face-off the fight places and animates the player
   if (G.seat) { const s = G.seat; G.x = s.x; G.z = s.z; G.r = s.r; player.position.set(s.x, s.y, s.z); player.rotation.y = s.r; sitChar(player); G.moving = false; return; } // at a desk or the boardroom table
   let ix = 0, iy = 0; const blocked = G.frozen || G.modal || G.map || !$('chatbar').hidden;
-  if (!blocked) { ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joyX; iy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joyY; }
+  const turnKeys = !G.veh && !G.inside; /* on foot outdoors the arrow keys turn you, like a car; A/D still step sideways */ if (!blocked && turnKeys) { const tr = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0); if (tr) { G.yaw -= tr * dt * 2.4; G.r = angLerp(G.r, G.yaw, Math.min(1, dt * 10)); G.lookAt = now(); } }
+  if (!blocked) { ix = (keys.KeyD || (!turnKeys && keys.ArrowRight) ? 1 : 0) - (keys.KeyA || (!turnKeys && keys.ArrowLeft) ? 1 : 0) + joyX; iy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joyY; }
   ix = clamp(ix, -1, 1); iy = clamp(iy, -1, 1); if (G.tipsy > now()) ix += Math.sin(now() * 2.3) * 0.35;
   const ox = G.x, oz = G.z; let moving = false; const dep = G.inside ? 0 : waterDepth(G.x, G.z); G.depth = dep;
   const slow = (inFlood(G.x, G.z) && dep < 0.2 ? 0.55 : 1) * (G.hangover ? 0.8 : 1) * (G.veh ? 1 : dep > 0.8 ? 0.4 : dep > 0.25 ? 0.6 : 1);
@@ -1247,7 +1258,8 @@ function updateCamera(dt) {
     if (Math.hypot(cx - G.x, cz - G.z) < 2.6) { // backed into a wall: look from the room's side, up near the ceiling, so the room (and the door) stay in view
       const ax = I.ox - G.x, az = I.oz - G.z, ad = Math.hypot(ax, az) || 1; cx = clamp(G.x + ax / ad * 3.6, lx, hx); cz = clamp(G.z + az / ad * 3.6, lz, hz); cy = I.H - 0.6; snap = true; } }
   else { // a building between you and the camera: slide the camera in front of it (and a little higher) so the walls never hide you
-    const k = camBlock(G.x, G.z, cx, cz, cy); if (k < 1) { const full = Math.hypot(cx - G.x, cz - G.z), want = Math.max(1.1, full * k - 0.35), f = want / full; cx = G.x + (cx - G.x) * f; cz = G.z + (cz - G.z) * f; cy = h + 0.5 + (cy - h - 0.5) * Math.max(f, 0.6) + (1 - f) * 0.8; if (want < 3) cy = h + 0.6; /* no room behind you (back to a wall, under a shop awning): a close over-the-shoulder view below the awnings */ if (want < 1.9) { cy = h + 4.2; const back = 1.6 / (Math.hypot(cx - G.x, cz - G.z) || 1); cx = G.x + (cx - G.x) * back; cz = G.z + (cz - G.z) * back; } /* backing into the wall itself: look down from above so you never fill the lens */ snap = true; } }
+    const k = camBlock(G.x, G.z, cx, cz, cy); if (k < 1) { const full = Math.hypot(cx - G.x, cz - G.z), want = Math.max(1.1, full * k - 0.35), f = want / full; cx = G.x + (cx - G.x) * f; cz = G.z + (cz - G.z) * f; cy = h + 0.5 + (cy - h - 0.5) * Math.max(f, 0.6) + (1 - f) * 0.8; if (want < 3) cy = h + 0.6; /* no room behind you (back to a wall, under a shop awning): a close over-the-shoulder view below the awnings */ if (want < 1.9) { cy = h + 4.2; const back = 1.6 / (Math.hypot(cx - G.x, cz - G.z) || 1); cx = G.x + (cx - G.x) * back; cz = G.z + (cz - G.z) * back; } /* backing into the wall itself: look down from above so you never fill the lens */ snap = true; }
+    if (!REAL) { const kp = camPoles(G.x, G.z, cx, cz); if (kp < 1) { const f = Math.max(0.25, kp - 0.12); cx = G.x + (cx - G.x) * f; cz = G.z + (cz - G.z) * f; cy = h + 0.5 + (cy - h - 0.5) * Math.max(f, 0.7); snap = true; } } } // a pole or trunk in the way: come in just in front of it
   camWatch(dt, Math.hypot(cx - G.x, cz - G.z)); camWant.set(cx, cy, cz); camera.position.lerp(camWant, snap ? Math.min(1, dt * 25) : Math.min(1, dt * 10));
   if (G.tipsy > now()) { camera.position.x += Math.sin(now() * 1.7) * 0.3; camera.position.y += Math.sin(now() * 2.1) * 0.2; }
   camTarget.set(G.x, h + 0.4, G.z); camera.lookAt(camTarget); if (!G.inside) signsOutOfWay();
@@ -1256,8 +1268,9 @@ const sRay = new THREE.Raycaster(); let sHidden = [], sT = 0;
 function signsOutOfWay() {
   if (++sT % 3) return; for (const m of sHidden) m.visible = true; sHidden = [];
   const near = SIGNS.filter(m => { const p = m.getWorldPosition(camWant2); return Math.abs(p.x - G.x) < 22 && Math.abs(p.z - G.z) < 22; }); if (!near.length) return;
-  const to = new THREE.Vector3(G.x, (G.veh ? 1.2 : 1.4) + (G.jy || 0), G.z), from = camera.position, dir = to.clone().sub(from), len = dir.length(); sRay.set(from, dir.normalize()); sRay.far = len - 0.3;
-  for (const hit of sRay.intersectObjects(near, false)) { hit.object.visible = false; sHidden.push(hit.object); }
+  const from = camera.position; for (const y of G.veh ? [0.6, 1.2, 1.9] : [0.4, 1.3, 2.0]) { const to = new THREE.Vector3(G.x, y + (G.jy || 0), G.z), dir = to.clone().sub(from), len = dir.length(); sRay.set(from, dir.normalize()); sRay.far = len - 0.3; // head, body and legs: any sign in front of any of them goes
+    for (const hit of sRay.intersectObjects(near, false)) if (hit.object.visible) { hit.object.visible = false; sHidden.push(hit.object); } }
+  for (const m of near) if (m.visible) { m.getWorldPosition(camWant2); if (camWant2.distanceTo(from) < 1.2) { m.visible = false; sHidden.push(m); } } // the camera itself inside a sign
 }
 const camWant2 = new THREE.Vector3();
 
@@ -1922,7 +1935,7 @@ function updateEvents(dt) {
 }
 function updateBanner() {
   const b = $('banner'); if (G.chase) return; if (G.cold || G.cut) { b.hidden = true; return; } // the opening chase and cutscenes get the screen to themselves
-  if (G.ev) { const left = Math.max(0, Math.round(G.ev.end - serverNow())); b.hidden = false; b.textContent = G.ev.name + ' · ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); }
+  if (G.ev) { const left = Math.max(0, Math.round(G.ev.end - serverNow())); b.hidden = false; const et = (DAY.t + left / D.DAY_SECS) % 1, eh = Math.floor(et * 24), em = Math.floor((et * 24 - eh) * 60 / 5) * 5; b.textContent = G.ev.name + ' · ' + (eh % 12 || 12) + ':' + String(em).padStart(2, '0') + (eh < 12 ? ' am' : ' pm') + ' tak · ⏱ ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); } // ends on the game clock (a game day is 15 real minutes) with the real-time countdown beside it
   else if (G.evSoon && G.evSoon.at > now()) { b.hidden = false; b.textContent = '⏱ ' + Math.ceil(G.evSoon.at - now()) + 's mein: ' + G.evSoon.name; }
   else if (G.beef && G.beef.until > now()) { b.hidden = false; b.textContent = 'ROAD RAGE vs ' + G.beef.name + ' · ' + Math.ceil(G.beef.until - now()) + 's'; }
   else b.hidden = true;
@@ -2477,8 +2490,8 @@ function updateCrowd(dt) { if (REAL) return; // real-map preview: these still li
     if (!p.knock && p.still && p.placed) return; p.placed = true; // a standing group never moves unless someone runs into it
     if (!p.knock && (fr + k) % 6 && Math.abs(p.x - cx) + Math.abs(p.z - cz) > 170) return; // far away: refresh every 6th frame only
     let fall = 0, lift = 0; p.fall = 0; p.lift = 0; if (p.knock) { p.knock -= dt; const age = 7 - p.knock; if (age < 0.9) { p.x += p.kx * dt; p.z += p.kz * dt; lift = Math.sin(age / 0.9 * Math.PI) * 2.2; fall = Math.min(1, age / 0.6); } else fall = 1; if (p.knock <= 0) { p.knock = 0; p.placed = false; if (p.still) p.r += 1; } }
-    p.fall = fall; p.lift = lift; const bob = p.still || p.knock || p.wait > 0 ? 0 : Math.abs(Math.sin(t * 8 * p.sp + k)) * 0.08; e.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); q.setFromEuler(e); const hid = p.slot ? 0 : 1; // a realistic stand-in is showing this one
-    const put = (im, oy, sx, sy, sz) => { off.set(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx * hid, sy * hid, sz * hid); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
+    p.fall = fall; p.lift = lift; const gy = groundY(p.x, p.z) /* on top of the footpath, not inside it */; const bob = p.still || p.knock || p.wait > 0 ? 0 : Math.abs(Math.sin(t * 8 * p.sp + k)) * 0.08; e.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); q.setFromEuler(e); const hid = p.slot ? 0 : 1; // a realistic stand-in is showing this one
+    const put = (im, oy, sx, sy, sz) => { off.set(0, oy, 0).applyQuaternion(q); ps.set(p.x + off.x, gy + lift + bob + off.y + (fall ? 0.3 : 0), p.z + off.z); sc.set(sx * hid, sy * hid, sz * hid); m4.compose(ps, q, sc); im.setMatrixAt(k, m4); };
     put(legs, 0.5, 0.62, 1.0, 0.34); put(torso, 1.45, 0.86, 0.95, 0.46); put(head, 2.2, 0.32, 0.36, 0.32);
   });
   for (const im of CROWD.meshes) im.instanceMatrix.needsUpdate = true;
@@ -2498,7 +2511,7 @@ function crowdHumans(dt) {
   for (const g of ['m', 'f']) { const free = Math.floor(CPOOL.filter(s => s.g === g).length * (PERF.hk || 1)); want.filter(w => w[1].dress.g === g).slice(0, free).forEach(w => keep.add(w[1])); }
   for (const s of CPOOL) if (s.p && !keep.has(s.p)) release(s);
   for (const p of keep) if (!p.slot) { const s = CPOOL.find(x => !x.p && x.g === p.dress.g); if (!s) continue; s.p = p; p.slot = s; p.placed = false; HU.dressHuman(s.h, p.dress); }
-  for (const s of CPOOL) { if (!s.p) continue; const p = s.p, h = s.h; h.root.visible = true; const fall = p.fall || 0; h.root.position.set(p.x, (p.lift || 0) + (fall ? 0.25 : 0), p.z); h.root.rotation.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); // standing groups never set fall/lift
+  for (const s of CPOOL) { if (!s.p) continue; const p = s.p, h = s.h; h.root.visible = true; const fall = p.fall || 0; h.root.position.set(p.x, groundY(p.x, p.z) + (p.lift || 0) + (fall ? 0.25 : 0), p.z); h.root.rotation.set(-fall * Math.PI / 2, p.r, 0, 'YXZ'); // standing groups never set fall/lift
     const stand = (p.still || p.wait > 0) && !p.knock; HU.play(h, stand ? 'idle' : 'walk', 0.25, stand ? 1 : Math.min(1.5, p.sp / 1.7)); h.mixer.update(dt); }
 }
 function knockPerson(p) { const sp = Math.max(6, Math.abs(G.vs)); p.knock = 7; p.kx = Math.sin(G.r) * sp * 0.5; p.kz = Math.cos(G.r) * sp * 0.5; G.vs *= 0.82; A.sfx('punch', 0.8); A.sfx('crash', 0.4); if (Math.random() < 0.6) toast(pick(['Oye! Andha se ke?', 'Bhai dekh ke chala!', 'Arre maar diya re!', 'Police bulaunga!']), 'bad'); G.hitPeople = (G.hitPeople || 0) + 1; crowdPanic(G.x, G.z); crime('ped'); } // witnesses: a star each; two stars and someone dials 112
@@ -3043,8 +3056,11 @@ const BEATS = ['race', 'fight', 'swag', 'chase', 'club'];
 function step(k) { if (!P) return; P.steps = P.steps || {}; if (P.steps[k]) return; P.steps[k] = Date.now(); net.send('step', { k }); }
 function quest(title, sub) {
   const q = $('quest'); if (!title) { q.hidden = true; return; } q.hidden = false; q.textContent = '';
-  const n = G.story ? BEATS.indexOf(G.story.beat) + 1 : 0; q.append(el('small', { text: 'Pehla Din · ' + n + '/5' }), el('b', { text: title }));
-  if (sub) q.append(el('span', { text: sub })); q.append(el('button', { type: 'button', class: 'skip', text: 'Skip', onclick: skipStory }));
+  const bk = BK.on && !G.story; let tag; if (bk) { const n = MISSIONS[BK.i].steps.length; tag = 'Bada Kaam ' + (BK.i + 1) + ' · ' + Math.min(n, BK.step + 1) + '/' + n; } else tag = 'Pehla Din · ' + (G.story ? BEATS.indexOf(G.story.beat) + 1 : 0) + '/5';
+  q.append(el('small', { text: tag }), el('b', { text: title }));
+  if (sub) q.append(el('span', { text: sub }));
+  if (!bk) q.append(el('button', { type: 'button', class: 'skip', text: 'Skip', onclick: skipStory }));
+  else { const b = el('button', { type: 'button', class: 'skip', text: 'Chhodo' }); b.onclick = () => { const t = now(); if (BK.quitAsk && t - BK.quitAsk < 3) { BK.quitAsk = 0; bkFail('Kaam beech mein chhod diya'); } else { BK.quitAsk = t; b.textContent = 'Pakka? Dobara dabao'; setTimeout(() => { if (b.isConnected) b.textContent = 'Chhodo'; }, 3000); } }; q.append(b); }
 }
 // day one: off the bus, a bag, an empty pocket, and five dreams
 function arrival() {
@@ -3222,7 +3238,7 @@ function startGame(daily) {
   player = makeChar(D.SHIRTS[P.color]); scene.add(player); sendAvatar(); applyMyLook();
   const lp = G.startId === 'cont' && L.lastPos && !L.lastPos.inside ? L.lastPos : null; const st = STARTS.find(x => x[0] === G.startId) || STARTS[lp ? 4 : 0]; const sp = openNear(lp ? { x: lp.x, z: lp.z, r: lp.r || 0 } : st[3]()); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; G.pitch = 0.12; G.sx = G.x; G.sz = G.z;
   updateHUD(); renderMissions(); setNetChip(); G.startedAt = now();
-  { const k = $('keyhint'); k.hidden = false; k.innerHTML = '<kbd>W A S D</kbd> chalo · <kbd>Shift</kbd> daudo<br><kbd>Space</kbd> jump · <kbd>Click</kbd> punch<br><kbd>E</kbd> action · <kbd>F</kbd> gaadi · <kbd>M</kbd> map<br><kbd>Tab</kbd> menu · <kbd>T</kbd> chat · <kbd>Esc</kbd> mouse'; } // stays on screen
+  { const k = $('keyhint'); k.hidden = false; startHUD(); } // Shaant HUD: hints that learn, a card that calms down (hud.js)
   const fresh = !P.tutDone && !(P.raceWins && Object.keys(P.raceWins).length); const cl = chapterLine();
   step('play'); if (fresh && NEWBIE) step('ab_' + AB); if (G.coldOpen) lsSet('gl_intro', 1); /* the cold open replaces the long film (Help → Intro film) */ lsSet('gl_home', P.home); const intro = fresh && !lsGet('gl_intro'); // the dream film plays once, for someone who has never played
   const begin = () => {
@@ -3328,7 +3344,7 @@ async function autoTo(x, z, name) {
 { const b = el('button', { type: 'button', id: 'navauto', title: 'Auto bulao (₹50)', text: '🛺' }); b.onclick = () => { const t = navTarget(); if (t) autoTo(t.x, t.z, t.name); }; $('navx').before(b); } // fast travel to any GPS target: jobs, events, missions
 
 // --- camera and driving feel (RET-04): the camera swings in behind you as you walk; steering eases in; a gamepad works
-function footCam(dt, ix, iy) { if (drag || now() - (G.lookAt || 0) < 1.5 || iy < 0.3 || Math.abs(ix) > 0.3) return; G.yaw = angLerp(G.yaw, G.r, dt * 1.4); }
+function footCam(dt, ix, iy) { if (drag || now() - (G.lookAt || 0) < 1.5 || iy < -0.1 || Math.abs(ix) + Math.abs(iy) < 0.3) return; G.yaw = angLerp(G.yaw, G.r, dt * (iy > 0.3 ? 1.4 : 2.0)); } // no mouse for 1.5 s: the camera swings round behind you, so A/D turn you like in a car
 const PAD = { prev: [] };
 function padPoll(dt) {
   const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g && g.connected) : null; if (!gp) { if (PAD.on) { PAD.on = false; joyX = joyY = 0; } return; }
@@ -3479,7 +3495,7 @@ function appDhanda() {
 
 // --- story pull (RET-12): a short cutscene before each Bada Kaam, a phone call for the next one, a cliffhanger after
 function cutscene(lines, done) {
-  if (G.film || G.cut) return done(); G.cut = { i: 0, t0: now(), lines }; document.body.classList.add('cutscene'); const box = el('div', { id: 'cutcap' }); $('hud').append(box);
+  if (G.film || G.cut) return done(); if (G.donCallClose) G.donCallClose(); G.cut = { i: 0, t0: now(), lines }; document.body.classList.add('cutscene'); const box = el('div', { id: 'cutcap' }); $('hud').append(box);
   const a0 = G.yaw; let i = 0; const next = () => { if (!G.cut) return; if (i >= lines.length) return end(); const [who, text] = lines[i++]; box.textContent = ''; box.append(el('b', { text: who }), el('span', { text: text })); A.sfx('chat'); if (who === 'Tu') say(player, text, 2.4); G.cut.tm = setTimeout(next, Math.max(1600, text.length * 55)); };
   const end = () => { if (!G.cut) return; clearTimeout(G.cut.tm); G.cut = null; box.remove(); document.body.classList.remove('cutscene'); G.yaw = a0; done(); };
   box.onclick = () => { clearTimeout(G.cut.tm); next(); }; G.cutEnd = end; G.cut.orbit = t => { G.yaw = a0 + Math.sin(t * 0.35) * 0.6; G.lookAt = now(); };
@@ -3492,7 +3508,7 @@ const BK_LINES = [
 ];
 function bkLines(i) { const B = D.BADE[i]; return BK_LINES[i] || [[B.giver.split(',')[0], B.brief], ['Tu', 'Ho jaayega. Chalo!']]; }
 function phoneCall(i) {
-  const B = D.BADE[i]; if (!B || G.modal || G.race || BK.on || G.cut) return; const who = B.giver.split(',')[0]; let rings = 0; const ring = setInterval(() => { if (++rings > 4) clearInterval(ring); A.sfx('beep'); }, 700);
+  const B = D.BADE[i]; if (!B || G.modal || G.race || BK.on || G.cut || G.donCallOpen) return; const who = B.giver.split(',')[0]; let rings = 0; const ring = setInterval(() => { if (++rings > 4) clearInterval(ring); A.sfx('beep'); }, 700);
   showCard('📞 ' + who + ' calling…', 'Bada Kaam ' + (i + 1) + ': ' + B.title, [['Uthao 📞', () => { clearInterval(ring); $('raceres').hidden = true; cutscene(bkLines(i), () => showCard(B.title, B.brief, [['Kaam shuru 💥', () => { $('raceres').hidden = true; bkStart(i, true); }], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']])); }], ['Kaat do', () => { clearInterval(ring); $('raceres').hidden = true; }, 'alt2']]);
 }
 function cliffhanger(i) { const N = D.BADE[i + 1]; if (!N) return; setTimeout(() => { if (G.modal || G.race || BK.on) return; showCard('Agle episode mein… 🎬', '"' + N.title + '" · ' + N.giver, [['Abhi khelo ▶', () => { $('raceres').hidden = true; phoneCall(i + 1); }], ['Kal dekhenge', () => { $('raceres').hidden = true; }, 'alt2']], N.brief.split('.')[0] + '…'); }, 4200); }
