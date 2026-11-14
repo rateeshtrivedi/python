@@ -340,6 +340,20 @@ export const RACES = [
 ];
 export function raceLen(r) { let s = 0; for (let i = 1; i < r.pts.length; i++) s += Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]); return s; }
 for (const r of RACES) r.minMs = Math.round(raceLen(r) / 52 * 1000);
+// Asli Gurugram (the OpenStreetMap city): races on real roads. pts are real-map game units, worked out by the road
+// router along MG Road, Golf Course Road and NH-48 (see public/js/realcity.js route()).
+export const REAL_RACES = [
+  { id: 'r_mg', real: true, name: 'MG Road Sprint', from: 'IFFCO Chowk', to: 'Guru Dronacharya', rival: 'Pinky Yadav', veh: 'desert', color: 0xff5fa2, skill: 1.08, prize: 1500,
+    pts: [[599,-672],[596,-691],[603,-692],[562,-978],[570,-1001],[585,-1013],[766,-1051],[787,-1058],[828,-1066],[830,-1060],[1151,-1117],[1327,-1142],[1361,-1145],[1418,-1141],[1513,-1156],[1546,-1165],[1548,-1181],[1638,-1203],[1548,-1181],[1553,-1167],[1676,-1201],[1686,-1209],[1692,-1221],[1709,-1341],[1716,-1365],[1721,-1371],[1729,-1372],[1762,-1362],[1841,-1312],[1888,-1268],[1950,-1225],[1983,-1211],[2004,-1226],[2052,-1230]],
+    taunt: ['MG Road pe metro ke neeche race? Chal!', 'Signal pe brake maarna, main nahi maarti'], win: ['Theek se, is baar tera', 'MG Road teri, aaj ke liye'], lose: ['Metro bhi tujhse tez!', 'Phir aaiyo, slowpoke'] },
+  { id: 'r_golf', real: true, name: 'Golf Course Road Run', from: 'Sikanderpur', to: 'Sector 53-54', rival: 'Jassi Sandhu', veh: 'desert', color: 0x2e6bd1, skill: 1.12, prize: 2200,
+    pts: [[1638,-1203],[1548,-1181],[1553,-1167],[1654,-1194],[1663,-1193],[1659,-1183],[1536,-1153],[1537,-1143],[1621,-1080],[1663,-1043],[1666,-942],[1661,-894],[1670,-594],[1671,-558],[1693,-415],[1703,-397],[1891,-367],[1870,-250],[1904,-244],[1902,-213],[1904,-244],[1870,-250],[1891,-367],[1703,-397],[1705,-387],[1700,-377],[1740,-151],[1811,118],[1840,238],[1844,271],[1868,355],[1877,366],[1891,374],[1932,368],[1939,359],[1940,325]],
+    taunt: ['Golf Course Road, asli wali! Aaja paaji', 'Towers ke beech se, seedha'], win: ['Oye hoye, changa chalaya!', 'Rematch pakka'], lose: ['Balle balle, mera road!', 'Hor practice kar'] },
+  { id: 'r_nh48', real: true, name: 'NH-48 Expressway Drag', from: 'Rajiv Chowk', to: 'IFFCO Chowk', rival: 'Rocky Gujjar', veh: 'cruiser', color: 0x151515, skill: 1.18, prize: 3000,
+    pts: [[-1122,563],[-959,373],[-1042,280],[-855,63],[-827,25],[-769,73],[-662,-54],[-609,-125],[-617,-137],[-608,-126],[-555,-198],[-430,-135],[-415,-135],[-279,-290],[-242,-339],[-154,-479],[-151,-489],[-157,-564],[-169,-624],[-182,-671],[-219,-723],[-216,-729],[-210,-730],[-190,-710],[-176,-689],[-149,-611],[-134,-510],[-101,-460],[-38,-425],[92,-315],[161,-266],[222,-314],[36,-473],[162,-591],[166,-586]],
+    taunt: ['Expressway pe asli race. NOS bhara?', 'Highway ka raja main hoon'], win: ['Kaise?! Rematch!', 'NOS mein kya daala tha?'], lose: ['Highway pe bachche nahi chalte', 'Drift karke NOS bhar, fir aaiyo'] },
+];
+for (const r of REAL_RACES) r.minMs = Math.round(raceLen(r) / 52 * 1000);
 
 // Weather: everyone sees the same sky. lvl 0 clear … 4 "most heavy" rain; water at the flood spots rises with it.
 export const WEATHER = [

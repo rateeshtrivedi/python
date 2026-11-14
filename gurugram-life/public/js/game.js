@@ -1075,13 +1075,22 @@ function setWaypoint(x, z, name, src) { G.wp = { x, z, name, src: src || 'you' }
 function jobTarget() { const j = G.job; return j.stage === 'pickup' ? j.from : j.to; }
 function jobText() { const j = G.job; if (!j) return ''; if (j.type === 'quest') return j.title + ' → ' + j.to.name; return j.type === 'ride' ? (j.stage === 'pickup' ? 'Pick up ' + j.who + ' at ' + j.from.name : 'Drop ' + j.who + ' at ' + j.to.name) : (j.stage === 'pickup' ? 'Collect order at ' + j.from.name : 'Deliver to ' + j.to.name); }
 function hereXZ() { return G.inside ? DOORS[G.inside] : G; }
+// real map jobs: pick up and drop at real sectors, localities, markets and metro stations (snapped to the nearest road);
+// food comes from the game's own made-up eateries, set in real markets
+let RJP = null;
+function realJobPlaces() {
+  if (RJP) return RJP; const all = RC.places(), EAT = ['Sharma Dhaba', 'Momos Corner', 'Chole Bhature Point', 'Bittu Sweets', 'Chai Sutta Adda', 'Haryana Rasoi'];
+  const snap = q => { const p = RC.snapRoad(q.x, q.z); return p ? { x: p[0], z: p[1], name: q.n } : null; };
+  RJP = { places: all.filter(q => [1, 2, 4, 5, 7].includes(q.k)).map(snap).filter(Boolean), pickups: all.filter(q => q.k === 4 || q.k === 5).map(q => { const s2 = snap(q); return s2 && { ...s2, name: EAT[Math.abs(Math.round(q.x + q.z)) % EAT.length] + ', ' + q.n }; }).filter(Boolean) };
+  return RJP;
+}
 function startJob(type) {
   if (G.job) return toast('Pehle current job poora kar'); if (type === 'ride' && !G.veh) return toast('Ride ke liye gaadi chahiye', 'bad');
-  const here = hereXZ(); let from = type === 'ride' ? pick(PLACES) : pick(PICKUPS); let tries = 0;
-  while (Math.hypot(from.x - here.x, from.z - here.z) > 350 && tries++ < 20) from = type === 'ride' ? pick(PLACES) : pick(PICKUPS);
-  let to = pick(PLACES); tries = 0; while ((Math.hypot(to.x - from.x, to.z - from.z) < 160 || Math.hypot(to.x - from.x, to.z - from.z) > 520) && tries++ < 40) to = pick(PLACES);
+  const here = hereXZ(), PL = REAL ? realJobPlaces().places : PLACES, PU = REAL ? realJobPlaces().pickups : PICKUPS, nearMax = REAL ? 500 : 350, dMin = REAL ? 260 : 160, dMax = REAL ? 900 : 520; let from = type === 'ride' ? pick(PL) : pick(PU); let tries = 0;
+  while (Math.hypot(from.x - here.x, from.z - here.z) > nearMax && tries++ < 40) from = type === 'ride' ? pick(PL) : pick(PU);
+  let to = pick(PL); tries = 0; while ((Math.hypot(to.x - from.x, to.z - from.z) < dMin || Math.hypot(to.x - from.x, to.z - from.z) > dMax) && tries++ < 60) to = pick(PL);
   const d = Math.hypot(to.x - from.x, to.z - from.z);
-  G.job = { type, stage: 'pickup', from, to, who: pick(PASSENGERS), pay: Math.round(type === 'ride' ? 90 + d * 0.55 : 60 + d * 0.38), par: d / (type === 'ride' ? 20 : 9) + 25, t0: now() };
+  G.job = { type, stage: 'pickup', from, to, who: pick(PASSENGERS), pay: Math.round(type === 'ride' ? 90 + d * 0.55 : 60 + d * 0.38), par: d * (REAL ? 1.45 : 1) / (type === 'ride' ? 20 : 9) + 25, t0: now() }; /* real roads wind: more time than the straight line */
   jobBeacon.position.set(from.x, 0, from.z); jobBeacon.visible = true; A.sfx('ok'); toast(type === 'ride' ? 'Ride accepted! Pickup ' + G.job.who : 'Order accepted! Pickup at ' + from.name); renderJob();
 }
 function offerQuest() {
@@ -1235,7 +1244,7 @@ function doAction() {
 function updateZones() {
   let best = null, bd = 1e9; const z = G.inside || 'out';
   let label = null;
-  if (!(G.cold && !G.cold.won) && !G.seat && !(REAL && !G.inside)) for (const Z of ZONES) { if (Z.zone !== z) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } } /* no shop prompts in the middle of the opening chase */
+  if (!(G.cold && !G.cold.won) && !G.seat) for (const Z of ZONES) { if (Z.zone !== z || (REAL && !G.inside && !Z.real)) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } } /* no shop prompts in the middle of the opening chase */
   nearZone = best; const p = $('prompt');
   if (!label) { const jt = jackTarget(); if (jt) label = jackLabel(jt); }
   if (!label && G.ev?.type === 'jam' && !G.veh && !G.inside && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 70) label = 'Sell chai to stuck drivers';
@@ -2728,7 +2737,8 @@ $('mapClose').onclick = () => closeMap3D(); $('mchip').onclick = appChats; $('da
 const RACE_SPOTS = [];
 const fmtT = ms => { const s = ms / 1000; return Math.floor(s / 60) + ':' + (s % 60).toFixed(1).padStart(4, '0'); };
 const raceWon = id => !!(P && P.raceWins && (P.raceWins[id] || (id === D.RACES[0].id && P.raceWins.sheetla)));
-const raceUnlocked = i => i === 0 || raceWon(D.RACES[i - 1].id);
+const raceUnlocked = i => REAL || i === 0 || raceWon(D.RACES[i - 1].id); // real-map races are all open
+const RLIST = () => REAL ? D.REAL_RACES : D.RACES;
 function raceGates(R) {
   const out = []; let s = 0;
   for (let i = 1; i < R.pts.length; i++) {
@@ -2892,9 +2902,9 @@ function buildRaceSpots() {
 }
 function bestCar() { const own = (P.vehicles || []).filter(v => D.VEH[v] && D.VEH[v].kind === 4); /* cars only: a race never puts a Scooty against a car */ own.sort((a, b) => D.VEH[b].speed - D.VEH[a].speed); return own[0] || null; }
 function startRace(id, opts) {
-  opts = opts || {}; const i = D.RACES.findIndex(r => r.id === id); const R = D.RACES[i]; if (!R) return;
+  opts = opts || {}; const LST = RLIST(), i = LST.findIndex(r => r.id === id); const R = LST[i]; if (!R) return;
   if (G.race) cleanupRace(); if (G.inside) return toast('Pehle bahar aa'); if (G.selfie) endSelfie(); closeModal(); $('raceres').hidden = true;
-  const spot = RACE_SPOTS[i]; G.dance = false; G.chase = null; if (chaseJeep) chaseJeep.visible = false;
+  const spot = (REAL ? realRaceSpots() : RACE_SPOTS)[i]; G.dance = false; if (REAL) for (let k = RT.cars.length - 1; k >= 0; k--) { const c = RT.cars[k]; if (Math.hypot(c.mesh.position.x - R.pts[0][0], c.mesh.position.z - R.pts[0][1]) < 40) { scene.remove(c.mesh); RT.cars.splice(k, 1); } } /* clear the start line */ G.chase = null; if (chaseJeep) chaseJeep.visible = false;
   const want = G.veh && D.VEH[G.veh].kind === 4 ? G.veh : bestCar() || (L.loanVeh && D.VEH[L.loanVeh] && D.VEH[L.loanVeh].kind === 4 ? L.loanVeh : 'chhotu'); /* never a Scooty against a car */
   if (G.veh !== want) { if (G.veh) dismount(); G.loaner = !(P.vehicles || []).includes(want); G.quietMount = true; mount(want); G.quietMount = false; }
   const start = pathAt(R, 0); const lx = start.x - Math.cos(start.h) * 6, lz = start.z + Math.sin(start.h) * 6; // player in the left lane
@@ -2929,8 +2939,8 @@ function updateRace(dt) {
   const rv = r.rv;
   if (r.phase !== 'count' && !rv.done) {
     const top = D.VEH[G.veh] ? D.VEH[G.veh].speed : 30; const here = pathAt(r.R, rv.s); let target = top * r.R.skill;
-    const late = r.i >= 1; if (here.toCorner < 28) target = Math.min(target, late ? 19 : 16.5);
-    if (late && here.toCorner > 90 && t > (rv.nosNext || r.t0 + 3)) { rv.nosUntil = t + 2.2; rv.nosNext = t + rnd(6, 10); if (Math.random() < 0.5) say(r.spot.car, pick(['NOS!', 'Bye bye!', 'Pakad ke dikha!']), 1.2); }
+    const late = r.i >= 1, toC = r.R.real ? sharpAhead(r.R, rv.s) : here.toCorner; if (toC < 28) target = Math.min(target, late ? 19 : 16.5); /* real roads bend gently all the time: brake only for real turns */
+    if (late && toC > 90 && t > (rv.nosNext || r.t0 + 3)) { rv.nosUntil = t + 2.2; rv.nosNext = t + rnd(6, 10); if (Math.random() < 0.5) say(r.spot.car, pick(['NOS!', 'Bye bye!', 'Pakad ke dikha!']), 1.2); }
     if ((rv.nosUntil || 0) > t) target *= 1.32;
     const gap = rv.s - raceProgress();
     if (r.intro && !r.surge && raceProgress() / r.total > 0.25) { r.surge = t; G.nos = 1; bigText('MONU NE NOS MAARA!', touchUI() ? 'Ab tu bhi NOS button daba!' : 'Ab tu bhi Shift daba: NOS!', 2); $('bRun').classList.add('pulse'); setTimeout(() => $('bRun').classList.remove('pulse'), 5000); }
@@ -2977,7 +2987,7 @@ async function finishRace() {
   setTimeout(() => { if (G.race === r) showRaceResult(r, ms, done, res); }, 1500);
 }
 function showRaceResult(r, ms, done, res) {
-  const box = $('raceres'); box.hidden = false; box.textContent = ''; const R = r.R; const next = D.RACES[r.i + 1];
+  const box = $('raceres'); box.hidden = false; box.textContent = ''; const R = r.R; const next = RLIST()[r.i + 1];
   box.append(el('div', { class: 'k', text: 'Race ' + (r.i + 1) + ' · ' + R.name }), el('h2', { class: r.won ? 'win' : 'lose', text: r.won ? 'Jeet gaya!' : 'Haar gaya' }));
   const rows = el('div', { class: 'rows' });
   const row = (a, b2) => rows.append(el('div', null, el('span', { text: a }), el('b', { text: b2 })));
@@ -3000,8 +3010,23 @@ function cleanupRace() {
 }
 function quitRace() { if (!G.race) return; cleanupRace(); toast('Race chhod di'); }
 function updateRaceSpots(dt) { if (G.race || G.inside) return; for (const s of RACE_SPOTS) { s.tauntT -= dt; if (s.tauntT < 0 && Math.hypot(s.x - G.x, s.z - G.z) < 30) { s.tauntT = 14; (raceUnlocked(s.i) ? say(s.car, pick(s.R.taunt), 3) : (say(s.car, 'Pehle baaki racers ko hara, fir aaiyo', 3), toast('Pehle ' + D.RACES[s.i - 1].rival + ' ko hara, fir yeh race khulegi'))); } } }
+let REAL_SPOTS = null;
+function sharpAhead(R, s) { // distance to the next turn sharper than ~35 degrees on a real route
+  if (!R.sharp) { R.sharp = []; let acc = 0; for (let k = 1; k < R.pts.length - 1; k++) { const a = R.pts[k - 1], b = R.pts[k], c = R.pts[k + 1]; acc += Math.hypot(b[0] - a[0], b[1] - a[1]); const t = Math.abs(angDiff(Math.atan2(c[0] - b[0], c[1] - b[1]), Math.atan2(b[0] - a[0], b[1] - a[1]))); if (t > 0.6) R.sharp.push(acc); } }
+  for (const x of R.sharp) if (x >= s) return x - s; return 1e9;
+}
+function realRaceSpots() {
+  if (REAL_SPOTS) return REAL_SPOTS; REAL_SPOTS = D.REAL_RACES.map((R, i) => { const p = pathAt(R, -12), h = pathAt(R, 0).h; const car = makeVehicle(R.veh, R.color); car.position.set(p.x, 0.2, p.z); car.rotation.y = h; scene.add(car); if (/Pinky/.test(R.rival)) car.userData.voiceG = 'f';
+    const lab = labelSprite('🏁 ' + R.name + ' · vs ' + R.rival, { fs: 34, scale: 0.7, bg: 'rgba(215,51,31,.92)', fg: '#fff4d8' }); lab.position.y = 4.6; car.add(lab);
+    const flag = labelSprite('🏁 RACE', { fs: 44, scale: 3.2, bg: 'rgba(215,51,31,.85)', fg: '#fff' }); flag.position.set(R.pts[0][0], 16, R.pts[0][1]); scene.add(flag);
+    ZONES.push({ zone: 'out', real: true, x: R.pts[0][0], z: R.pts[0][1], r: 18, label: () => G.race ? null : 'Race lagao: ' + R.name + ' vs ' + R.rival + ' (' + fmt(R.prize) + ')', act: () => startRace(R.id) });
+    return { R, i, car, lab, flag, x: R.pts[0][0], z: R.pts[0][1], h, home: { x: p.x, z: p.z, h }, tauntT: 0 }; });
+  return REAL_SPOTS;
+}
 function appRaces() {
-  net.req('races', {}).then(res => openModal('Street Races', 'Har rival ko hara, agla unlock. Rematch ek tap pe.', b => {
+  net.req('races', {}).then(res => openModal(REAL ? 'Asli Gurugram Races' : 'Street Races', REAL ? 'Asli sadkon pe: MG Road, Golf Course Road, NH-48. Start pe ja ya auto le.' : 'Har rival ko hara, agla unlock. Rematch ek tap pe.', b => {
+    if (REAL) { D.REAL_RACES.forEach(R => { const pb = P.raceBest && P.raceBest[R.id], rec = res.ok && res.rec[R.id] && res.rec[R.id][0], d = Math.hypot(R.pts[0][0] - G.x, R.pts[0][1] - G.z), near = d < 40;
+      b.append(itemRow('🏁 ' + R.name, R.from + ' → ' + R.to + ' · ' + (D.raceLen(R) * 2 / 1000).toFixed(1) + ' km · vs ' + R.rival + ' · Prize ' + fmt(R.prize) + (raceWon(R.id) ? ' · Jeeti hui' : '') + (pb ? ' · Best ' + fmtT(pb) : '') + (rec ? ' · Record ' + fmtT(rec.ms) + ' (' + rec.name + ')' : ''), near ? 'Race!' : 'GPS', () => { if (near) startRace(R.id); else { closeModal(); setWaypoint(R.pts[0][0], R.pts[0][1], 'Race: ' + R.name + ' (' + R.from + ')'); } })); }); return; }
     D.RACES.forEach((R, i) => {
       const un = raceUnlocked(i); const pb = P.raceBest && P.raceBest[R.id]; const rec = res.ok && res.rec[R.id] && res.rec[R.id][0];
       const sub = (un ? 'vs ' + R.rival : 'Locked: pehle ' + D.RACES[i - 1].rival + ' ko hara') + ' · Prize ' + fmt(R.prize) + (raceWon(R.id) ? ' · Jeeti hui' : '') + (pb ? ' · Best ' + fmtT(pb) : '') + (rec ? ' · Record ' + fmtT(rec.ms) + ' (' + rec.name + ')' : '');
@@ -3815,7 +3840,7 @@ function realTraffic(dt) {
 function realTick(dt) {
   if (!RC.isReady()) return; if (G.started) realTraffic(Math.min(0.05, dt || 0.016));
   if (!REAL_HIDDEN) { REAL_HIDDEN = []; for (const o of scene.children) if (o.name !== 'realcity' && o !== player && !o.isLight && !/sky/i.test(o.name || '') && o.visible) { o.visible = false; REAL_HIDDEN.push(o); } for (const c of CARS) c.taken = true; }
-  if (G.started && !G.realSpawned) { G.realSpawned = true; const p = RC.toXZ(28.4475, 77.0328); teleport(p.x, p.z, 0); RC.warm(G.x, G.z, 40); toast('Real Gurugram (preview) · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
+  if (G.started && !G.realSpawned) { G.realSpawned = true; realRaceSpots(); const p = RC.toXZ(28.4475, 77.0328); teleport(p.x, p.z, 0); RC.warm(G.x, G.z, 40); toast('Real Gurugram (preview) · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
   if (G.started) RC.update(G.x, G.z);
 }
 function boot() { loadStep(0.3); buildGround(); districtBuilders(); HM.buildCamp(KIT, world); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); buildRamps(); buildGolgappa(); loadStep(0.6); requestAnimationFrame(loop); }
