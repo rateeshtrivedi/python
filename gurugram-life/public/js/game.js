@@ -753,7 +753,7 @@ function renderMissions() {
   { const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1]; story.push(el('button', { type: 'button', class: 'm don bk' + (BK.on ? ' next' : ''), onclick: openBade }, el('i', { text: '💥' }), el('span', { text: 'Bada Kaam ' + cl.n + ': ' + B.title + ' → ' + cl.C.prize }), el('b', { text: BK.on ? 'chal rya' : 'shuru' }))); } }
   if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Agle din (15 min) naye kaam' : nd < 2 ? (2 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Teeno = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
   if (story.length) { box.append(el('h5', { class: 'mhead', text: 'Kahani · level ke kaam se alag' })); for (const e of story) box.append(e); } // the 3 daily kaam count; the story rows sit under their own heading
-  const cl = chapterLine(); $('mchip').textContent = (cl ? '💥 Bada Kaam ' + cl.n + ' · ' : '') + '📋 ' + nd + '/' + act.length + ' · ' + dayClock();
+  const un = chatUnreadAll(); $('mchip').textContent = '💬 Chats' + (un ? ' · ' + un + ' naye' : '') + ' · ' + nd + '/' + act.length + ' · ' + dayClock(); $('mchip').classList.toggle('unread', !!un); setTimeout(chatBuzzCheck, 0);
 }
 function goTask(a) {
   if (a.done) return toast('Ye kaam ho gaya ✓ Baaki kar!');
@@ -763,14 +763,46 @@ function goTask(a) {
     market: () => { const q = near([[-150, 0, 'Galleria Market'], [300, 0, 'Sadar Bazaar']]); setWaypoint(q[0], q[1], q[2]); }, jhatpat: appDelivery, chalo: appRide, races: appRaces, events: appEvents }[a.go];
   closeModal(); if (go) go(); else toast(a.k === 'earned' ? 'Paise: Chalo rides, Jhatpat delivery, office shift, race, dangal. Phone (Tab) kholo.' : a.k === 'jacks' ? 'Sadak pe kisi gaadi ke paas jaa ke E dabao. Driver ko KO kar!' : 'Gali ke chhore sadkon pe ghoomte hain. Punch maar ke shuru kar!');
 }
-function openTasks() {
-  const act = dailyTasks(); if (!act.length) return; const nd = act.filter(a => a.done).length;
-  openModal('Aaj ke kaam · ' + nd + '/' + act.length, 'Naye kaam raat 12 baje · 3 poore = agla level · saare poore = bonus', b => {
-    const ds = donState(); if (ds) b.append(itemRow((ds.champ ? '👑 ' : '📖 ') + 'Gali ke Don · chapter ' + Math.min(ds.ch + 1, 5) + '/5', ds.champ ? 'Tu is hafte ka Don se!' : ds.avail ? ds.C.boss + (ds.called ? ' (' + ds.at[2] + ')' : ' · tere paas aayega') + ' · inaam ' + donRewardText(ds.ch) : 'Aaj ka chapter ho gaya, kal agla', 'Kahani', openDon));
-    b.append(itemRow('📸 Aaj ka Hisaab card', 'Aaj ke kaarname ek card pe · Story pe daalo', 'Banao', () => { closeModal(); makeDayCard(); }));
-    for (const a of act) { const p = taskProg(a); const row = itemRow((a.done ? '✓ ' : TASK_ICON[a.slot] + ' ') + a.t, taskCount(a, p) + ' · inaam ' + fmt(a.r), a.done ? 'Ho gaya' : 'Chalo', () => goTask(a)); row.append(el('div', { class: 'tbar' }, el('i', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); b.append(row); }
-    b.append(el('p', { class: 'fine', text: 'Saare 7 poore: ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus + 10 respect. Roz poore karo, streak se bonus 2 guna tak.' + (P.streak && P.streak.n ? ' Abhi streak: ' + P.streak.n + ' din 🔥' : '') }));
+// ================================================================ CHATS: the day's kaam arrive as WhatsApp-style messages from the people in your life
+const CHAT_WHO = { kamai: ['ramphal', 'Ramphal ji', '👨‍💼', '#2563b8', 'Kaam pe dhyaan de, chhore:'], job: ['ramphal', 'Ramphal ji', '👨‍💼', '#2563b8', 'Aaj ka kaam:'], badla: ['golu', 'Golu', '🧑', '#d7331f', 'Bhai, ek kaam se:'], thrill: ['golu', 'Golu', '🧑', '#d7331f', 'Bhai mazza aayega 🔥'],
+  shop: ['pinky', 'Pinky', '👩', '#c2185b', 'Shopping chalein? 😍'], club: ['pinky', 'Pinky', '👩', '#c2185b', 'Aaj raat party! 💃'], food: ['mummy', 'Mummy', '👩‍🦳', '#e07b10', 'Beta, kuch kha le 🍲'] };
+const chatKey = a => (P.missions && P.missions.day) + ':' + a.slot + ':' + a.t;
+function chatThreads() {
+  const th = new Map(), add = (id, who, face, col, m) => { if (!th.has(id)) th.set(id, { id, who, face, col, msgs: [] }); th.get(id).msgs.push(m); };
+  const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1], who = B.giver.split(',')[0]; add('bk', who, '💥', '#7a1010', { key: 'bk' + cl.n, text: B.brief, sub: 'Bada Kaam ' + cl.n + ': ' + B.title + ' · inaam ' + fmt(B.pay), btn: BK.on ? 'Chal rya se' : 'Shuru 💥', act: () => { closeModal(); openBade(); } }); }
+  const ds = donState(); if (ds && ds.avail && !ds.champ) add('golu', 'Golu', '🧑', '#d7331f', { key: 'don' + ds.ch + (P.missions && P.missions.day), text: ds.called ? ds.C.boss + ' ' + ds.at[2] + ' pe intezaar kar rya se. Aaja!' : 'Bhai! Gali ke Don chapter ' + (ds.ch + 1) + ' tayyar se. ' + ds.C.boss + ' ko sabak sikhana se.', sub: 'Inaam ' + donRewardText(ds.ch), btn: 'Kahani 👊', act: () => { closeModal(); openDon(); } });
+  for (const a of dailyTasks()) { const w = CHAT_WHO[a.slot] || ['golu', 'Golu', '🧑', '#d7331f', '']; const p = taskProg(a); add(w[0], w[1], w[2], w[3], { key: chatKey(a), text: (w[4] ? w[4] + ' ' : '') + a.t, sub: taskCount(a, p) + ' · inaam ' + fmt(a.r), pct: p / a.n, done: a.done, btn: a.done ? '✓ Ho gaya' : 'Chalo 👉', act: () => { closeModal(); goTask(a); } }); }
+  return [...th.values()];
+}
+const chatSeen = () => { const day = P.missions && P.missions.day; if (!L.chatSeen || L.chatSeen.day !== day) L.chatSeen = { day, k: [] }; return L.chatSeen; };
+const unread = t => t.msgs.filter(m => !m.done && !chatSeen().k.includes(m.key)).length;
+function chatUnreadAll() { return P ? chatThreads().reduce((n, t) => n + unread(t), 0) : 0; }
+function appChats() {
+  openModal('💬 Chats', 'Aaj ke kaam yahan aate hain · ' + dayClock(), b => {
+    const th = chatThreads(); if (!th.length) b.append(el('p', { text: 'Koi naya message nahi. Thodi der mein phone bajega!' }));
+    for (const t of th) { const last = t.msgs[t.msgs.length - 1], u = unread(t), left = t.msgs.filter(m => !m.done).length;
+      b.append(el('button', { type: 'button', class: 'chatrow', onclick: () => openChatThread(t.id) }, el('i', { class: 'cav', style: 'background:' + t.col, text: t.face }), el('div', { class: 'cmid' }, el('b', { text: t.who }), el('span', { text: last.text })), el('div', { class: 'cend' }, el('small', { text: left ? left + ' kaam' : '✓' }), u ? el('em', { text: String(u) }) : ''))); }
+    const nd = dailyTasks().filter(a => a.done).length, act = dailyTasks().length; if (act) b.append(el('p', { class: 'fine', text: nd + '/' + act + ' poore · 3 poore = agla level · saare poore = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' + (P.streak && P.streak.n ? ' · streak ' + P.streak.n + ' 🔥' : '') }));
   });
+}
+function openChatThread(id) {
+  const t = chatThreads().find(x => x.id === id); if (!t) return appChats(); const seen = chatSeen(); for (const m of t.msgs) if (!seen.k.includes(m.key)) seen.k.push(m.key); saveLocal(); renderMissions();
+  openModal(t.face + ' ' + t.who, 'online', b => {
+    const wall = el('div', { class: 'chatwall' });
+    for (const m of t.msgs) { const bub = el('div', { class: 'bub' + (m.done ? ' done' : '') }, el('p', { text: m.text }), el('small', { text: m.sub })); if (m.pct != null && !m.done) bub.append(el('div', { class: 'tbar' }, el('i', { style: 'width:' + Math.round(m.pct * 100) + '%' }))); bub.append(el('button', { type: 'button', class: 'buy' + (m.done ? ' alt' : ''), text: m.btn, onclick: m.done ? () => toast('Ye ho gaya ✓') : m.act })); wall.append(bub); if (m.done) wall.append(el('div', { class: 'bub me', text: 'Ho gaya ✓✓' })); }
+    b.append(wall, el('button', { type: 'button', class: 'buy alt', text: '← Saari chats', onclick: appChats }));
+  });
+}
+// a new message buzzes in from the side: one line, tap to open the chat
+function buzz(t, text) {
+  if (!t || G.film || G.cut) return; const old = $('buzz'); if (old) old.remove(); A.sfx('beep');
+  const b = el('button', { type: 'button', id: 'buzz', onclick: () => { b.remove(); openChatThread(t.id); } }, el('i', { class: 'cav', style: 'background:' + t.col, text: t.face }), el('div', {}, el('b', { text: t.who }), el('span', { text: text })));
+  $('hud').append(b); setTimeout(() => { b.classList.add('out'); setTimeout(() => b.remove(), 500); }, 5200);
+}
+function chatBuzzCheck() {
+  if (!P || !G.started) return; const th = chatThreads(), snap = {}; for (const t of th) for (const m of t.msgs) snap[m.key] = { t, m };
+  const old = G.chatSnap; G.chatSnap = snap; if (!old) return;
+  for (const k in snap) { const { t, m } = snap[k], o = old[k]; if (!o && !m.done) return buzz(t, m.text); if (o && !o.m.done && m.done) return buzz(t, pick(['Shabaash! ✓ ', 'Waah chhore! ✓ ', 'Kamaal kar diya ✓ ']) + m.text.replace(/^[^:]*:\s*/, '')); }
 }
 // Gali ke Don: one chapter a day; the boss and his chele wait at their corner
 function donState() { const d = P && P.don; if (!d) return null; const ch = d.ch, C = D.DON[ch]; const at = (d.spot != null && D.DON_SPOTS[d.spot]) || (C && C.at); return { d, ch, C, at, called: d.spot != null, avail: !!C && d.last !== (P.missions && P.missions.day), champ: d.champ === d.wk }; }
@@ -895,7 +927,7 @@ function openPhone() {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     { const live = el('p', { class: 'menuclock' }); const tick = () => { if (!live.isConnected && live.dataset.on) return; live.dataset.on = 1; const bits = []; if (G.ev) bits.push('⏱ ' + G.ev.name + ' · ' + mmss(Math.max(0, Math.round(G.ev.end - serverNow())))); if (BK.on && BK.deadline) bits.push('⏱ Bada Kaam · ' + mmss(timeLeft())); live.textContent = bits.join('  ·  '); live.hidden = !bits.length; setTimeout(tick, 1000); }; tick(); b.append(live); } // the clock doesn't stop for the menu, so the menu shows it
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Startup', '#0f766e', '💻', () => FD.openStartup()], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]); apps.splice(7, 0, ['Khel', '#e8590c', '🎯', appKhel], ['Dhanda', '#2b8a3e', '💼', appDhanda], ['Calendar', '#5f3dc4', '🗓', appCalendar], ['Dost bulao', '#25d366', '📨', inviteFriend]);
+    const apps = [['Chats', '#25d366', '💬', appChats], ['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Startup', '#0f766e', '💻', () => FD.openStartup()], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', openTasks], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]); apps.splice(7, 0, ['Khel', '#e8590c', '🎯', appKhel], ['Dhanda', '#2b8a3e', '💼', appDhanda], ['Calendar', '#5f3dc4', '🗓', appCalendar], ['Dost bulao', '#25d366', '📨', inviteFriend]);
     const LOCK = { Gang: 'gang', Zameen: 'land', Hathiyaar: 'guns' }; const grid = el('div', { class: 'apps' }); for (const a of apps) { const lk = LOCK[a[0]] && !D.unlocked(P, LOCK[a[0]]); grid.append(el('button', { class: 'app' + (lk ? ' locked' : ''), title: lk ? 'Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] + ' ke baad khulega' : '', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0], lk ? el('small', { class: 'lockb', text: '🔒 Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] }) : '')); } b.append(grid); /* a lock badge on what the story hasn't opened yet */
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(itemRow('🗓 Login streak: ' + P.daily.streak + ' din', 'Kal ka inaam: ' + fmt(D.CALENDAR[D.calDay(P.daily.streak + 1) - 1].amt) + ' · 7ve din sone ka wrap', 'Calendar', appCalendar));
@@ -2593,7 +2625,7 @@ canvas.addEventListener('pointerup', e => {
   if (hit) { const p = hit.object.userData.poi; closeMap3D(true); setWaypoint(p.x, p.z, p.name); }
 }, true);
 canvas.addEventListener('wheel', e => { if (!G.map) return; G.map.h = clamp(G.map.h * (e.deltaY > 0 ? 1.12 : 0.89), 120, 1100); e.preventDefault(); e.stopImmediatePropagation(); }, { passive: false, capture: true });
-$('mapClose').onclick = () => closeMap3D(); $('mchip').onclick = openTasks; $('navx').onclick = () => { if (G.wp && !G.frun) { G.wp = null; wpBeacon.visible = false; toast('GPS band'); } }; $('mapwrap').addEventListener('click', openMap3D);
+$('mapClose').onclick = () => closeMap3D(); $('mchip').onclick = appChats; $('navx').onclick = () => { if (G.wp && !G.frun) { G.wp = null; wpBeacon.visible = false; toast('GPS band'); } }; $('mapwrap').addEventListener('click', openMap3D);
 
 // ================================================================ STREET RACES + DRIVING THRILLS (NOS, drift, near miss)
 // Races: checkpoint gates on real roads vs a named rival. Win to unlock the next rival; rematch is one tap.
