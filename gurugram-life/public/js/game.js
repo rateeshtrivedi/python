@@ -107,9 +107,12 @@ function labelSprite(text, opts) {
   if (opts.border) { x.strokeStyle = opts.border; x.lineWidth = 4; x.stroke(); }
   x.fillStyle = opts.fg || '#fff4d8'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, c.width / 2, c.height / 2 + 2);
   const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false })); const sc = (opts.scale || 0.7) * ((opts.scale || 0.7) <= 0.7 && NARROW() ? 0.72 : 1); s.scale.set(sc * c.width / c.height, sc, 1); return s;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false })); const sc = (opts.scale || 0.7) * ((opts.scale || 0.7) <= 0.7 && NARROW() ? 0.72 : 1); s.scale.set(sc * c.width / c.height, sc, 1); LABELS.add(s); return s;
 }
-function disposeSprite(s) { if (!s) return; if (s.parent) s.parent.remove(s); s.material.map.dispose(); s.material.dispose(); }
+// name tags fade out when the camera is right on top of them, so they never fill the screen
+const LABELS = new Set(); const _lp = new THREE.Vector3(); let _lf = 0;
+function fadeLabels() { if (++_lf % 3) return; for (const s of LABELS) { if (!s.parent) continue; if (!s.visible && !s.userData.faded) continue; s.getWorldPosition(_lp); const d = _lp.distanceTo(camera.position), o = d > 9 ? 1 : Math.max(0, (d - 3.5) / 5.5); s.material.opacity = o; s.userData.faded = o < 1; s.visible = o > 0.02; } }
+function disposeSprite(s) { if (!s) return; LABELS.delete(s); if (s.parent) s.parent.remove(s); s.material.map.dispose(); s.material.dispose(); }
 function texFrom(draw, w, h, rx, ry) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4; return t; }
 
 const FACADES = {}, BMATS = {}, NIGHT_MATS = [];
@@ -365,7 +368,7 @@ const AKHARA = { x: D.SPOTS.akhara.x, z: D.SPOTS.akhara.z, fight: false };
 const HOSPITAL = { x: D.SPOTS.hospital.x, z: D.SPOTS.hospital.z };
 const OFFICE_DESK = { x: 0, z: 0 };
 const blockOf = (x, z) => D.districtAt(x, z);
-function zone(z, x, zz, r, label, act) { ZONES.push({ zone: z, x, z: zz, r, label, act }); }
+function zone(z, x, zz, r, label, act) { const o = { zone: z, x, z: zz, r, label, act }; ZONES.push(o); return o; }
 const TREES = [], LAMPS = []; let LAMP_MAT = null;
 function tree(x, z, s) { TREES.push([x, z, s || rnd(0.8, 1.4)]); }
 function door(parent, x, z, w) { bx(parent, w, 4, 0.3, 0x2a2a2e, x, 2, z + 0.1); bx(parent, w + 0.6, 0.4, 0.4, 0xf6c026, x, 4.2, z + 0.15); }
@@ -440,7 +443,7 @@ function districtBuilders() {
       case 'cyberhub': {
         const eats = [['The Brew Yard', 'Craft beer · Desi bites', '#3b1d0e', '#f6c026'], ['Socha Social', 'Rooftop · Live music', '#1b1410', '#ff6fa5'], ['Dosa Dynasty', 'South ka swaad', '#0f766e', '#fff4d8'], ['Biryani Bawli', 'Dum biryani · Kebabs', '#7c2d12', '#ffd27a']];
         eats.forEach((e, k) => { const x = cx - 48 + k * 32; building(world, x, cz + 32, 26, 14, 9, pick(['brick', 'glass', 'white'])); sign(world, e[0], e[1], e[2], e[3], 20, 3, x, 6.5, cz + 39.06); door(world, x, cz + 39, 3); });
-        zone('out', cx - 48, cz + 41, 4.5, () => 'The Brew Yard: menu', () => openFood('The Brew Yard', 'Cyber Hub ki shaam', 'cyberhub'));
+        zone('out', cx - 48, cz + 41, 4.5, () => 'The Brew Yard: menu', () => openFood('The Brew Yard', 'Cyber Hub ki shaam', 'cyberhub')).food = true;
         PICKUPS.push({ name: 'Cyber Hub', x: cx - 16, z: cz + 42 });
         building(world, cx - 40, cz - 40, 30, 20, 58, 'glass'); building(world, cx + 35, cz - 40, 34, 20, 66, 'glass');
         // IPL big screen
@@ -493,7 +496,7 @@ function districtBuilders() {
       case 'market': {
         const shops = MARKET_SHOPS.slice().sort(() => Math.random() - 0.5); if (opt.shop) { shops.splice(shops.indexOf(opt.shop), 1); shops.unshift(opt.shop); }
         for (let k = 0; k < 5; k++) { const x = cx - 48 + k * 24; building(world, x, cz - 50, 22, 16, rnd(7, 12), pick(['ochre', 'brick', 'pink', 'white'])); sign(world, shops[k + 5], null, pick(SHOP_COLORS), '#fff4d8', 18, 2.4, x, 5, cz - 41.94); building(world, x, cz + 50, 22, 16, rnd(7, 12), pick(['ochre', 'brick', 'pink', 'white'])); sign(world, shops[k], null, pick(SHOP_COLORS), '#fff4d8', 18, 2.4, x, 5, cz + 41.94, Math.PI); }
-        zone('out', cx - 48, cz + 40, 4, () => opt.shop + ': menu', () => openFood(opt.shop, 'Desi swaad', opt.menu));
+        zone('out', cx - 48, cz + 40, 4, () => opt.shop + ': menu', () => openFood(opt.shop, 'Desi swaad', opt.menu)).food = true;
         PICKUPS.push({ name: opt.shop + ', ' + name, x: cx - 48, z: cz + 38 });
         for (let k = 0; k < 5; k++) cart(world, cx - 30 + k * 15, cz + rnd(-10, 10));
         if (opt.busy) for (let k = 0; k < 6; k++) COW_SPOTS.push([cx + rnd(-30, 30), cz + rnd(-20, 20)]);
@@ -740,7 +743,7 @@ const TASK_ICON = { kamai: '₹', badla: '👊', shop: '🛍', club: '💃', job
 const kfmt = n => n >= 1000 ? (n / 1000).toFixed(n % 1000 && n < 1e4 ? 1 : 0) + 'k' : String(n);
 // the game clock: a 15-minute day, so show the time of day and how long until the next one (new kaam, rents)
 function dayClock() { return clockText() + ' · ' + Math.ceil((1 - DAY.t) * D.DAY_SECS / 60) + 'm'; }
-setInterval(() => { if (G.started && P) $('mchip').textContent = $('mchip').textContent.replace(/[^·]*· \d+m$/, ' ' + dayClock()); }, 5000); // keep the clock on the chip ticking
+setInterval(() => { if (G.started && P) $('mchip').textContent = $('mchip').textContent.replace(/[^·]*· \d+m$/, ' ' + dayClock()); }, 500); // keep the clock on the chip ticking
 function dailyTasks() { return P && P.missions && P.missions.v === 2 ? P.missions.active : []; }
 function taskProg(a) { return a.done ? a.n : Math.max(0, Math.min(a.n, (P.c[a.k] || 0) - a.base)); }
 function taskCount(a, p) { return a.k === 'earned' ? kfmt(p) + '/' + kfmt(a.n) : p + '/' + a.n; }
@@ -994,7 +997,7 @@ function appEvents() {
     b.append(el('h3', { text: 'Akhara champion' }), el('p', { text: G.belt ? G.belt.name + ' ke paas aaj ka belt se. Akhara mein unhe KO kar ke belt chheen.' : 'Aaj ka belt Pehlwan Bhola ke paas se. Dangal jeet ke champion ban.' }));
   });
 }
-function eventHelp(t) { return { thaila: 'Sabse pehle pahuncho, saara paisa tera! GPS laga diya.', baraat: 'Golf Course Road pe baraat nikal rahi se. Paas jaake B se naacho, ₹1,000 ke note udao', jam: 'Iffco Chowk pe mahajam. Phansi gaadiyon ko chai becho (E)', flood: 'Kuch sectors mein paani bhar gaya. Chalo aur Jhatpat pe 2x surge', holi: 'Sohna Road pe Holi. G dabao, logon pe rang daalo', diwali: 'Diwali ki raat. Rocket chhodo (phone → Events, ya Action)', ipl: 'Cyber Hub big screen pe match. Cheer karo aur dekho' }[t] || ''; }
+function eventHelp(t) { return { thaila: 'Sabse pehle pahuncho, saara paisa tera! GPS laga diya.', baraat: 'Golf Course Road pe baraat nikal rahi se. Paas jaake B se naacho, ₹1,000 ke note udao', jam: 'Iffco Chowk pe mahajam. Phansi gaadiyon ko chai becho (E)', flood: 'Kuch sectors mein paani bhar gaya. Chalo aur Jhatpat pe 2x surge', holi: 'Sohna Road pe Holi. G dabao, logon pe rang daalo: har ek pe ₹60 (15 tak)', diwali: 'Diwali ki raat. Rocket chhodo (phone → Events, ya Action)', ipl: 'Cyber Hub big screen pe match. Cheer karo aur dekho' }[t] || ''; }
 function eventSpot(t) { if (t === 'thaila') return G.ev && G.ev.data && G.ev.data.x != null ? { x: G.ev.data.x, z: G.ev.data.z } : null; return { baraat: { x: -225, z: baraatZ() }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, flood: null, diwali: { x: 0, z: 40 } }[t]; }
 function appOnline() {
   openModal('Online players', net.solo ? 'Solo mode' : (G.peerCount || 1) + ' online' + (G.today ? ' · aaj ' + G.today + ' log khele' : ''), b => {
@@ -1028,7 +1031,7 @@ function openHelp() {
     sec('Kamaai (earning)', ['Jhatpat deliveries (on foot works), Chalo rides (vehicle needed, cars pay more).', 'TechNova Towers: your desk shift, then ask Malhotra Sir for a promotion.', 'Ramphal Ahlawat in Badshahpur gives big side jobs. Missions bottom-left never end. Daily login streak bonus.', 'Dangal at Leisure Valley: ₹1,000 and the champion belt.']);
     sec('Show-off', ['VIP HR26 plates: live auctions (Phone → Plates). Random plates at Sandhu Car Accessories.', 'Car mods: pressure horn, black film, bull bar, bass speaker, neon underglow, stickers.', 'Goyal Jewellers: chain, kada, heavy watch, gold chashma. Everyone sees them.', 'Leaderboards: Richest, Fighters, Party Kings, Respect, Crews. Selfie card (C) to share on WhatsApp/Instagram.']);
     sec('Party & drinks', ['Neon Nights club in Sector 29: DJ, dance floor, bar, VIP bottle service announced to everyone, dance-off battles.', 'Farmhouse parties at Bhondsi for owners. Baraat events on Golf Course Road.', 'Drinking makes you tipsy. Driving through the Iffco Chowk police naka tipsy gets you a challan. 3+ drinks = hangover till nimbu paani or sleep.']);
-    sec('Fights & crews', ['F to punch. KO = respect. You wake up at Civil Hospital (₹200 bill).', 'Bump another player\'s car: road rage. KO them within 60s for a bonus.', 'Crews fight for ilaaka (sectors). Akhara champion holds the belt until someone KOs them in the ring.', 'Roast battles at Badshahpur Chaupal: write roasts, everyone votes.']);
+    sec('Fights & crews', ['Click or Q to punch. KO = respect. Get KO\'d and you wake up at Civil Hospital: ₹200 bill, and whoever beat you grabs 4% of your batua (max ₹1,500).', 'Bump another player\'s car: road rage. KO them within 60s for a bonus.', 'Crews fight for ilaaka (sectors). Akhara champion holds the belt until someone KOs them in the ring.', 'Roast battles at Badshahpur Chaupal: write roasts, everyone votes.']);
     sec('Chat', ['T to chat, or tap a quick Haryanvi taunt. Mute anyone from Phone → Online.']);
     b.append(itemRow('Replay the walkthrough', 'Step by step tour', 'Start', () => { closeModal(); startTutorial(); }));
   });
@@ -1132,7 +1135,7 @@ function parkBack() { // the stolen car stays where you got out
   const e = G.parked; if (!e) return; G.parked = null; e.mesh.position.set(G.x, 0.2, G.z); e.mesh.rotation.y = G.r; e.mesh.visible = true;
   const w = 2.5; e.col = { x0: G.x - w, x1: G.x + w, z0: G.z - w, z1: G.z + w }; COL.out.push(e.col);
 }
-function toggleVehicle() { if (!G.veh && !G.inside) { const pc = PARKED.find(e => e.mesh.visible && Math.hypot(e.mesh.position.x - G.x, e.mesh.position.z - G.z) < 4); if (pc) return stealParked(pc); } /* F next to a parked car: that car, not yours */ if (G.veh) { if (G.race && G.race.phase !== 'done') return quitRace(); return dismount(); } if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) { if (L.loanerOK) { G.quietMount = true; mount(L.loanVeh || 'chhotu'); G.quietMount = false; G.loaner = true; return toast('Chacha ki ' + D.VEH[G.veh].name + '. Apni gaadi ka sapna upar dikh rya se!'); } return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); } const wet = P.vehicles.includes('naav') && [[0, 0], [6, 0], [-6, 0], [0, 6], [0, -6]].some(([a, b]) => waterDepth(G.x + a, G.z + b) > 0.3); mount(wet ? 'naav' : P.cur && P.vehicles.includes(P.cur) && P.cur !== 'naav' ? P.cur : P.vehicles.find(v => v !== 'naav') || P.vehicles[0]); }
+function toggleVehicle() { if (!G.veh && !G.inside) { const pc = PARKED.find(e => e.mesh.visible && Math.hypot(e.mesh.position.x - G.x, e.mesh.position.z - G.z) < 4); if (pc) { if (G.stealAsk && G.stealAsk.pc === pc && now() - G.stealAsk.t < 3.5) { G.stealAsk = null; return stealParked(pc); } G.stealAsk = { pc, t: now() }; A.sfx('err'); return toast('🚨 Ye kisi aur ki ' + (D.VEH[pc.type] ? D.VEH[pc.type].name : 'gaadi') + ' se! Churane ke liye F dobara dabao (police ⭐ aayegi). Apni gaadi: thoda door ja ke F', 'bad'); } } /* F next to someone's parked car: warn first, a second F steals it */ if (G.veh) { if (G.race && G.race.phase !== 'done') return quitRace(); return dismount(); } if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) { if (L.loanerOK) { G.quietMount = true; mount(L.loanVeh || 'chhotu'); G.quietMount = false; G.loaner = true; return toast('Chacha ki ' + D.VEH[G.veh].name + '. Apni gaadi ka sapna upar dikh rya se!'); } return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); } const wet = P.vehicles.includes('naav') && [[0, 0], [6, 0], [-6, 0], [0, 6], [0, -6]].some(([a, b]) => waterDepth(G.x + a, G.z + b) > 0.3); mount(wet ? 'naav' : P.cur && P.vehicles.includes(P.cur) && P.cur !== 'naav' ? P.cur : P.vehicles.find(v => v !== 'naav') || P.vehicles[0]); }
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
 function exitInterior() { const key = G.inside; const d = DOORS[key]; fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
@@ -1223,7 +1226,7 @@ function updatePlayer(dt) {
   if (G.selfie) return;
   if (G.sf) { G.moving = false; return; } // in a face-off the fight places and animates the player
   if (G.seat) { const s = G.seat; G.x = s.x; G.z = s.z; G.r = s.r; player.position.set(s.x, s.y, s.z); player.rotation.y = s.r; sitChar(player); G.moving = false; return; } // at a desk or the boardroom table
-  let ix = 0, iy = 0; const blocked = G.frozen || G.modal || G.map || !$('chatbar').hidden;
+  let ix = 0, iy = 0; const blocked = G.frozen || G.modal || G.map || !$('chatbar').hidden || (!$('raceres').hidden && !(G.race && G.race.phase !== 'done')); // a card on screen: the gaadi rolls to a stop behind it
   const turnKeys = !G.veh && !G.inside; /* on foot outdoors the arrow keys turn you, like a car; A/D still step sideways */ if (!blocked && turnKeys) { const tr = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0); if (tr) { G.yaw -= tr * dt * 2.4; G.r = angLerp(G.r, G.yaw, Math.min(1, dt * 10)); G.lookAt = now(); } }
   if (!blocked) { ix = (keys.KeyD || (!turnKeys && keys.ArrowRight) ? 1 : 0) - (keys.KeyA || (!turnKeys && keys.ArrowLeft) ? 1 : 0) + joyX; iy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joyY; }
   ix = clamp(ix, -1, 1); iy = clamp(iy, -1, 1); if (G.tipsy > now()) ix += Math.sin(now() * 2.3) * 0.35;
@@ -1342,7 +1345,7 @@ function playerKO(who, from) {
   evc('death');
   G.hp = 0; A.sfx('ko'); grunt(player, 'ko'); net.send('ko', {}); if (G.veh) dismount(); if (G.job) { endJob(); toast('Job cancel ho gaya.', 'bad'); }
   const robber = from && FIGHTERS.includes(from) && from.state !== 'ko' && P.money > 0 ? from : null; if (robber) robBatua(robber); /* he grabs your batua while you're down, then the ambulance comes */
-  setTimeout(() => fadeTo((who ? who + ' ne dhobi pachhad maar diya!' : 'Behosh ho gaya!') + ' Civil Hospital le ja rahe hain...', 2400, async () => { G.hp = 100; L.hunger = Math.max(L.hunger, 60); /* the hospital feeds you too, or starving loops */ G.inside = null; setIndoor(false); { const sp = safeSpot(HOSPITAL.x, HOSPITAL.z + 4); G.x = sp.x; G.z = sp.z; G.r = G.yaw = Math.atan2(HOSPITAL.x - sp.x, HOSPITAL.z - sp.z); } if (P.money > 0) { await buy('misc', 'ko_bill'); toast('Civil Hospital mein hosh aaya. Bill kat gaya.', 'bad'); } if (G.robbed) { toast(G.robbed.name + ' tera batua le gaya: -' + fmt(G.robbed.amt), 'bad'); G.robbed = null; } updateHUD(); }), robber ? 1800 : 0);
+  setTimeout(() => fadeTo((who ? who + ' ne dhobi pachhad maar diya!' : 'Behosh ho gaya!') + ' Civil Hospital le ja rahe hain...', 2400, async () => { G.hp = 100; L.hunger = Math.max(L.hunger, 60); /* the hospital feeds you too, or starving loops */ G.inside = null; setIndoor(false); { const sp = safeSpot(HOSPITAL.x, HOSPITAL.z + 4); G.x = sp.x; G.z = sp.z; G.r = G.yaw = Math.atan2(HOSPITAL.x - sp.x, HOSPITAL.z - sp.z); } let bill = 0; if (P.money > 0) { const r = await buy('misc', 'ko_bill'); bill = r && r.ok ? r.price : 0; } const rob = G.robbed; G.robbed = null; toast('Civil Hospital mein hosh aaya. Bill ' + fmt(bill) + (rob ? ' + ' + rob.name + ' tera batua le gaya ' + fmt(rob.amt) + ' = -' + fmt(bill + rob.amt) : ''), 'bad'); updateHUD(); }), robber ? 1800 : 0);
 }
 // ---- batua: a knocked-down NPC drops his wallet (or her purse) with a little cash; walk over it to take it. The same happens to you.
 const DROPS = []; let ROB = null;
@@ -1561,7 +1564,7 @@ function findSpot(cx, cz, w, d, r0, r1) {
 }
 // the nearest open footpath beside a road: respawns and start points must never land in a boxed-in alley
 function foodTip() {
-  G.foodTip = now() + 90; const f = mapPOIs().filter(q => q.cat === 'khana').sort((a, b) => Math.hypot(a.x - G.x, a.z - G.z) - Math.hypot(b.x - G.x, b.z - G.z))[0];
+  G.foodTip = now() + 90; const f = ZONES.filter(z => z.food && z.zone === 'out').map(z => ({ x: z.x, z: z.z, name: String(z.label() || 'Khana').replace(/^Khana: /, '').replace(/: menu$/, '') })).sort((a, b) => Math.hypot(a.x - G.x, a.z - G.z) - Math.hypot(b.x - G.x, b.z - G.z))[0];
   if (!f) return toast('Bhookh lag rahi se! Kuch kha le.', 'bad'); toast('Bhookh lag rahi se! Khana: ' + f.name + ' · ' + Math.round(Math.hypot(f.x - G.x, f.z - G.z)) + ' m', 'bad'); if (!G.wp && !G.inside) setWaypoint(f.x, f.z, f.name);
 }
 function openNear(sp) { // a start point that landed in a wall or a stall: the nearest open ground
@@ -1671,10 +1674,10 @@ const RESUME = [
   { prime(s) { const n = bkCx(2, 1, -10, 66); BK.d.n = n; if (s >= 1) BK.boss = bkNpc('Netaji', n.x, n.z, 0xffffff, Math.PI); }, at: s => s },
   { prime() { BK.d.s = bkCx(1, 1, 10, 63); BK.noCops = true; }, at: s => s },
 ];
-function bkResume() {
-  const on = P && P.bkOn; if (!on || BK.on || on.i !== P.bk || !MISSIONS[on.i]) return; const R = RESUME[on.i], s = R.at(Math.min(on.step || 0, MISSIONS[on.i].steps.length - 1));
+function bkResume(retry) {
+  const on = P && P.bkOn; if (!on || (on.paused && !retry) || BK.on || on.i !== P.bk || !MISSIONS[on.i]) return; const R = RESUME[on.i], s = R.at(Math.min(on.step || 0, MISSIONS[on.i].steps.length - 1));
   Object.assign(BK, { on: true, i: on.i, step: s - 1, d: {}, ents: [], deadline: 0, noCops: false, inCar: false, car: null, carZone: null, boss: null }); R.prime(s);
-  toast('Bada Kaam ' + (on.i + 1) + ' chal rya se: ' + D.BADE[on.i].title + ' (wahin se shuru)', 'money'); bkNext(); renderMissions();
+  toast('Bada Kaam ' + (on.i + 1) + ': ' + D.BADE[on.i].title + ' · step ' + (s + 1) + '/' + MISSIONS[on.i].steps.length + ' se shuru', 'money'); on.paused = false; bkNext(); renderMissions();
 }
 const MISSIONS = [
   { // 1 Pehli Kamai: a shift at the pump, and a customer who runs without paying
@@ -1754,19 +1757,22 @@ function openBade() {
 async function bkStart(i, called) {
   const B = D.BADE[i]; if (B.gang && (P.gang || []).length < B.gang) return toast('Is kaam ke liye kam se kam ' + B.gang + ' chele chahiye: Menu → Gang', 'bad');
   if (G.race || G.story) return toast('Pehle abhi wala kaam poora kar', 'bad');
+  if (P.bkOn && P.bkOn.i === i && (P.bkOn.step || 0) > 0 && !BK.on) { closeModal(); return bkResume(true); } // a checkpoint: carry on from the step you reached
   const r = await net.req('bkstart', { i }); if (!r.ok) return toast(r.error || 'Abhi nahi', 'bad');
   closeModal(); Object.assign(BK, { on: true, i, step: -1, d: {}, ents: [], deadline: 0, noCops: false, inCar: false, car: null, carZone: null, boss: null });
   const card = () => showCard('Bada Kaam ' + (i + 1) + ': ' + B.title, B.giver + ' · ' + B.brief, [['Chalo! 💥', () => { $('raceres').hidden = true; bkNext(); }]], 'Inaam: ' + fmt(B.pay) + (i + 1 < D.LADDER.length ? ' + ' + D.HOUSES[D.LADDER[i + 1]].name : ' + ' + D.BLING.heera.name)); G.cutSeen = G.cutSeen || {}; if (called || G.cutSeen[i]) card(); else { G.cutSeen[i] = 1; cutscene(bkLines(i), card); } // the giver sets it up in a short scene (once a session; a retry goes straight in)
   A.sfx('level'); renderMissions();
 }
-function bkNext() { BK.step++; const st = MISSIONS[BK.i].steps[BK.step]; if (!st) return bkWin(); BK.stepAt = now(); net.send('bkstep', { i: BK.i, step: BK.step }); st.start(); }
+function bkNext() { BK.step++; const st = MISSIONS[BK.i].steps[BK.step]; if (!st) return bkWin(); BK.stepAt = now(); net.send('bkstep', { i: BK.i, step: BK.step }); P.bkOn = { i: BK.i, step: BK.step }; st.start(); } // the step is the checkpoint: a fail or an arrest restarts here
 function bkCleanup() {
   for (const e of BK.ents || []) { if (e.mesh) scene.remove(e.mesh); if (e.foe) { scene.remove(e.foe.mesh); const k = FIGHTERS.indexOf(e.foe); if (k >= 0) FIGHTERS.splice(k, 1); } }
   if (BK.carZone) { const k = ZONES.indexOf(BK.carZone); if (k >= 0) ZONES.splice(k, 1); } if (G.loaner && BK.inCar && G.veh) dismount();
   BK.ents = []; BK.on = false; BK.deadline = 0; BK.noCops = false; BK.car = null; BK.carZone = null; quest(null); clearWp(); renderMissions();
 }
-function bkFail(why) { if (!BK.on) return; const i = BK.i, B = D.BADE[i]; bkCleanup(); net.send('bkquit', {}); A.sfx('err');
-  setTimeout(() => showCard('Kaam fail: ' + B.title, why + '. Dobara koshish kar, Gurugram mein haar se kuch nahi rukta.', [['Dobara 💥', () => { $('raceres').hidden = true; bkStart(i); }], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]), 900); }
+function bkFail(why, quiet) { if (!BK.on) return; const i = BK.i, st = BK.step; bkCleanup(); P.bkOn = { i, step: Math.max(0, st) }; A.sfx('err'); net.send('bkfail', {}); P.bkOn.paused = true; /* no bkquit: the server keeps the step as a checkpoint */
+  if (!quiet) setTimeout(() => bkRetryCard(i, why), 900); }
+function bkRetryCard(i, why) { const B = D.BADE[i], n = MISSIONS[i].steps.length, cp = P.bkOn && P.bkOn.i === i ? RESUME[i].at(Math.min(P.bkOn.step || 0, n - 1)) : 0;
+  showCard('Kaam fail: ' + B.title, (why ? why + '. ' : '') + (cp > 0 ? 'Checkpoint save se: step ' + (cp + 1) + '/' + n + ' se dobara.' : 'Dobara koshish kar, Gurugram mein haar se kuch nahi rukta.'), [['Dobara 💥' + (cp > 0 ? ' (step ' + (cp + 1) + ')' : ''), () => { $('raceres').hidden = true; bkStart(i); }], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']]); }
 async function bkWin() { const i = BK.i, B = D.BADE[i]; const r = await net.req('bkdone', { i });
   if (!r.ok && r.wait && BK.on && BK.i === i) { toast('Chaudhary hisaab laga raha se... ' + Math.ceil(r.wait) + ' sec ruk', 'info'); setTimeout(() => { if (BK.on && BK.i === i) bkWin(); }, r.wait * 1000 + 400); return; } /* done faster than the server's minimum: wait it out, don't lose the kaam */
   bkCleanup(); if (!r.ok) return toast(r.error || 'Kuch gadbad', 'bad');
@@ -1781,7 +1787,11 @@ function updateBade(dt) {
 // ================================================================ SHOW-OFF ACTIONS
 function toggleDance() { if (G.veh || G.selfie) return; G.dance = !G.dance; if (G.dance && !G.story) { toast(G.inside === 'club' ? 'Naach basanti! (dance-off ke liye floor pe E)' : 'Thumka!'); G.danceT = 0; } }
 function horn() { if (!G.veh) return toast('Horn gaadi mein bajta se (V)'); const m = (P.mods[G.veh] || {}); if (m.horn) { net.send('horn', {}); A.sfx('pressure'); } else { A.sfx('horn'); if (!G.hornTip) { G.hornTip = 1; toast('Pressure horn chahiye? Sandhu Car Accessories, NH-48'); } } }
-function throwColor() { if (G.ev?.type !== 'holi') return toast('Rang sirf Holi pe! (Events dekh)'); let best = null, bd = 6; for (const [id, R] of REMOTES) { if (!R.visible) continue; const d = Math.hypot(R.mesh.position.x - G.x, R.mesh.position.z - G.z); if (d < bd) { bd = d; best = id; } } burst(G.x + Math.sin(G.r) * 2, 2, G.z + Math.cos(G.r) * 2, pick([0xff2bd6, 0x39ff14, 0xffd400, 0x00b4ff]), 30); if (best) net.send('holi', { target: best }); else toast('Bura na mano, Holi hai! (Kisi player ke paas jaa ke G daba)'); }
+function throwColor() { if (G.ev?.type !== 'holi') return toast('Rang sirf Holi pe! (Events dekh)'); let best = null, bd = 6; for (const [id, R] of REMOTES) { if (!R.visible) continue; const d = Math.hypot(R.mesh.position.x - G.x, R.mesh.position.z - G.z); if (d < bd) { bd = d; best = id; } } burst(G.x + Math.sin(G.r) * 2, 2, G.z + Math.cos(G.r) * 2, pick([0xff2bd6, 0x39ff14, 0xffd400, 0x00b4ff]), 30); if (best) return net.send('holi', { target: best });
+  // no player near: the people on the street play Holi too
+  let pp = null, pd = 5; for (const p of CROWD) { if (p.holi === G.ev.start) continue; const d = Math.hypot(p.x - G.x, p.z - G.z); if (d < pd) { pd = d; pp = p; } }
+  if (!pp) return toast('Bura na mano, Holi hai! Kisi ke paas jaa ke G daba (log ya player)'); pp.holi = G.ev.start; burst(pp.x, 1.4, pp.z, pick([0xff2bd6, 0x39ff14, 0xffd400, 0x00b4ff]), 40, { speed: 3 }); if (pp.slot) say({ mesh: pp.slot.h.root }, pick(['Bura na mano, Holi hai! 😄', 'Arre! Ruk, main bhi lagaunga!', 'Happy Holi bhai!']), 1.8);
+  G.holiN = G.holiEv === G.ev.start ? (G.holiN || 0) + 1 : 1; G.holiEv = G.ev.start; earn('holi', 60, 'Holi: rang lagaya').then(r => { if (r.ok) toast('🎨 Rang laga diya! +' + fmt(r.amount || 60) + ' · ' + G.holiN + '/15', 'money'); }); }
 async function rocket() { const r = await buy('misc', 'firework'); if (r.ok) toast('Rocket chhoda! Sab ko dikhega'); }
 async function sellChai() { if (G.chaiSellCD > now()) return; G.chaiSellCD = now() + 4; const r = await earn('chai', irnd(20, 60), 'Chai bech di jam mein'); if (r.ok) say(player, 'Garam chai! Garam chai!', 2); }
 async function hostParty() { const r = await buy('misc', 'party'); if (r.ok) { closeModal(); toast('Party shuru! Sab ko invite chala gaya.', 'money'); teleport(D.SPOTS.farmLawn.x, D.SPOTS.farmLawn.z, Math.PI); } }
@@ -1814,17 +1824,17 @@ async function updateChase(dt) {
   if (d > 0.1) { c.x += dx / d * Math.min(sp * dt, d); c.z += dz / d * Math.min(sp * dt, d); } chaseJeep.position.x = c.x; chaseJeep.position.z = c.z; if (!c.boat) chaseJeep.position.y = 0.2; chaseJeep.rotation.y = Math.atan2(dx, dz);
   c.sirenT -= dt; if (c.sirenT < 0) { c.sirenT = 2; A.sfx('siren'); }
   if (c.story && (d < 3.5 || d > 130 || now() > c.until || !G.veh || G.inside)) { const esc = d >= 3.5; G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); if (!esc) G.vs = 0; A.stinger(esc ? 'escape' : 'busted'); storyChaseEnd(esc); return; }
-  if (d < (G.veh ? 3.5 : 1.8)) { G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); G.vs = 0; A.stinger('busted'); if (W.stars && P.money > 0) { bribeOffer().then(ok => { if (!ok) arrest(); }); } else arrest(); W.stars = 0; wantedHUD(); clearNaka(); return; }
+  if (d < (G.veh ? 3.5 : 1.8)) { G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); G.vs = 0; A.stinger('busted'); const st0 = W.stars; if (W.stars && P.money > 0) { bribeOffer().then(ok => { if (!ok) arrest(null, st0); }); } else arrest(null, st0); W.stars = 0; wantedHUD(); clearNaka(); return; }
   if (now() > c.until || G.inside) { const escaped = now() > c.until; G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); if (escaped) { ev('escape'); A.stinger('escape'); toast('Police ko chakma de diya! +10 respect', 'money'); } W.stars = 0; wantedHUD(); clearNaka(); }
 }
 // caught: hathkadi, a ride to the thana and a fine. With an empty pocket, a night in the hawalaat instead. Your gaadi stays yours.
-function arrest(why) {
-  if (G.veh) dismount(); const broke = (P.money || 0) < 1500; G.arrests = (G.arrests || 0) + 1; ev('arrested'); if (BK.on) bkFail('Police ne pakad liya');
+function arrest(why, stars) {
+  if (G.veh) dismount(); const broke = (P.money || 0) < 1500; G.arrests = (G.arrests || 0) + 1; ev('arrested'); const bkWas = BK.on ? BK.i : -1; if (BK.on) bkFail('Police ne pakad liya', true);
   bigText('GIRAFTAAR! 🚓', why || 'Hathkadi lag gayi', 2);
-  setTimeout(() => fadeTo(broke ? 'Hawalaat mein raat… jeb khaali thi, jurmana kaun bharega' : 'Police Thana, Sector 29…', broke ? 5200 : 2600, async () => {
-    teleport(THANA.x, THANA.z, 0); G.hp = Math.max(G.hp, broke ? 60 : 80); const before = P.money; const r = await buy('misc', 'arrest');
+  setTimeout(() => fadeTo(broke ? 'Hawalaat mein raat… jeb khaali thi, jurmana kaun bharega' : 'Police Thana, ' + (THANA.place || 'Gurugram') + '…', broke ? 5200 : 2600, async () => {
+    teleport(THANA.x, THANA.z, 0); G.hp = Math.max(G.hp, broke ? 60 : 80); const before = P.money; const r = await buy('misc', 'arrest', { stars: Math.max(1, stars || W.stars || 1) });
     const paid = r.ok ? r.price : 0; showCard(broke ? 'Hawalaat se chhoota' : 'Jurmana bhara: ' + fmt(paid), broke ? 'Thanedar: "Jeb mein ' + fmt(before) + ' aur kaand itne bade? Raat yahin kaat, subah nikal. Agli baar seedha jail."' : 'Thanedar: "' + fmt(paid) + ' jurmana. Gaadi teri hi se, le ja. Agli baar itna aasaan nahi hoga."',
-      [['Theek se, saab', () => { $('raceres').hidden = true; }]], 'Police se bachna se? Bhaag, gali mein ghus, ya kisi building ke andar chhup ja.'); }), 1200);
+      [['Theek se, saab', () => { $('raceres').hidden = true; if (bkWas >= 0) setTimeout(() => bkRetryCard(bkWas, 'Police ne pakad liya'), 400); }]], 'Police se bachna se? Bhaag, gali mein ghus, ya kisi building ke andar chhup ja.'); }), 1200);
 }
 function updateHangover() { if (G.tipsy && G.tipsy < now() && L.drinks >= 3 && !G.hangover) { G.hangover = true; $('hangover').hidden = false; toast('Hangover! Sir bhaari se. Nimbu paani pi (dhaba ya market) ya so ja.', 'bad'); } }
 function checkBump() {
@@ -1855,9 +1865,11 @@ function updateAmbient(dt) { if (REAL) return; // real-map preview: these still 
     if (ram && Math.hypot(p.mesh.position.x - G.x, p.mesh.position.z - G.z) < 2.1) { knockPerson({}); p.knock = 6; p.kx = Math.sin(G.r) * Math.abs(G.vs) * 0.5; p.kz = Math.cos(G.r) * Math.abs(G.vs) * 0.5; continue; }
     if (p.wait > 0) { p.wait -= dt; if (p.mesh.visible) animChar(p.mesh, dt, 0); continue; } if ((p.leg = (p.leg ?? rnd(10, 60)) - dt * p.sp) <= 0) { p.leg = rnd(10, 60); p.wait = p.panic > now() ? 0 : Math.random() < 0.6 ? rnd(2, 9) : 0; if (Math.random() < 0.45) p.dir *= -1; } /* walk a stretch, stop, go on or turn back: no endless laps of the block */
     p.t += dt * p.sp / 272 * p.dir * (p.panic > now() ? 3.2 : 1); const t = ((p.t % 1) + 1) % 1; const Lr = 68.5; let x, z; const s = t * 4; if (s < 1) { x = -Lr + 2 * Lr * s; z = -Lr; } else if (s < 2) { x = Lr; z = -Lr + 2 * Lr * (s - 1); } else if (s < 3) { x = Lr - 2 * Lr * (s - 2); z = Lr; } else { x = -Lr; z = Lr - 2 * Lr * (s - 3); } const px = p.cx + x, pz = p.cz + z; p.mesh.rotation.y = Math.atan2(px - p.mesh.position.x, pz - p.mesh.position.z); p.mesh.position.set(px, 0.2, pz); if (p.mesh.visible) animChar(p.mesh, dt, 1); p.talkT -= dt; if (p.talkT < 0) { p.talkT = rnd(15, 40); if (Math.hypot(px - G.x, pz - G.z) < 25) say(p, pick(NPC_LINES), 2.5); } }
+  const dragOn = !!(G.race && G.race.R.id === 'nh48' && G.race.phase !== 'done'), dragZ = D.RACES.find(r => r.id === 'nh48').pts[0][1];
   for (const c of CARS) {
     if (c.taken) { c.mesh.visible = false; continue; }
     c.mesh.visible = out && Math.abs(c.mesh.position.x - ccx) + Math.abs(c.mesh.position.z - ccz) < (RL.Q.phone ? 200 : 300); /* phones: fewer far-off real models */ if (!out) continue; let x = c.along === 'x' ? c.line : c.p, z = c.along === 'x' ? c.p : c.line;
+    if (dragOn && Math.abs(z - dragZ) < 14 && x > -440 && x < 280) { c.mesh.visible = false; continue; } // a drag race is a straight shot: the highway is closed to traffic
     const fx = c.along === 'x' ? 0 : c.dir, fz = c.along === 'x' ? c.dir : 0; const dx = G.x - x, dz = G.z - z; const ahead = dx * fx + dz * fz, lat = Math.abs(dx * fz - dz * fx);
     let blocked = ahead > 0 && ahead < (c.mesh.userData.len / 2 + 5) && lat < 2.4; for (const cw of RD.cowReady() ? COWS : []) { const ax = (cw.x - x) * fx + (cw.z - z) * fz, al = Math.abs((cw.x - x) * fz - (cw.z - z) * fx); if (ax > 0 && ax < c.mesh.userData.len / 2 + 4 && al < 2.4) blocked = true; }
     if (jam && Math.hypot(x - D.SPOTS.naka.x, z - D.SPOTS.naka.z) < 80) blocked = true;
@@ -1961,7 +1973,7 @@ function updateEvents(dt) {
 }
 function updateBanner() {
   const b = $('banner'); if (G.chase) return; if (G.cold || G.cut) { b.hidden = true; return; } // the opening chase and cutscenes get the screen to themselves
-  if (G.ev) { const left = Math.max(0, Math.round(G.ev.end - serverNow())); b.hidden = false; const et = (DAY.t + left / D.DAY_SECS) % 1, eh = Math.floor(et * 24), em = Math.floor((et * 24 - eh) * 60 / 5) * 5; b.textContent = G.ev.name + ' · ' + (eh % 12 || 12) + ':' + String(em).padStart(2, '0') + (eh < 12 ? ' am' : ' pm') + ' tak · ⏱ ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); } // ends on the game clock (a game day is 15 real minutes) with the real-time countdown beside it
+  if (G.ev) { const left = Math.max(0, Math.round(G.ev.end - serverNow())); b.hidden = false; if (G.ev._endFor !== G.ev.end) { const et = (DAY.t + left / D.DAY_SECS) % 1, eh = Math.floor(et * 24), em = Math.round((et * 24 - eh) * 60 / 15) * 15, h2 = (eh + (em === 60 ? 1 : 0)) % 24; G.ev._endFor = G.ev.end; G.ev._endTxt = (h2 % 12 || 12) + ':' + String(em % 60).padStart(2, '0') + (h2 < 12 ? ' am' : ' pm'); } /* worked out once per event, so it never flips */ b.textContent = G.ev.name + ' · ' + G.ev._endTxt + ' tak · ⏱ ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); } // ends on the game clock (a game day is 15 real minutes) with the real-time countdown beside it
   else if (G.evSoon && G.evSoon.at > now()) { b.hidden = false; b.textContent = '⏱ ' + Math.ceil(G.evSoon.at - now()) + 's mein: ' + G.evSoon.name; }
   else if (G.beef && G.beef.until > now()) { b.hidden = false; b.textContent = 'ROAD RAGE vs ' + G.beef.name + ' · ' + Math.ceil(G.beef.until - now()) + 's'; }
   else b.hidden = true;
@@ -2426,7 +2438,10 @@ function fuelOnMount(type) { if (!D.TANK[type]) return; L.fuel = L.fuel || {}; i
 function fuelBurn(dist) {
   if (!G.veh || !D.TANK[G.veh] || G.race || G.story || dist <= 0) return; const k = fuelSlot(), T = D.TANK[G.veh]; L.fuel = L.fuel || {}; if (L.fuel[k] == null) L.fuel[k] = T;
   const was = L.fuel[k]; L.fuel[k] = Math.max(0, was - dist * T / D.FUEL_RANGE[D.VEH[G.veh].kind] * (G.nosOn ? 1.7 : 1));
-  if (was > T * 0.15 && L.fuel[k] <= T * 0.15) toast('⛽ Petrol kam se! Paas ka pump map pe dekh (Menu → Map)', 'bad');
+  const f = L.fuel[k], pmp = (was > T * 0.25 && f <= T * 0.25) || (was > T * 0.1 && f <= T * 0.1) ? nearestPump() : null, pd = pmp ? ' · ' + pmp.name + ' ' + Math.round(Math.hypot(pmp.x - G.x, pmp.z - G.z) / 5) * 5 + ' m' : '';
+  if (was > T * 0.25 && f <= T * 0.25) { A.sfx('beep'); toast('⛽ Petrol 1/4 bacha' + pd, 'bad'); }
+  if (was > T * 0.1 && f <= T * 0.1) { A.sfx('err'); toast('⛽ Petrol bas khatam hone wala!' + pd + (pmp ? ' (GPS laga diya)' : ''), 'bad'); if (pmp && !G.wp) setWaypoint(pmp.x, pmp.z, pmp.name); }
+  { const fw = $('fuelw'); if (fw) fw.classList.toggle('low', f <= T * 0.2); } // the gauge flashes red under 20%
   if (was > 0 && L.fuel[k] <= 0) { A.sfx('err'); fuelEmpty(); }
   if ((G.fuelSave = (G.fuelSave || 0) + dist) > 200) { G.fuelSave = 0; saveLocal(); }
 }
@@ -2453,7 +2468,7 @@ const zoneNear = (x, z, r) => ZONES.some(Z => Z.zone === 'out' && Math.hypot(Z.x
 function buildCityFill() {
   const q = new THREE.Quaternion(), m4 = new THREE.Matrix4(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
   // police thana near Iffco Chowk
-  for (const [tx, tz] of [[40, -125], [-40, -125], [40, -175], [-40, -175], [0, -195]]) { if (colHit(tx - 12, tx + 12, tz - 8, tz + 8)) continue; THANA.x = tx; THANA.z = tz + 10; building(world, tx, tz, 22, 14, 9, 'white'); bx(world, 22.2, 1.2, 14.2, 0x1b3a8a, tx, 7.6, tz); bx(world, 22.2, 0.5, 14.2, 0xd7331f, tx, 8.4, tz); sign(world, 'POLICE THANA', 'Gurugram Police · Sector 29 · Dial 112', '#1b3a8a', '#ffffff', 16, 2.4, tx, 5.6, tz + 7.06); door(world, tx, tz + 7, 4); zone('out', tx, tz + 9, 4.5, () => 'Police Thana: shikayat darj karo', () => toast(pick(['Munshi ji: "Line mein lag ja, FIR kal likhenge."', 'Thanedar: "Kya hua? Phone chori? Chai pi ke ja."', 'Havaldar: "Naka pe jo kiya tha, wo yaad se!"']))); POI_EXTRA.push({ x: tx, z: tz + 9, name: 'Police Thana', cat: 'police' }); break; }
+  for (const [tx, tz] of [[40, -125], [-40, -125], [40, -175], [-40, -175], [0, -195]]) { if (colHit(tx - 12, tx + 12, tz - 8, tz + 8)) continue; THANA.x = tx; THANA.z = tz + 10; THANA.place = locName(tx, tz + 10); building(world, tx, tz, 22, 14, 9, 'white'); bx(world, 22.2, 1.2, 14.2, 0x1b3a8a, tx, 7.6, tz); bx(world, 22.2, 0.5, 14.2, 0xd7331f, tx, 8.4, tz); sign(world, 'POLICE THANA', 'Gurugram Police · ' + THANA.place + ' · Dial 112' /* the same name the location bar shows here */, '#1b3a8a', '#ffffff', 16, 2.4, tx, 5.6, tz + 7.06); door(world, tx, tz + 7, 4); zone('out', tx, tz + 9, 4.5, () => 'Police Thana: shikayat darj karo', () => toast(pick(['Munshi ji: "Line mein lag ja, FIR kal likhenge."', 'Thanedar: "Kya hua? Phone chori? Chai pi ke ja."', 'Havaldar: "Naka pe jo kiya tha, wo yaad se!"']))); POI_EXTRA.push({ x: tx, z: tz + 9, name: 'Police Thana', cat: 'police' }); break; }
   for (const [nm, col, pi, pj] of PUMP_SITES) placePump(nm, col, pi, pj); // petrol pumps before the shop rows
   // shop rows along every block edge, wherever there's room
   const shops = [];
@@ -2483,7 +2498,7 @@ function buildCityFill() {
   // the food shops in the rows serve food (and show on the map as Khana)
   const FOODK = [[/SWEETS/, 'sweets'], [/DHABA/, 'dhaba'], [/CHHOLE/, 'chole'], [/MOMOS/, 'momo'], [/CHAI/, 'chai']];
   for (const sh of shops) { const nm = SHOP_NAMES[sh.sign], k = FOODK.find(f => f[0].test(nm)); if (!k) continue; const title = nm.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-    zone('out', sh.x + sh.fx * 5.2, sh.z + sh.fz * 5.2, 3, () => 'Khana: ' + title, () => openFood(title, 'Garam garam, abhi bana', k[1])); }
+    zone('out', sh.x + sh.fx * 5.2, sh.z + sh.fz * 5.2, 3, () => 'Khana: ' + title, () => openFood(title, 'Garam garam, abhi bana', k[1])).food = true; }
   signGeo.forEach((g, k) => { if (!g.p.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(g.p, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(g.uv, 2)); geo.setIndex(g.ix); const [bg, fg] = SIGN_COLS[k % SIGN_COLS.length]; const t = new THREE.CanvasTexture(signCanvas(SHOP_NAMES[k], null, bg, fg, 512, 80)); world.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t }))); });
   // skyline ring outside the playable city
   const ring = []; for (let side = 0; side < 4; side++) for (let t = -600; t <= 600; t += rnd(20, 30)) { const off = rnd(462, 540); const x = side < 2 ? t : (side === 2 ? off : -off), z = side < 2 ? (side === 0 ? off : -off) : t; ring.push([x, z, rnd(18, 30), rnd(18, 30), rnd(20, 90)]); }
@@ -2564,7 +2579,7 @@ function mapCat(t) {
 }
 function mapPOIs() {
   const out = []; const seen = new Set();
-  for (const Z of ZONES) { if (Z.zone !== 'out') continue; let t; try { t = Z.label(); } catch { t = null; } if (!t) continue; const name = t.replace(/^Enter /, '').replace(/^Race lagao: /, 'Race: ').split(/:| \(|·/)[0].trim().slice(0, 30); const k = name + Math.round(Z.x / 20) + Math.round(Z.z / 20); if (seen.has(k)) continue; seen.add(k); out.push({ x: Z.x, z: Z.z, name, cat: mapCat(t) }); }
+  for (const Z of ZONES) { if (Z.zone !== 'out') continue; let t; try { t = Z.label(); } catch { t = null; } if (!t) continue; const name = t.replace(/^Enter /, '').replace(/^Race lagao: /, 'Race: ').split(/:| \(|·/)[0].trim().slice(0, 30); const k = name + Math.round(Z.x / 20) + Math.round(Z.z / 20); if (seen.has(k)) continue; seen.add(k); out.push({ x: Z.x, z: Z.z, name, cat: Z.food || (/^Enter /.test(t) && mapCat(t) === 'khana') ? 'khana' : mapCat(t) === 'khana' ? 'ghoomo' : mapCat(t) }); /* Khana = a counter that really serves food */ }
   out.push({ x: D.SPOTS.naka.x, z: D.SPOTS.naka.z, name: 'Police naka, Iffco Chowk', cat: 'police' }, { x: D.SPOTS.akhara.x, z: D.SPOTS.akhara.z, name: 'Akhara (dangal)', cat: 'ghoomo' });
   { const ds = donState(); if (ds && ds.avail && ds.called) out.push({ x: ds.at[0], z: ds.at[1], name: ds.C.boss + ' (ch ' + (ds.ch + 1) + ')', cat: 'don' }); }
   for (const p of POI_EXTRA) out.push(p); if (WX.ww > 0.2) for (const s2 of D.FLOOD_SPOTS) out.push({ x: s2.x, z: s2.z, name: s2.name + ' (paani)', cat: 'paani' }); if (P) { const h = homePos(); out.push({ x: h.x, z: h.z, name: 'Mera ghar', cat: 'ghoomo' }); }
@@ -2703,7 +2718,8 @@ function rushStart() {
   const e = G.ev; BAG.visible = bagBeacon.visible = false; if (!e) return; const sp = eventSpot(e.type); if (!sp) return;
   if (e.type === 'thaila') { BAG.position.set(sp.x, 0, sp.z); bagBeacon.position.set(sp.x, 0, sp.z); BAG.visible = bagBeacon.visible = !e.data.taken; }
   if (!G.story && !G.race && !G.job && !G.frun && !BK.on && (!G.wp || G.wp.src === 'event' || (G.wp.src === 'you' && e.type === 'thaila'))) setWaypoint(sp.x, sp.z, e.type === 'thaila' ? '💰 Thaila (' + e.data.place + ')' : e.name, 'event');
-  if (!G.story && !G.race) bigText(e.type === 'thaila' ? '💰 PAISON KA THAILA!' : 'CITY EVENT!', e.type === 'thaila' ? e.data.place + ' · pehle pahuncho, ' + fmt(e.data.prize) + ' tera' : e.name + ' · pehle 3 ko inaam', 2);
+  if (!G.story && !G.race && (BK.on || !$('quest').hidden)) toast((e.type === 'thaila' ? '💰 Paison ka thaila: ' + e.data.place : '🎉 ' + e.name) + ' · Menu → Events', 'money'); /* on a mission: a quiet line, not a slam over the mission card */
+  else if (!G.story && !G.race) bigText(e.type === 'thaila' ? '💰 PAISON KA THAILA!' : 'CITY EVENT!', e.type === 'thaila' ? e.data.place + ' · pehle pahuncho, ' + fmt(e.data.prize) + ' tera' : e.name + ' · pehle 3 ko inaam', 2);
 }
 function updateRush() { if (REAL) return; // real-map preview: these still live on the grid city
   const e = G.ev; if (BAG.visible) { BAG.rotation.y += 0.04; BAG.children[0].position.y = 1.1 + Math.sin(now() * 3) * 0.15; BAG.visible = bagBeacon.visible = !G.inside; }
@@ -3183,7 +3199,10 @@ function updateStory(dt) {
   if (s.beat === 'club' && s.inClub) { if (G.dance) s.danced = (s.danced || 0) + dt; if ((s.danced || 0) >= 3 && now() - s.inClub > 4) storyGo('done'); }
 }
 // a card in the middle of the screen (shares the race result box)
+// cards queue up instead of replacing each other: the next one shows when the current one is closed
+const CARDQ = []; new MutationObserver(() => { if ($('raceres').hidden && CARDQ.length) setTimeout(() => { if ($('raceres').hidden && CARDQ.length) showCard(...CARDQ.shift()); }, 350); }).observe($('raceres'), { attributes: true, attributeFilter: ['hidden'] });
 function showCard(title, sub, buttons, foot) {
+  if (!$('raceres').hidden) { if (!CARDQ.some(q => q[0] === title)) CARDQ.push([title, sub, buttons, foot]); return; }
   $('bigtxt').hidden = true; const box = $('raceres'); box.hidden = false; box.textContent = ''; box.append(el('h2', { class: 'win', text: title }), el('p', { class: 'fine', text: sub }));
   const btns = el('div', { class: 'btns' }); for (const [t, fn, cls] of buttons) btns.append(el('button', { class: 'buy big' + (cls ? ' ' + cls : ''), text: t, onclick: fn })); box.append(btns);
   if (foot) box.append(el('p', { class: 'unlock', text: foot }));
@@ -3436,8 +3455,8 @@ function nakaAhead() { // a barricade on the road ahead (3+ stars)
 function clearNaka() { if (W.naka) { scene.remove(W.naka.g); W.naka = null; } }
 function nakaTick() { const n = W.naka; if (!n) return; if (now() > n.until || !W.stars) return clearNaka(); if (Math.hypot(G.x - n.x, G.z - n.z) < 6 && G.chase) { G.vs = 0; if (G.veh) { A.sfx('crash'); } const c = G.chase; c.x = G.x; c.z = G.z; } } // ram the naka: the jeep catches you
 async function bribeOffer(why) { // caught with stars: a chai-paani, or the thana
-  const st = Math.max(1, W.stars), cost = D.bribeCost(st); return new Promise(res => {
-    showCard('Havaldar: "Kuch chai-paani?" ☕', 'Wanted ' + '★'.repeat(st) + ' · chai-paani ' + fmt(cost) + ' ya thane mein jurmana.', [['☕ Chai-paani ' + fmt(cost), async () => { const r = await buy('misc', 'bribe', { stars: st }); $('raceres').hidden = true; if (r.ok) { W.stars = 0; wantedHUD(); clearNaka(); toast('Havaldar ne aankh band kar li. Agli baar nahi!'); res(true); } else res(false); }, P.money < cost ? 'alt2' : ''], ['Thane chalo', () => { $('raceres').hidden = true; res(false); }, 'alt2']], why || '');
+  const st = Math.max(1, W.stars), cost = D.bribeCost(st, P.money), fine = D.arrestFine(P.money, st); return new Promise(res => {
+    showCard('Havaldar: "Kuch chai-paani?" ☕', 'Wanted ' + '★'.repeat(st) + ' · chai-paani ' + fmt(cost) + ' ya thane mein ' + fmt(fine) + ' jurmana.', [['☕ Chai-paani ' + fmt(cost), async () => { const r = await buy('misc', 'bribe', { stars: st }); $('raceres').hidden = true; if (r.ok) { W.stars = 0; wantedHUD(); clearNaka(); toast('Havaldar ne aankh band kar li. Agli baar nahi!'); res(true); } else res(false); }, P.money < cost ? 'alt2' : ''], ['Thane chalo (' + fmt(fine) + ')', () => { $('raceres').hidden = true; res(false); }, 'alt2']], why || '');
   }); }
 
 // --- one more run (RET-07): back-to-back jobs, time trials, pothole dodge, stunt jumps, golgappa
@@ -3602,7 +3621,7 @@ function loop(t) {
       const W = innerWidth, H = innerHeight, d = 4.1 / (0.42 * 2 * Math.tan((camera.fov / 2) * Math.PI / 180)); camera.position.set(p.x, 1.5, p.z + d); camera.lookAt(p.x, 1.35, p.z); camera.setViewOffset(W, H, 0, H * 0.28, W, H); G.viewOff = true; // ~4 m of world fills the top 42%
     } else { camera.position.set(p.x - 2.6, 2.4, p.z + 6.5); camera.lookAt(p.x - 2.6, 1.7, p.z); } }
   else { const a = t / 1000 * 0.05; camera.position.set(Math.sin(a) * 110, 60, Math.cos(a) * 110); camera.lookAt(0, 10, 0); }
-  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); updateDrops(dt); if (G.inside) for (const r of EXIT_RINGS) r.material.opacity = 0.55 + Math.sin(now() * 4) * 0.35; } updateRemotes(dt); updateBubbles(dt); updateParts(dt); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
+  if (G.started) musicDirector(); updateAmbient(dt); updateCrowd(dt); updateFighters(dt); if (G.started) { updateGang(dt); updateRemoteGangs(dt); updateBade(dt); updateDrops(dt); if (G.inside) for (const r of EXIT_RINGS) r.material.opacity = 0.55 + Math.sin(now() * 4) * 0.35; } updateRemotes(dt); updateBubbles(dt); updateParts(dt); fadeLabels(); if (G.started) { updateNav(); updateBadla(); updateRush(); updateDon(); if (G.dance && G.inside === 'club' && now() > (G.danceEvT || 0)) { if (G.danceEvT) ev('dance'); G.danceEvT = now() + 21; } else if (!G.dance) G.danceEvT = 0; }
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }

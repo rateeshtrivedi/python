@@ -51,7 +51,7 @@ skew += (D.GIFT_EVERY + 2) * 1e3; const g1 = A.req('earn', { reason: 'gift', amo
 skew += 30e3; check(!A.req('earn', { reason: 'gift', amount: 0 }).ok, 'and not again 30 seconds later');
 
 // RET-06: chai-paani grows with the stars
-const mBefore = A.prof().money; const br = A.req('buy', { kind: 'misc', id: 'bribe', stars: 3 }); check(br.ok && br.price === D.bribeCost(3) && A.prof().money === mBefore - D.bribeCost(3), 'chai-paani for 3 stars costs ' + D.bribeCost(3));
+const mBefore = A.prof().money; const br = A.req('buy', { kind: 'misc', id: 'bribe', stars: 3 }); check(br.ok && br.price === D.bribeCost(3, mBefore) && A.prof().money === mBefore - D.bribeCost(3, mBefore), 'chai-paani for 3 stars costs ' + D.bribeCost(3));
 skew += 2e3; const au = A.req('buy', { kind: 'misc', id: 'auto' }); check(au.ok && au.price === 50, 'fast travel (auto) costs ₹50');
 
 // RET-10: one free lucky draw a day
