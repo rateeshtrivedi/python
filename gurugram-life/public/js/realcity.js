@@ -13,9 +13,10 @@ export const credit = 'Map data © OpenStreetMap contributors (ODbL)';
 // ---------------------------------------------------------------- loading and indexing
 export async function load(url, scene) {
   const r = await fetch(url); DATA = await r.json(); const Q = DATA.Q;
-  const dec = a => { const o = new Float32Array(a.length - 2); for (let i = 2; i < a.length; i++) o[i - 2] = a[i] / Q; return o; };
+  const dec = (a, k = 2) => { const o = new Float32Array(a.length - k); for (let i = k; i < a.length; i++) o[i - k] = a[i] / Q; return o; };
   DATA.B = DATA.bld.map(b => { const p = dec(b); let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); } return { s: b[0], f: b[1], p, x0, z0, x1, z1 }; });
-  const NM = DATA.names || []; DATA.R = DATA.roads.map((r2, i) => ({ c: r2[0], w: r2[1] / Q, p: dec(r2), n: DATA.rn && DATA.rn[i] >= 0 ? NM[DATA.rn[i]] : '' }));
+  const NM = DATA.names || []; DATA.R = DATA.roads.map((r2, i) => ({ c: r2[0], w: r2[1] / Q, a: r2[2], b: r2[3], ow: r2[4], p: dec(r2, 5), n: DATA.rn && DATA.rn[i] >= 0 ? NM[DATA.rn[i]] : '' }));
+  buildGraph();
   DATA.M = (DATA.metro || []).map(m => ({ line: m[0], n: NM[m[1]] || '', p: dec(m) }));
   DATA.PL = (DATA.places || []).map(q => ({ k: q[0], n: NM[q[1]], x: q[2], z: q[3] }));
   DATA.ST = (DATA.stations || []).map(q => ({ n: NM[q[0]], line: q[1], x: q[2], z: q[3] }));
@@ -26,7 +27,7 @@ export async function load(url, scene) {
   // metro viaducts: segments and pillars (every 28 units along each line)
   DATA.M.forEach((m, i) => { let acc = 0; for (let j = 0; j < m.p.length - 2; j += 2) { const x0 = m.p[j], z0 = m.p[j + 1], x1 = m.p[j + 2], z1 = m.p[j + 3], L = Math.hypot(x1 - x0, z1 - z0); add(key((x0 + x1) / 2, (z0 + z1) / 2), 'm', [i, j]); for (let d = (28 - acc % 28) % 28; d < L; d += 28) { const x = x0 + (x1 - x0) * d / L, z = z0 + (z1 - z0) * d / L; add(key(x, z), 'pi', [x, z]); } acc += L; } });
   // green road-name boards along named roads: one near each end of a long stretch and every ~160 units
-  DATA.R.forEach(rd => { if (!rd.n || rd.c > 6) return; let acc = 0, next = 20; const p = rd.p; for (let j = 0; j < p.length - 2; j += 2) { const x0 = p[j], z0 = p[j + 1], x1 = p[j + 2], z1 = p[j + 3], L = Math.hypot(x1 - x0, z1 - z0); if (L < 0.01) continue; while (next <= acc + L) { const t = (next - acc) / L, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; add(key(x, z), 'sg', { x, z, dx: (x1 - x0) / L, dz: (z1 - z0) / L, w: rd.w, n: rd.n }); next += 160; } acc += L; } });
+  DATA.R.forEach(rd => { if (!rd.n || rd.c > 6 || (rd.len || 0) < 70) return; let acc = 0, next = 30; /* roads are split at every junction now: only longer stretches get a board */ const p = rd.p; for (let j = 0; j < p.length - 2; j += 2) { const x0 = p[j], z0 = p[j + 1], x1 = p[j + 2], z1 = p[j + 3], L = Math.hypot(x1 - x0, z1 - z0); if (L < 0.01) continue; while (next <= acc + L) { const t = (next - acc) / L, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; add(key(x, z), 'sg', { x, z, dx: (x1 - x0) / L, dz: (z1 - z0) / L, w: rd.w, n: rd.n }); next += 220; } acc += L; } });
   DATA.PL.forEach((q, i) => add(key(q.x, q.z), 'pl', i)); DATA.ST.forEach((q, i) => add(key(q.x, q.z), 'st', i));
   DATA.L.forEach((l, i) => { let x = 0, z = 0; const n = l.p.length / 2; for (let j = 0; j < l.p.length; j += 2) { x += l.p[j]; z += l.p[j + 1]; } add(key(x / n, z / n), 'l', i); });
   root = new THREE.Group(); root.name = 'realcity'; scene.add(root); makeMaterials();
@@ -145,6 +146,38 @@ function buildExtras(e, g) {
   for (const pi of e.pl) { const q = DATA.PL[pi], st = PLC[q.k]; if (!st) continue; const { t, aspect } = textCanvas((q.k === 3 ? '🌳 ' : q.k === 6 ? '🚦 ' : q.k === 5 ? '🏬 ' : '') + q.n, { fs: 44, bg: st[0], fg: st[1], round: true, pad: 1.2 }); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
     sp.scale.set(st[2] * aspect * 0.5, st[2] * 0.5, 1); sp.position.set(q.x, st[3], q.z); sp.userData.own = true; g.add(sp); LBL.push({ sp, x: q.x, z: q.z, far: st[4] }); }
 }
+// ---------------------------------------------------------------- the road graph: GPS routes and traffic
+// Every road piece runs junction to junction (a -> b). ADJ[node] lists where you can go from it (one-ways only forwards).
+let GN = null, ADJ = null;
+const SPEED = { 1: 2.4, 2: 2.0, 3: 1.7, 4: 1.5, 5: 1.5, 6: 1.0, 7: 0.55 }; // how much the router likes each road class
+function buildGraph() {
+  const n = (DATA.gn || []).length / 2; GN = new Float32Array(n * 2); for (let i = 0; i < n * 2; i++) GN[i] = DATA.gn[i] / DATA.Q; ADJ = Array.from({ length: n }, () => []);
+  DATA.R.forEach((rd, i) => { if (rd.c > 7 || rd.a == null) return; let L = 0; for (let j = 0; j < rd.p.length - 2; j += 2) L += Math.hypot(rd.p[j + 2] - rd.p[j], rd.p[j + 3] - rd.p[j + 1]); rd.len = L;
+    ADJ[rd.a].push({ r: i, to: rd.b, fwd: true }); if (!rd.ow) ADJ[rd.b].push({ r: i, to: rd.a, fwd: false }); });
+}
+export const nodeXZ = i => [GN[i * 2], GN[i * 2 + 1]];
+export const edgesFrom = i => ADJ[i] || [];
+export const road = i => DATA.R[i];
+function nearestNode(x, z, car = true) { // the closest junction on a drivable road around (x, z)
+  const tx = Math.floor(x / TILE), tz = Math.floor(z / TILE); let best = -1, bd = 1e9;
+  for (let r = 0; r <= 2 && best < 0; r++) for (let ax = tx - r; ax <= tx + r; ax++) for (let az = tz - r; az <= tz + r; az++) { const e = index.get(ax + ',' + az); if (!e) continue; for (const [ri] of e.r) { const rd = DATA.R[ri]; if (rd.c > (car ? 7 : 8) || rd.a == null) continue; for (const nd of [rd.a, rd.b]) { const d = Math.hypot(GN[nd * 2] - x, GN[nd * 2 + 1] - z); if (d < bd) { bd = d; best = nd; } } } }
+  return best;
+}
+// A*: the quickest way by road (main roads preferred, one-ways respected). Returns the route as points, or null.
+export function route(x0, z0, x1, z1) {
+  if (!ready || !ADJ) return null; const s = nearestNode(x0, z0), t = nearestNode(x1, z1); if (s < 0 || t < 0) return null; if (s === t) return [[x0, z0], [x1, z1]];
+  const n = ADJ.length, g = new Float32Array(n).fill(Infinity), came = new Int32Array(n).fill(-1), via = new Int32Array(n).fill(-1), closed = new Uint8Array(n); const tx = GN[t * 2], tz = GN[t * 2 + 1];
+  const H = [], push = (f, i) => { H.push([f, i]); let k = H.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (H[p][0] <= H[k][0]) break; [H[p], H[k]] = [H[k], H[p]]; k = p; } };
+  const pop = () => { const top = H[0], last = H.pop(); if (H.length) { H[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < H.length && H[l][0] < H[m][0]) m = l; if (r < H.length && H[r][0] < H[m][0]) m = r; if (m === k) break; [H[m], H[k]] = [H[k], H[m]]; k = m; } } return top; };
+  g[s] = 0; push(0, s); let it = 0;
+  while (H.length && it++ < 200000) { const [, u] = pop(); if (closed[u]) continue; closed[u] = 1; if (u === t) break;
+    for (const e of ADJ[u]) { const rd = DATA.R[e.r], c = g[u] + rd.len / (SPEED[rd.c] || 1); if (c < g[e.to]) { g[e.to] = c; came[e.to] = u; via[e.to] = e.r * 2 + (e.fwd ? 1 : 0); push(c + Math.hypot(GN[e.to * 2] - tx, GN[e.to * 2 + 1] - tz) / 2.4, e.to); } } }
+  if (came[t] < 0) return null; const legs = []; for (let v = t; v !== s; v = came[v]) legs.push(via[v]); legs.reverse();
+  const pts = [[x0, z0]]; for (const lg of legs) { const rd = DATA.R[lg >> 1], fwd = lg & 1, p = rd.p, m = p.length / 2; for (let k = 0; k < m; k++) { const j = fwd ? k : m - 1 - k; pts.push([p[j * 2], p[j * 2 + 1]]); } }
+  pts.push([x1, z1]); return pts;
+}
+// roads near a point, for spawning traffic out of sight
+export function roadsNear(x, z, rMin, rMax) { const out = [], tx = Math.floor(x / TILE), tz = Math.floor(z / TILE), n = Math.ceil(rMax / TILE); for (let ax = tx - n; ax <= tx + n; ax++) for (let az = tz - n; az <= tz + n; az++) { const e = index.get(ax + ',' + az); if (!e) continue; for (const [ri, j] of e.r) { const rd = DATA.R[ri]; if (rd.c > 6 || rd.a == null || j) continue; const d = Math.hypot(rd.p[0] - x, rd.p[1] - z); if (d > rMin && d < rMax) out.push(ri); } } return out; }
 // where am I: the locality (nearest sector or neighbourhood) and the road under you
 export function placeAt(x, z) {
   if (!ready) return null; let area = null, ad = 1e9, road = null, rdd = 1e9; const tx = Math.floor(x / TILE), tz = Math.floor(z / TILE);
