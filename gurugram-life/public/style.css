@@ -538,3 +538,8 @@ body:not(.touch):not(.hudall) #missions{display:none}
 @keyframes buzzin{from{transform:translateX(120%)}}
 body.touch #buzz{bottom:auto;top:calc(150px + env(safe-area-inset-top,0px));max-width:calc(100% - 120px)}
 body.film #buzz,body.cutscene #buzz,body.racing #buzz{display:none!important}
+
+#fuelw.low{animation:fuellow .8s ease-in-out infinite}#fuelw.low i{background:#ef4444!important}
+@keyframes fuellow{50%{opacity:.35}}
+/* the speedometer and the goal subtitle never sit on each other */
+#hud:has(#speedo:not([hidden])) #goalsub{bottom:calc(122px + env(safe-area-inset-bottom,0px))}

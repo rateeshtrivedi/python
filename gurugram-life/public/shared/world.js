@@ -354,8 +354,8 @@ function handleBuy(c, m) {
     if (id === 'notes') after = () => { p.party += 5; p.respect += 10; track(c, 'showoff'); announce(p.name + ' ne baraat mein ' + fmt(1000) + ' ke note udaye!', 'party'); broadcast({ t: 'fx', fx: 'notes', x: c.st?.x, z: c.st?.z }); };
     if (id === 'firework') after = () => broadcast({ t: 'fx', fx: 'firework', x: c.st?.x, z: c.st?.z });
     if (id === 'party') after = () => { party = { host: p.id, hostName: p.name, ends: now() + 300, guests: new Set() }; announce(p.name + ' ki Bhondsi farmhouse party shuru! Phone → Events → Join party', 'party'); broadcast({ t: 'party', party: partyView() }); };
-    if (id === 'bribe') { const st = clamp(Math.floor(num(m.stars, 1)), 1, D.WANTED.max); price = D.bribeCost(st); after = () => { p.respect = Math.max(0, p.respect - 2); }; }
-    if (id === 'arrest') { price = Math.min(p.money, 1500 + Math.round(p.money * 0.08)); after = () => { track(c, 'arrests'); p.respect = Math.max(0, p.respect - 5); }; } // the fine: what you can pay, or a night in the lockup
+    if (id === 'bribe') { const st = clamp(Math.floor(num(m.stars, 1)), 1, D.WANTED.max); price = D.bribeCost(st, p.money); after = () => { p.respect = Math.max(0, p.respect - 2); }; }
+    if (id === 'arrest') { const st = clamp(Math.floor(num(m.stars, 1)), 1, D.WANTED.max); price = D.arrestFine(p.money, st); after = () => { track(c, 'arrests'); p.respect = Math.max(0, p.respect - 5); }; } // the fine: what you can pay, or a night in the lockup
     if (id === 'challan_chase' || id === 'challan' || id === 'challan_big' || id === 'challan_film' || id === 'ko_bill') { price = Math.min(price, p.money); }
   } else if (kind === 'vehicle') {
     const v = D.VEH[id]; if (!v || !D.BUY_VEHICLES.includes(id)) return fail('Yeh gaadi nahi bikti'); if (p.vehicles.includes(id)) return fail('Yeh gaadi pehle se teri se');
@@ -426,6 +426,7 @@ function handleEarn(c, m) {
   if (!cap) return { ok: false, error: 'Unknown' };
   let max = cap.max; if (worldEvent?.type === 'flood' && (reason === 'ride' || reason === 'delivery')) max *= 2;
   if (!rateOk(c, 'earn:' + reason, cap.cd * 0.85)) return { ok: false, error: 'Thoda ruk ke' };
+  if (reason === 'holi') { if (worldEvent?.type !== 'holi') return { ok: false, error: 'Holi khatam' }; const hk = worldEvent.start || 0; if (c.holiEv !== hk) { c.holiEv = hk; c.holiN = 0; } if (++c.holiN > 15) return { ok: false, error: 'Bas! Sab rang gaye' }; track(c, 'holi'); addXP(c, 4); }
   if (reason === 'prasad') { if (p.blessed === today()) return { ok: false, error: 'Aaj ka aashirwad mil gaya' }; p.blessed = today(); }
   if (reason === 'dangal') { track(c, 'wrestle'); if (!db.belt || !conns.has(db.belt.id)) giveBelt(c); }
   let amt = clamp(Math.round(num(m.amount)), 0, max), mult = 1;
@@ -629,7 +630,8 @@ function handle(c, m) {
     case 'rishta': reply(rishta(c, m)); break;
     case 'bkstart': { const i = Math.floor(num(m.i, -1)); if (i === (p.bk || 0) && D.BADE[i]) { p.bkOn = { i, at: now(), step: 0 }; dirty = true; reply({ ok: true }); } /* kept in the profile: a reload picks the kaam up where it was */ else reply({ ok: false, error: 'Yeh kaam abhi nahi' }); break; }
     case 'bkdone': reply(bkDone(c, m)); break;
-    case 'bkstep': { if (p.bkOn && p.bkOn.i === Math.floor(num(m.i, -1))) { p.bkOn.step = Math.max(0, Math.min(20, Math.floor(num(m.step, 0)))); dirty = true; } break; }
+    case 'bkstep': { if (p.bkOn && p.bkOn.i === Math.floor(num(m.i, -1))) { p.bkOn.step = Math.max(0, Math.min(20, Math.floor(num(m.step, 0)))); delete p.bkOn.paused; dirty = true; } break; }
+    case 'bkfail': { if (p.bkOn) { p.bkOn.paused = true; dirty = true; } break; } // failed or arrested: the step stays as a checkpoint, but a reload doesn't restart it on its own
     case 'bkquit': { if (p.bkOn) { p.bkOn = null; dirty = true; } break; }
     case 'shot': { // a gunshot: spends a round; a hit on a nearby player (or an AI player) hurts them
       const g = D.GUNS[m.gun]; if (!g || !p.guns.includes(m.gun) || !((p.ammo[m.gun] || 0) > 0) || !rateOk(c, 'shot', g.cd * 0.8)) return;

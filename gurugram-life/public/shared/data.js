@@ -95,9 +95,9 @@ export const plotRent = pl => Math.round(pl.base * 0.004 / 10) * 10; // paid eve
 export const PETROL_RATE = 100; // ₹ a litre
 // a knocked-down NPC drops his batua (or her purse): a little cash to pick up. A player knocked down by an NPC loses a bit the same way.
 export const DROP = { min: 40, max: 160, perLevel: 5, big: [300, 900], keep: 120 };
-export const robAmount = money => Math.min(money, Math.max(50, Math.round(money * 0.06)), 3000);
+export const robAmount = money => Math.min(money, Math.max(50, Math.round(money * 0.04)), 1500); // the one who KOs you grabs 4% of your batua (max ₹1,500)
 export const TANK = { khatara: 25, scooty: 6, dhakad: 13, chhotu: 30, desert: 50, cruiser: 60, auto: 8, bus: 120, truck: 160, naav: 20 };
-export const FUEL_RANGE = { 2: 2600, 4: 2100, 5: 1800 }; // game units on a full tank, by vehicle kind
+export const FUEL_RANGE = { 2: 7800, 4: 6300, 5: 5400 }; // game units on a full tank, by vehicle kind (5 L in a Khatara ≈ 1.2 km)
 export const SPOUSE_NAMES = { f: ['Simran', 'Pooja', 'Neha', 'Anjali', 'Kavya', 'Riya', 'Priya'], m: ['Rohit', 'Aman', 'Vikram', 'Karan', 'Arjun', 'Rahul', 'Sahil'] };
 export const SHAADI_COST = 25000;
 // rishta steps: Mausi ji calls (home 2BHK or better + a car) → meet at Cyber Hub → long drive to Leisure Valley → ring from Goyal Jewellers → shaadi
@@ -174,6 +174,7 @@ export const EARN = {
   ride: { max: 1100, cd: 14 }, delivery: { max: 700, cd: 10 }, loot: { max: 150, cd: 6 }, dangal: { max: 1000, cd: 45 },
   coldopen: { max: 1000, cd: 5 }, gift: { max: 1500, cd: 140 }, biz: { max: 40000, cd: 5 },
   quest: { max: 1600, cd: 90 }, flood: { max: 1200, cd: 30 }, chai: { max: 60, cd: 4 }, prasad: { max: 251, cd: 3600 }, ipl: { max: 300, cd: 120 },
+  holi: { max: 80, cd: 2.5 }, // gulal on a passer-by during Holi (up to 15 a Holi)
 };
 
 
@@ -381,7 +382,9 @@ export const MEDALS = ['', 'Kaansa', 'Chaandi', 'Sona']; export const MEDAL_PAY 
 export const medalOf = (g, score) => { const M = MINI[g]; if (!M) return 0; let m = 0; M.medals.forEach((v, i) => { if (M.low ? score <= v : score >= v) m = i + 1; }); return m; };
 // wanted stars: what each crime adds, and what a chai-paani costs
 export const WANTED = { ped: 1, jack: 1, cop: 2, gun: 2, steal: 1, max: 5, decay: 20 }; // decay: seconds out of sight per star
-export const bribeCost = stars => 300 * stars * stars;
+// the thana fine grows with the stars and your pocket; a chai-paani is always cheaper (60% of it), so it's a real choice
+export const arrestFine = (money, stars = 1) => Math.min(Math.max(0, money), 1000 + 400 * stars + Math.round(Math.max(0, money) * 0.06));
+export const bribeCost = (stars, money = 0) => Math.max(200, Math.round((1000 + 400 * stars + Math.round(Math.max(money, 3000) * 0.06)) * 0.6 / 50) * 50);
 // a small reward every few minutes of play
 export const GIFT_EVERY = 150; export const giftAmt = (level, n) => Math.min(1500, 100 + 40 * level + (n % 4 === 3 ? 300 : 0));
 // invite a friend: both get a Bullet once the friend has played their first kaam
