@@ -753,7 +753,7 @@ function handle(c, m) {
     case 'challenge': { // roast or dance-off invite
       const kind = m.kind; const tc = conns.get(m.target); if (!tc || tc === c || !c.st || !tc.st) return reply({ ok: false, error: 'Woh player yahan nahi se' });
       if (!rateOk(c, 'challenge', 8)) return reply({ ok: false, error: 'Thoda ruk' });
-      if (kind === 'roast') { if (roast) return reply({ ok: false, error: 'Ek roast battle pehle se chal rahi se' }); const sp = D.SPOTS.chaupal; if (Math.hypot(c.st.x - sp.x, c.st.z - sp.z) > 14 || Math.hypot(tc.st.x - sp.x, tc.st.z - sp.z) > 14) return reply({ ok: false, error: 'Dono ko Badshahpur chaupal pe hona chahiye' }); }
+      if (kind === 'roast') { if (roast) return reply({ ok: false, error: 'Ek roast battle pehle se chal rahi se' }); const sp = c.st.rm ? D.REAL_SPOTS.chaupal : D.SPOTS.chaupal; if (Math.hypot(c.st.x - sp.x, c.st.z - sp.z) > 14 || Math.hypot(tc.st.x - sp.x, tc.st.z - sp.z) > 14) return reply({ ok: false, error: 'Dono ko Badshahpur chaupal pe hona chahiye' }); }
       else if (kind === 'dance') { if (dance) return reply({ ok: false, error: 'Dance floor busy se' }); if (c.st.in !== 'club' || tc.st.in !== 'club') return reply({ ok: false, error: 'Dono ko Neon Nights club mein hona chahiye' }); }
       else return reply({ ok: false });
       invites.set(tc.p.id + ':' + kind, { from: p.id, until: now() + 30 });
@@ -983,6 +983,7 @@ function aiInfo(a) { return { t: 'pi', id: a.id, name: a.name, color: a.color, l
 function aiPos(a) { const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz) || 1; const off = a.v ? 3 : 5.6; return { x: a.x + dz / d * off, z: a.z - dx / d * off }; }
 const snapRoad = v => RG.reduce((b, r) => Math.abs(r - v) < Math.abs(b - v) ? r : b, RG[0]);
 function aiNext(a) {
+  if (a.loop != null) { const Lp = D.REAL_AI_LOOPS[a.loop]; a.k = (a.k + 1) % Lp.length; a.px = a.tx; a.pz = a.tz; a.tx = Lp[a.k][0]; a.tz = Lp[a.k][1]; return; } // real map: along its loop of real road
   const opts = [[a.tx + 150, a.tz], [a.tx - 150, a.tz], [a.tx, a.tz + 150], [a.tx, a.tz - 150]].filter(([x, z]) => x >= RMIN && x <= RMAX && z >= RMIN && z <= RMAX && !(x === a.px && z === a.pz));
   let pickp = opts[Math.floor(Math.random() * opts.length)]; const hs = [...conns.values()].filter(c => c.st && !c.st.in);
   if (hs.length && Math.random() < 0.6) { const h = hs[0].st; pickp = opts.reduce((b, o) => Math.hypot(o[0] - h.x, o[1] - h.z) < Math.hypot(b[0] - h.x, b[1] - h.z) ? o : b, pickp); }
@@ -991,11 +992,13 @@ function aiNext(a) {
 function aiSpawn() {
   const hs = [...conns.values()].filter(c => c.st && !c.st.in); if (!hs.length) return; const used = new Set([...ais.values()].map(a => a.base));
   const pool = AI_NAMES.filter(n => !used.has(n[0])); if (!pool.length) return; const [nm, g] = pool[Math.floor(Math.random() * pool.length)]; const h = hs[Math.floor(Math.random() * hs.length)].st;
-  const sx = clamp(snapRoad(h.x) + pick([-150, 0, 150]), RMIN, RMAX), sz = clamp(snapRoad(h.z) + pick([-150, 150]), RMIN, RMAX);
+  // real map: join the loop of real road nearest to a player, a little way along it
+  let loop = 0, k0 = 0, bd = Infinity; D.REAL_AI_LOOPS.forEach((Lp, li) => Lp.forEach((q, qi) => { const d = Math.hypot(q[0] - h.x, q[1] - h.z); const used2 = [...ais.values()].some(o => o.loop === li); if (d + (used2 ? 400 : 0) < bd) { bd = d + (used2 ? 400 : 0); loop = li; k0 = qi; } }));
+  const Lp0 = D.REAL_AI_LOOPS[loop]; k0 = (k0 + 3 + Math.floor(Math.random() * 4)) % Lp0.length; const sx = Lp0[k0][0], sz = Lp0[k0][1];
   const r = () => Math.floor(Math.random() * 5);
   const a = { id: 'ai' + rid(6), base: nm, name: nm + ' (AI)', color: Math.floor(Math.random() * D.SHIRTS.length), look: { g, skin: r(), hair: r(), hc: Math.floor(Math.random() * 3), top: Math.floor(Math.random() * 3), pants: Math.floor(Math.random() * 4), acc: Math.floor(Math.random() * 3) },
     outfit: { shirt: null, hat: g === 'f' ? pick(['none', 'dupatta']) : pick(['none', 'cap', 'pagdi']), shades: Math.random() < 0.5 }, level: 2 + Math.floor(Math.random() * 12),
-    x: sx, z: sz, tx: sx, tz: sz, px: null, pz: null, r: 0, v: Math.random() < 0.45 ? pick(['scooty', 'chhotu', 'desert', 'dhakad', 'cruiser']) : null, a: 1, hp: 100, wait: 0, chatT: now() + 15 + Math.random() * 40, foe: null };
+    x: sx, z: sz, tx: sx, tz: sz, px: null, pz: null, loop, k: k0, r: 0, v: Math.random() < 0.45 ? pick(['scooty', 'chhotu', 'desert', 'dhakad', 'cruiser']) : null, a: 1, hp: 100, wait: 0, chatT: now() + 15 + Math.random() * 40, foe: null };
   aiNext(a); ais.set(a.id, a); broadcast(aiInfo(a));
 }
 function aiDrop(a) { ais.delete(a.id); broadcast({ t: 'left', id: a.id }); }
@@ -1004,7 +1007,7 @@ function aiTick(dt) {
   if (ais.size > want) aiDrop([...ais.values()][0]); else if (ais.size < want && Math.random() < dt / 3) aiSpawn();
   const t = now();
   for (const a of ais.values()) {
-    const outside = humans.filter(c => !c.st.in); if (outside.length && outside.every(c => Math.hypot(c.st.x - a.x, c.st.z - a.z) > 420)) { aiDrop(a); continue; }
+    const outside = humans.filter(c => !c.st.in); if (outside.length && outside.every(c => Math.hypot(c.st.x - a.x, c.st.z - a.z) > 700)) { aiDrop(a); continue; }
     if (a.hp <= 0) { if (t > a.downUntil) a.hp = 100; else continue; }
     if (a.foe) { const fc = conns.get(a.foe); if (!fc || !fc.st || fc.st.in || t > a.foeUntil || fc.st.hp <= 0) { a.foe = null; if (a.jackV) { a.v = a.jackV; a.jackV = null; a.jackBy = null; } } else { a.v = null; const p0 = aiPos(a); const dx = fc.st.x - p0.x, dz = fc.st.z - p0.z, d = Math.hypot(dx, dz); a.r = Math.atan2(dx, dz); if (d > 1.9) { a.x += dx / d * 5.5 * dt; a.z += dz / d * 5.5 * dt; a.tx = a.x + dx; a.tz = a.z + dz; a.a = 1; } else { a.a = 0; if (t > (a.punchAt || 0)) { a.punchAt = t + 1.3; send(fc, { t: 'dmg', by: a.id, name: a.name, d: 4 + Math.floor(Math.random() * 4) }); broadcast({ t: 'fx', fx: 'punch', by: a.id, target: fc.p.id }, x => x.st && dist(x.st, p0) < 60); } } continue; } }
     if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0) a.a = 1; continue; }
@@ -1020,7 +1023,7 @@ function aiTalk() {
   for (let i = aiGreets.length - 1; i >= 0; i--) if (aiGreets[i].at < t) { const g = aiGreets.splice(i, 1)[0]; const a = list[Math.floor(Math.random() * list.length)]; broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text: g.text }); }
   for (const a of list) if (t > a.chatT && a.hp > 0 && t > aiChatGap) { a.chatT = t + 60 + Math.random() * 70; aiChatGap = t + 12; const fresh = AI_LINES.filter(l => !aiRecent.includes(l)); const text = pick(fresh.length ? fresh : AI_LINES); aiRecent.push(text); if (aiRecent.length > 8) aiRecent.shift(); broadcast({ t: 'chat', id: a.id, name: a.name, tag: null, text }); } // bots never echo each other: no line twice in the last eight, and a gap between them
 }
-function aiEntries(raw) { const out = []; for (const a of ais.values()) { const p0 = aiPos(a); const st = { x: p0.x, z: p0.z, in: '' }; const entry = [a.id, Math.round(p0.x * 10) / 10, Math.round(p0.z * 10) / 10, Math.round(a.r * 100) / 100, a.a, a.v, '', a.hp, 0]; out.push({ p: { id: a.id }, st, entry, entryJson: raw ? JSON.stringify(entry) : null }); } return out; }
+function aiEntries(raw) { const out = []; for (const a of ais.values()) { const p0 = aiPos(a); const st = { x: p0.x, z: p0.z, in: '', rm: 1 }; /* they live on the real map */ const entry = [a.id, Math.round(p0.x * 10) / 10, Math.round(p0.z * 10) / 10, Math.round(a.r * 100) / 100, a.a, a.v, '', a.hp, 0]; out.push({ p: { id: a.id }, st, entry, entryJson: raw ? JSON.stringify(entry) : null }); } return out; }
 
 // owner stats (server /admin page): every real player, newest activity first
 function stats() {
