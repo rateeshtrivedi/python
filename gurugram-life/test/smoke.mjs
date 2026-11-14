@@ -85,7 +85,7 @@ try {
   const plots = await b.req('plots', {}); check(plots.ok && plots.plots.length >= 6 && plots.plots.every(x => x.price > 0), 'plot market lists today\'s prices');
   const bkEarly = await b.req('bkdone', { i: 0 }); check(!bkEarly.ok, 'a Bada Kaam cannot be finished without starting it');
   const bkWrong = await b.req('bkstart', { i: 2 }); check(!bkWrong.ok, 'Bade Kaam go in order');
-  const fuel = await a.req('buy', { kind: 'fuel', id: 'x', n: 3 }); check(fuel.ok && fuel.price === 300, 'petrol: 3 litres at ₹100');
+  const fuel = await a.req('buy', { kind: 'fuel', id: 'x', n: 3 }); check(fuel.ok && fuel.price === 3 * D.PETROL_RATE, 'petrol: 3 litres at ₹' + D.PETROL_RATE);
   const fine = await a.req('buy', { kind: 'misc', id: 'arrest' }); check(fine.ok && fine.price > 0, 'arrest: a fine from what you have');
   const lb = await a.req('lb', {}); check(lb.ok && Array.isArray(lb.lb.rich), 'leaderboards available');
   const bid = await a.req('bid', { amount: 5 }); check(!bid.ok, 'bad bid rejected');
