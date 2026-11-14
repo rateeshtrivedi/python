@@ -43,7 +43,7 @@ function skyMat() {
 // ------------------------------------------------------------------ SETUP
 export function init(renderer, scene, sun, phone) {
   R = renderer; SCENE = scene; SUN = sun; Q.phone = phone;
-  const m = skyMat(); SKY = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), m); SKY.renderOrder = -1000; SKY.frustumCulled = false; scene.add(SKY);
+  const m = skyMat(); SKY = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), m); SKY.renderOrder = -1000; SKY.frustumCulled = false; SKY.name = 'sky'; scene.add(SKY);
   // reflections: a small cube map of the same sky over a dusty ground, refreshed as the day moves
   CUBE = new THREE.WebGLCubeRenderTarget(phone ? 64 : 128, { generateMipmaps: false, minFilter: THREE.LinearFilter });
   CUBECAM = new THREE.CubeCamera(1, 1000, CUBE); ENVSCENE = new THREE.Scene();

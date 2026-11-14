@@ -6,6 +6,8 @@ import * as A from './audio.js';
 import * as I18N from './i18n.js';
 import * as FD from './founder.js';
 import * as SF from './streetfight.js';
+import * as RC from './realcity.js';
+const REAL = /[?&]real\b/.test(location.search); // preview of the real-map Gurugram (OpenStreetMap)
 import * as HU from './humans.js';
 import * as RL from './realism.js';
 import * as RD from './rides.js';
@@ -765,7 +767,7 @@ function openTasks() {
 function donState() { const d = P && P.don; if (!d) return null; const ch = d.ch, C = D.DON[ch]; const at = (d.spot != null && D.DON_SPOTS[d.spot]) || (C && C.at); return { d, ch, C, at, called: d.spot != null, avail: !!C && d.last !== (P.missions && P.missions.day), champ: d.champ === d.wk }; }
 let DONF = [];
 function clearDon() { for (const n of DONF) if (FIGHTERS.includes(n)) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); } DONF = []; }
-function updateDon() {
+function updateDon() { if (REAL) return; // real-map preview: these still live on the grid city
   const s = donState(); if (!s || !s.avail) { if (DONF.length && !DONF.some(n => n.state === 'ko')) clearDon(); return; }
   if (!s.called) { if (DONF.length) clearDon(); maybeDonCall(s); return; }
   if (DONF.length && (DONF[0].donCh !== s.ch || DONF[0].donSpot !== s.d.spot)) clearDon(); DONF = DONF.filter(n => FIGHTERS.includes(n));
@@ -813,7 +815,7 @@ function openDon() {
 }
 // Badla: today's goon waits at his corner; KO him for the task
 let BADLA = null;
-function updateBadla() {
+function updateBadla() { if (REAL) return; // real-map preview: these still live on the grid city
   const a = dailyTasks().find(x => x.k === 'badla' && !x.done);
   if (!a) { if (BADLA && BADLA.state !== 'ko') { scene.remove(BADLA.mesh); FIGHTERS.splice(FIGHTERS.indexOf(BADLA), 1); } if (!BADLA || BADLA.state !== 'ko') BADLA = null; return; }
   if (BADLA && !FIGHTERS.includes(BADLA)) BADLA = null;
@@ -1101,6 +1103,7 @@ function exitInterior() { const key = G.inside; const d = DOORS[key]; fadeTo('',
 function setIndoor(on) { $('bExit').hidden = !on; scene.fog.near = on ? 60 : 160; scene.fog.far = on ? 220 : 560; camera.far = on ? 260 : 640; camera.updateProjectionMatrix(); if (!on) A.setOverride(null); }
 function fadeTo(text, ms, cb) { const f = $('fade'); f.textContent = text; f.classList.add('show'); G.frozen = true; setTimeout(() => { cb && cb(); setTimeout(() => { f.classList.remove('show'); G.frozen = false; }, Math.max(250, ms - 400)); }, 400); }
 function resolve(o, r) {
+  if (REAL && RC.isReady() && !G.inside) return RC.collide(o, r); // real building outlines
   const list = COL[G.inside || 'out']; let hit = false;
   for (const c of list) { if (o.x + r > c.x0 && o.x - r < c.x1 && o.z + r > c.z0 && o.z - r < c.z1) { const a = o.x + r - c.x0, b = c.x1 - (o.x - r), cc = o.z + r - c.z0, d = c.z1 - (o.z - r); const m = Math.min(a, b, cc, d); if (m === a) o.x -= a; else if (m === b) o.x += b; else if (m === cc) o.z -= cc; else o.z += d; hit = true; } }
   if (!G.inside) { o.x = clamp(o.x, -445, 445); o.z = clamp(o.z, -445, 445); for (const c of RD.cowReady() ? COWS : []) { const dx = o.x - c.x, dz = o.z - c.z, dd = Math.hypot(dx, dz), rr = r + 1.3; if (dd < rr && dd > 0.01) { o.x = c.x + dx / dd * rr; o.z = c.z + dz / dd * rr; hit = true; if (G.veh && Math.abs(G.vs) > 8 && !c.mooT) { c.mooT = 2; A.sfx('moo'); } } } }
@@ -1172,7 +1175,7 @@ function doAction() {
 function updateZones() {
   let best = null, bd = 1e9; const z = G.inside || 'out';
   let label = null;
-  if (!(G.cold && !G.cold.won) && !G.seat) for (const Z of ZONES) { if (Z.zone !== z) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } } /* no shop prompts in the middle of the opening chase */
+  if (!(G.cold && !G.cold.won) && !G.seat && !(REAL && !G.inside)) for (const Z of ZONES) { if (Z.zone !== z) continue; const d = Math.hypot(Z.x - G.x, Z.z - G.z); if (d < Z.r && d < bd) { const lb = Z.label(); if (!lb) continue; bd = d; best = Z; label = lb; } } /* no shop prompts in the middle of the opening chase */
   nearZone = best; const p = $('prompt');
   if (!label) { const jt = jackTarget(); if (jt) label = jackLabel(jt); }
   if (!label && G.ev?.type === 'jam' && !G.veh && !G.inside && Math.hypot(G.x - D.SPOTS.naka.x, G.z - D.SPOTS.naka.z) < 70) label = 'Sell chai to stuck drivers';
@@ -1231,7 +1234,7 @@ function footsteps() {
   const d = Math.hypot(G.x - stepX, G.z - stepZ); stepX = G.x; stepZ = G.z; if (d > 2 || d < 0.004 || player.position.y > groundY(G.x, G.z) + 0.25) return;
   stepAcc += d; if (stepAcc > 1.3) { stepAcc = 0; A.sfx(WX.wl > 0.3 || inFlood(G.x, G.z) ? 'stepwet' : 'step', 0.9 + Math.random() * 0.3); }
 }
-function groundY(x, z) { return blockOf(x, z) ? 0.2 : 0; }
+function groundY(x, z) { if (REAL && !G.inside) return 0; return blockOf(x, z) ? 0.2 : 0; }
 const camTarget = new THREE.Vector3(), camWant = new THREE.Vector3();
 function updateCamera(dt) {
   if (G.camFix) { camera.position.lerp(G.camFix.p, Math.min(1, dt * 5)); camera.lookAt(G.camFix.t); return; }
@@ -1383,7 +1386,7 @@ function jackWin(m) { // the server says I beat the owner, so the vehicle is min
   bigText('GAADI TERI!', m.name + ' ki ' + D.VEH[m.v].name + ' ab tere paas', 1.8);
 }
 async function startDangal() { if (G.veh) return; if (G.belt && G.belt.id !== P.id && REMOTES.has(G.belt.id)) toast('Champion ' + G.belt.name + ' online se. Belt ke liye unhe akhara mein KO kar!'); const r = await buy('misc', 'dangal'); if (!r.ok) return; AKHARA.fight = true; PEHLWAN.hp = PEHLWAN.max; PEHLWAN.state = 'aggro'; say(PEHLWAN, 'Aaja chhore, dekh le Haryana ka dum!', 2.5); toast('Dangal shuru! Punch with F. Akhara se bahar mat jaana.'); }
-function updateFighters(dt) {
+function updateFighters(dt) { if (REAL) return; // real-map preview: these still live on the grid city
   const gone = [];
   for (const n of FIGHTERS) {
     if (n.sfHold) continue; // the face-off places, animates and scores these
@@ -1803,7 +1806,7 @@ function spawnAmbient() {
   for (const s of SHOPPERS) { const c = makeChar(pick(D.SHIRTS)); scene.add(c); MALLNPC.push({ mesh: c, s, x: rnd(s.x0, s.x1), z: rnd(s.z0, s.z1), tx: 0, tz: 0, t: 0 }); }
 }
 const JAM = [];
-function updateAmbient(dt) {
+function updateAmbient(dt) { if (REAL) return; // real-map preview: these still live on the grid city
   const out = !G.inside; const jam = G.ev?.type === 'jam';
   for (const v of JAM) v.visible = out && jam;
   const ram = G.veh && Math.abs(G.vs) > 6;
@@ -2086,11 +2089,12 @@ function drawMini() {
   const W = mini.width, H = mini.height, sc = 0.55; mctx.save(); mctx.fillStyle = '#5f6b45'; mctx.fillRect(0, 0, W, H);
   if (G.inside) { mctx.fillStyle = '#2a2119'; mctx.fillRect(0, 0, W, H); mctx.fillStyle = '#f6c026'; mctx.font = '700 20px "Baloo 2", sans-serif'; mctx.textAlign = 'center'; wrapText(mctx, INTERIOR[G.inside].name, W / 2, H / 2 - 10, W - 40, 22); mctx.font = '600 15px Mukta, sans-serif'; mctx.fillStyle = '#fff4d8'; mctx.fillText('Exit: south door', W / 2, H / 2 + 34); mctx.restore(); return; }
   mctx.translate(W / 2, H / 2); mctx.rotate(G.yaw + Math.PI); mctx.scale(sc, sc); mctx.translate(-G.x, -G.z);
+  if (REAL && RC.isReady()) RC.drawMini(mctx, G.x, G.z, 280); else {
   for (const d of DIST) { mctx.fillStyle = TYPE_COL[d[3]] || '#9a927e'; mctx.fillRect(d[0] * 150 - 68, d[1] * 150 - 68, 136, 136); const t = G.turf && G.turf[d[2]]; if (t) { mctx.strokeStyle = hex(t.color); mctx.lineWidth = 8; mctx.strokeRect(d[0] * 150 - 64, d[1] * 150 - 64, 128, 128); } }
   if (G.ev?.type === 'flood') { mctx.fillStyle = 'rgba(70,120,160,.7)'; for (const n of G.ev.data.districts) { const d = DIST.find(x => x[2] === n); if (d) mctx.fillRect(d[0] * 150 - 75, d[1] * 150 - 75, 150, 150); } }
   mctx.fillStyle = '#2f2f31'; for (const r of ROADS) { mctx.fillRect(r - 7, -450, 14, 900); mctx.fillRect(-450, r - 7, 900, 14); }
   for (const m of METROS) { mctx.fillStyle = '#2563b8'; mctx.fillRect(m.x - 8, m.z - 8, 16, 16); }
-  mctx.fillStyle = '#d7331f'; mctx.fillRect(D.SPOTS.naka.x - 6, D.SPOTS.naka.z - 6, 12, 12);
+  mctx.fillStyle = '#d7331f'; mctx.fillRect(D.SPOTS.naka.x - 6, D.SPOTS.naka.z - 6, 12, 12); } // (grid map)
   if (G.ev?.type === 'baraat') { mctx.fillStyle = '#ff6fa5'; mctx.beginPath(); mctx.arc(-222, baraatZ(), 12, 0, 7); mctx.fill(); }
   if (G.route && G.route.pts.length) { mctx.strokeStyle = '#f6c026'; mctx.lineWidth = 7; mctx.lineJoin = 'round'; mctx.beginPath(); mctx.moveTo(G.x, G.z); for (const q of G.route.pts) mctx.lineTo(q.x, q.z); mctx.stroke(); }
   if (G.wp) { mctx.fillStyle = '#f6c026'; mctx.beginPath(); mctx.arc(G.wp.x, G.wp.z, 9, 0, 7); mctx.fill(); }
@@ -2462,7 +2466,7 @@ function buildCityFill() {
   }
   torso.instanceColor.needsUpdate = true; head.instanceColor.needsUpdate = true; CROWD.meshes = [legs, torso, head];
 }
-function updateCrowd(dt) {
+function updateCrowd(dt) { if (REAL) return; // real-map preview: these still live on the grid city
   if (!CROWD.meshes) return; const [legs, torso, head] = CROWD.meshes; const out = !G.inside; for (const im of CROWD.meshes) im.visible = out; if (!out) return;
   const U = updateCrowd.u || (updateCrowd.u = { q: new THREE.Quaternion(), e: new THREE.Euler(), m: new THREE.Matrix4(), ps: new THREE.Vector3(), sc: new THREE.Vector3(), off: new THREE.Vector3(), f: 0 }); const { q, e, ps, sc, off } = U, m4 = U.m; const t = now(); const fr = ++U.f; const cx = camera.position.x, cz = camera.position.z;
   const carHit = G.veh && Math.abs(G.vs) > 6 ? 1.9 : 0;
@@ -2499,7 +2503,7 @@ function crowdHumans(dt) {
 }
 function knockPerson(p) { const sp = Math.max(6, Math.abs(G.vs)); p.knock = 7; p.kx = Math.sin(G.r) * sp * 0.5; p.kz = Math.cos(G.r) * sp * 0.5; G.vs *= 0.82; A.sfx('punch', 0.8); A.sfx('crash', 0.4); if (Math.random() < 0.6) toast(pick(['Oye! Andha se ke?', 'Bhai dekh ke chala!', 'Arre maar diya re!', 'Police bulaunga!']), 'bad'); G.hitPeople = (G.hitPeople || 0) + 1; crowdPanic(G.x, G.z); crime('ped'); } // witnesses: a star each; two stars and someone dials 112
 // road hazards: potholes jolt the car, waterlogging slows everything, garbage blocks walkers unless they jump
-function roadHazards(dt) {
+function roadHazards(dt) { if (REAL) return; // real-map preview: these still live on the grid city
   if (G.inside) return; const sp = Math.abs(G.vs); const t = now();
   if (G.veh && sp > 6 && (G.potCD || 0) < t) for (const p of POTHOLES) if (Math.abs(p.x - G.x) < 2 && Math.abs(p.z - G.z) < 2 && Math.hypot(p.x - G.x, p.z - G.z) < 1.2 + p.s) { G.potCD = t + 0.8; G.vs *= 0.78; G.jolt = 0.35; A.sfx('crash', 0.35); if (Math.random() < 0.35) say(player, pick(['Gurugram ke gaddhe!', 'Gaadi ka suspension gaya!', 'MCG kahan hai?']), 2); break; }
   const wet = (G.depth || 0) > 0.15 && G.veh !== 'naav';
@@ -2662,7 +2666,7 @@ function rushStart() {
   if (!G.story && !G.race && !G.job && !G.frun && !BK.on && (!G.wp || G.wp.src === 'event' || (G.wp.src === 'you' && e.type === 'thaila'))) setWaypoint(sp.x, sp.z, e.type === 'thaila' ? '💰 Thaila (' + e.data.place + ')' : e.name, 'event');
   if (!G.story && !G.race) bigText(e.type === 'thaila' ? '💰 PAISON KA THAILA!' : 'CITY EVENT!', e.type === 'thaila' ? e.data.place + ' · pehle pahuncho, ' + fmt(e.data.prize) + ' tera' : e.name + ' · pehle 3 ko inaam', 2);
 }
-function updateRush() {
+function updateRush() { if (REAL) return; // real-map preview: these still live on the grid city
   const e = G.ev; if (BAG.visible) { BAG.rotation.y += 0.04; BAG.children[0].position.y = 1.1 + Math.sin(now() * 3) * 0.15; BAG.visible = bagBeacon.visible = !G.inside; }
   if (!e || G.evReached || G.inside || (e.rush && e.rush.length >= 3)) return; const sp = eventSpot(e.type); if (!sp) return;
   const d = e.type === 'baraat' ? Math.abs(G.x - sp.x) : Math.hypot(G.x - sp.x, G.z - sp.z); if (d < (e.type === 'thaila' ? 6 : 20)) { G.evReached = true; net.send('evreach', {}); if (e.type === 'thaila') { BAG.visible = bagBeacon.visible = false; A.sfx('cash'); } }
@@ -3529,7 +3533,7 @@ function loop(t) {
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
-  updateHumans(dt); SF.tick(dt); if ((shT += dt) > 2) { shT = 0; RL.shadowize(scene); }
+  if (REAL) realTick(); updateHumans(dt); SF.tick(dt); if ((shT += dt) > 2) { shT = 0; RL.shadowize(scene); }
   Object.assign(DAYV, { wet: WX.wl, inside: !!G.inside, map: !!G.map, t: t / 1000, dt }); RL.frame(camera, G.started ? G.x : camera.position.x, G.started ? G.z : camera.position.z, DAYV); renderer.render(scene, camera);
 }
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
@@ -3543,9 +3547,17 @@ FD.init({ bx, cyl, sph, sign, labelSprite, disposeSprite, texFrom, glow, mat, ma
   gps: (key, name) => { const d = DOORS[key]; if (d) setWaypoint(d.x, d.z, name, 'obj'); },
   snapCam: () => { if (G.camFix) { camera.position.copy(G.camFix.p); camera.lookAt(G.camFix.t); } },
   card: (title, sub, buttons, foot) => showCard(title, sub, buttons.map(([t, fn, cls]) => [t, () => { $('raceres').hidden = true; fn(); }, cls]), foot) });
+// ---- real-map preview (?real): load OpenStreetMap Gurugram, hide the grid city, start at the real Rajiv Chowk
+let REAL_HIDDEN = null;
+function realTick() {
+  if (!RC.isReady()) return;
+  if (!REAL_HIDDEN) { REAL_HIDDEN = []; for (const o of scene.children) if (o.name !== 'realcity' && o !== player && !o.isLight && !/sky/i.test(o.name || '') && o.visible) { o.visible = false; REAL_HIDDEN.push(o); } for (const c of CARS) c.taken = true; }
+  if (G.started && !G.realSpawned) { G.realSpawned = true; const p = RC.toXZ(28.4475, 77.0328); teleport(p.x, p.z, 0); RC.warm(G.x, G.z, 40); toast('Real Gurugram (preview) · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
+  if (G.started) RC.update(G.x, G.z);
+}
 function boot() { loadStep(0.3); buildGround(); districtBuilders(); HM.buildCamp(KIT, world); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); buildRamps(); buildGolgappa(); loadStep(0.6); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([Promise.all([document.fonts.load('800 40px "Baloo 2"', 'Gurugram गुरुग्राम'), document.fonts.load('700 30px "Mukta"', 'Ram Ram राम')]), new Promise(r => setTimeout(r, 2500))]) : Promise.resolve();
-fontsReady.catch(() => {}).then(boot); A.loadSongs();
+fontsReady.catch(() => {}).then(boot); if (REAL) RC.load('/models/realcity.json', scene).catch(e => console.warn('real map not loaded', e)); A.loadSongs();
 const HUMANS_P = /[?&]simple\b/.test(location.search) ? null : HU.loadHumans('/models/').catch(e => console.warn('Gurugram Life: realistic people not loaded, using simple ones', e)); // ~6 MB gzipped, cached after the first visit
 if (HUMANS_P) HUMANS_P.then(() => { loadStep(0.9); if (LITE) return loadStep(1); /* lite: simple cars */ RD.loadRides('/models/rides/', upgradeRides); setTimeout(() => loadStep(1), 4000); }); else loadStep(1); // ~4.5 MB after the people, one model at a time, traffic first
 window.addEventListener('pagehide', saveLocal);
