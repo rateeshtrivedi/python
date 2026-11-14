@@ -818,10 +818,10 @@ function chatBuzzCheck() {
   for (const k in snap) { const { t, m } = snap[k], o = old[k]; if (!o && !m.done) return buzz(t, m.text); if (o && !o.m.done && m.done) return buzz(t, pick(['Shabaash! ✓ ', 'Waah chhore! ✓ ', 'Kamaal kar diya ✓ ']) + m.text.replace(/^[^:]*:\s*/, '')); }
 }
 // Gali ke Don: one chapter a day; the boss and his chele wait at their corner
-function donState() { const d = P && P.don; if (!d) return null; const ch = d.ch, C = D.DON[ch]; const at = (d.spot != null && D.DON_SPOTS[d.spot]) || (C && C.at); return { d, ch, C, at, called: d.spot != null, avail: !!C && d.last !== (P.missions && P.missions.day), champ: d.champ === d.wk }; }
+function donState() { const d = P && P.don; if (!d) return null; const ch = d.ch, C = D.DON[ch]; const at0 = (d.spot != null && D.DON_SPOTS[d.spot]) || (C && C.at), rn = REAL && at0 ? realNamed(at0[2]) : null, at = rn ? [rn.x, rn.z, at0[2]] : at0; /* real map: the same corner, at the real place */ return { d, ch, C, at, called: d.spot != null, avail: !!C && d.last !== (P.missions && P.missions.day), champ: d.champ === d.wk }; }
 let DONF = [];
 function clearDon() { for (const n of DONF) if (FIGHTERS.includes(n)) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); } DONF = []; }
-function updateDon() { if (REAL) return; // real-map preview: these still live on the grid city
+function updateDon() {
   const s = donState(); if (!s || !s.avail) { if (DONF.length && !DONF.some(n => n.state === 'ko')) clearDon(); return; }
   if (!s.called) { if (DONF.length) clearDon(); maybeDonCall(s); return; }
   if (DONF.length && (DONF[0].donCh !== s.ch || DONF[0].donSpot !== s.d.spot)) clearDon(); DONF = DONF.filter(n => FIGHTERS.includes(n));
@@ -848,9 +848,9 @@ function showDonCall(s) { // Golu doesn't take over the screen: a missed call bu
 }
 async function acceptDon() {
   const s = donState(); if (!s || !s.avail) return; let best = 0, bd = 1e9;
-  D.DON_SPOTS.forEach((q, i) => { const d = Math.hypot(q[0] - G.x, q[1] - G.z), sc = d < 50 ? d + 400 : d; if (sc < bd) { bd = sc; best = i; } }); // nearest corner, but not right on top of you
+  const sxz = q => { const r = REAL ? realNamed(q[2]) : null; return r ? [r.x, r.z] : [q[0], q[1]]; }; D.DON_SPOTS.forEach((q, i) => { const [qx, qz] = sxz(q), d = Math.hypot(qx - G.x, qz - G.z), sc = d < 50 ? d + 400 : d; if (sc < bd) { bd = sc; best = i; } }); // nearest corner, but not right on top of you
   const r = await net.req('donstart', { spot: best }); if (!r.ok) return toast('Abhi nahi ho paya, thodi der mein try kar');
-  const q = D.DON_SPOTS[best]; setWaypoint(q[0], q[1], s.C.boss + ' (' + q[2] + ')', 'don'); const dist = Math.round(Math.hypot(q[0] - G.x, q[1] - G.z) / 5) * 5;
+  const q0 = D.DON_SPOTS[best], qq = sxz(q0), q = [qq[0], qq[1], q0[2]]; setWaypoint(q[0], q[1], s.C.boss + ' (' + q[2] + ')', 'don'); const dist = Math.round(Math.hypot(q[0] - G.x, q[1] - G.z) * (REAL ? 2 : 1) / 5) * 5;
   showCard('Chapter ' + (s.ch + 1) + ': ' + s.C.boss, s.C.intro.replace(s.C.at[2], q[2]) + ' (' + dist + ' m door)', [['🛺 Auto bulao (₹50)', async () => { $('raceres').hidden = true; const b2 = await buy('misc', 'don_auto'); if (!b2.ok) return; if (G.veh) dismount(); fadeTo('Auto wale bhaiya ' + q[2] + ' le ja rahe se...', 1400, () => { G.x = q[0] + 9; G.z = q[1] + 9; G.r = G.yaw = Math.atan2(-9, -9); }); }, 'alt'], ['Khud jaunga (GPS on)', () => { $('raceres').hidden = true; }, 'alt2']], 'GPS laga diya · Chele bhi saath honge, taiyaar reh!');
 }
 function donRewardText(i) { return fmt(Math.round(D.DON[i].r * (1 + 0.1 * Math.min(P.level, 10)) / 10) * 10); }
@@ -1078,6 +1078,21 @@ function hereXZ() { return G.inside ? DOORS[G.inside] : G; }
 // real map jobs: pick up and drop at real sectors, localities, markets and metro stations (snapped to the nearest road);
 // food comes from the game's own made-up eateries, set in real markets
 let RJP = null;
+// ---- the story on the real map: every classic district and spot has its real Gurugram place
+const REAL_LL = { 'Sikanderpur': [28.4815, 77.0932], 'Ambience Island': [28.5040, 77.0975], 'DLF Cyber City': [28.4935, 77.0905], 'Cyber Hub': [28.4955, 77.0880], 'NH-48 Auto Mile': [28.4870, 77.0700], 'DLF Phase 3': [28.4925, 77.0960], 'Huda City Centre': [28.4593, 77.0725], 'Iffco Chowk': [28.4722, 77.0726], 'Sector 29': [28.4690, 77.0640], 'Leisure Valley Park': [28.4705, 77.0690], 'Golf Course Road': [28.4560, 77.1000], 'Galleria Market': [28.4677, 77.0816], 'Rajiv Chowk': [28.4475, 77.0328], 'Sohna Road': [28.4230, 77.0410], 'Sadar Bazaar': [28.4645, 77.0290], 'Golf Course Extension': [28.4180, 77.0930], 'Sector 14 Market': [28.4700, 77.0450], 'Civil Hospital': [28.4665, 77.0305], 'Badshahpur': [28.4140, 77.0460], 'Old Gurgaon': [28.4590, 77.0260], 'Sector 56': [28.4245, 77.1010], 'Aravali Biodiversity Park': [28.4935, 77.1060], 'Sushant Lok': [28.4625, 77.0830], 'Bhondsi': [28.4130, 77.0640], 'Manesar': [28.4420, 77.0160], 'Police Thana': [28.4580, 77.0265] };
+const RNAMED = {};
+const REAL_ALIAS = { 'Sector 14 Market': 'Sector 14', 'Sadar Bazaar': 'Sadar Bazar', 'Sushant Lok': 'Sushant Lok I', 'Ambience Island': 'Ambience Mall', 'Iffco Chowk': 'IFFCO Chowk', 'Cyber Hub': 'DLF Cyber Hub', 'Sector 29': 'Sector 29', 'Sector 56': 'Sector 56', 'Sikanderpur': 'Sikanderpur', 'DLF Phase 3': 'DLF Phase 3', 'Leisure Valley Park': 'Leisure Valley Park', 'Rajiv Chowk': 'Rajiv Chowk', 'DLF Cyber City': 'DLF Cyber City' };
+function realNamed(name) { if (RNAMED[name]) return RNAMED[name]; if (!RC.isReady()) return null; const al = REAL_ALIAS[name], osm = al && RC.places().find(p => p.n === al); const ll = REAL_LL[name]; if (!osm && !ll) return null; const q = osm ? { x: osm.x, z: osm.z } : RC.toXZ(ll[0], ll[1]), /* OpenStreetMap's own spot when it has the place */ sw = RC.sidewalk(q.x, q.z) || { x: q.x, z: q.z, h: 0, fx: 0, fz: 1 }; const op = openNear({ x: sw.x, z: sw.z, r: sw.h }); return (RNAMED[name] = { x: op.x, z: op.z, h: sw.h, fx: sw.fx, fz: sw.fz, name }); }
+function realDist(i, j) { const d = DIST.find(q => q[0] === i && q[1] === j); return d ? realNamed(d[2]) : null; }
+let REAL_PUMP = null;
+function realPump() { // Chaudhary Filling Station on the real Sohna Road: a canopy, two dispensers and the pump-boy's spot
+  if (REAL_PUMP) return REAL_PUMP; const b = realNamed('Sohna Road'); if (!b) return PUMPS[0]; const pm = { name: 'Chaudhary Filling Station, Sohna Road', x: b.x + b.fx * 6, z: b.z + b.fz * 6, fx: -b.fx, fz: -b.fz };
+  const g = new THREE.Group(); g.position.set(pm.x, 0, pm.z); g.rotation.y = Math.atan2(pm.fx, pm.fz); const top = new THREE.Mesh(new THREE.BoxGeometry(14, 0.8, 9), new THREE.MeshLambertMaterial({ color: 0xd7331f })); top.position.y = 5.2; g.add(top);
+  for (const [px, pz] of [[-6, -3.5], [6, -3.5], [-6, 3.5], [6, 3.5]]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 5, 8), new THREE.MeshLambertMaterial({ color: 0xeeeeee })); c.position.set(px, 2.5, pz); g.add(c); }
+  for (const px of [-3, 3]) { const d2 = new THREE.Mesh(new THREE.BoxGeometry(1, 1.8, 0.7), new THREE.MeshLambertMaterial({ color: 0xf6c026 })); d2.position.set(px, 0.9, 0); g.add(d2); }
+  const lab = labelSprite('⛽ CHAUDHARY FILLING STATION', { fs: 34, scale: 0.9, bg: 'rgba(215,51,31,.92)' }); lab.position.y = 7; g.add(lab); scene.add(g); pm.g = g;
+  ZONES.push({ zone: 'out', real: true, x: pm.x, z: pm.z, r: 6, label: () => BK.pumpLabel(pm), act: () => BK.pumpAct(pm) }); return (REAL_PUMP = pm);
+}
 function realJobPlaces() {
   if (RJP) return RJP; const all = RC.places(), EAT = ['Sharma Dhaba', 'Momos Corner', 'Chole Bhature Point', 'Bittu Sweets', 'Chai Sutta Adda', 'Haryana Rasoi'];
   const snap = q => { const p = RC.snapRoad(q.x, q.z); return p ? { x: p[0], z: p[1], name: q.n } : null; };
@@ -1472,9 +1487,10 @@ function fightHUD() {
   const a = G.npcAtk, el2 = $('threat'); if (!el2) return; const show = a && a.wind > 0 && a.state !== 'ko' && !G.veh;
   if (show) { const ang = Math.atan2(a.x - G.x, a.z - G.z) - Math.atan2(G.x - camera.position.x, G.z - camera.position.z); const behind = Math.abs(angDiff(ang, 0)) > 0.9; el2.hidden = !behind; if (behind) el2.style.setProperty('--a', (-ang * 180 / Math.PI).toFixed(0) + 'deg'); } else if (!el2.hidden) el2.hidden = true;
 }
-function updateFighters(dt) { if (REAL) return; // real-map preview: these still live on the grid city
+function updateFighters(dt) {
   const gone = []; bkWave();
   for (const n of FIGHTERS) {
+    if (REAL && !(n.bk || n.don || n.donBoss || n.story || n.jack || n.badla)) { n.mesh.visible = false; continue; } // real map: only the story's people (the grid city's street chhore stay there)
     if (n.sfHold) continue; // the face-off places, animates and scores these
     const m = n.mesh; m.visible = !G.inside; if (n.hitT > 0) n.hitT -= dt;
     if (ROB && ROB.n === n && n.state !== 'ko') { const rx = ROB.x - n.x, rz = ROB.z - n.z, rd = Math.hypot(rx, rz), mv = rd > 0.5; if (mv) { n.x += rx / rd * Math.min(rd, 4.5 * dt); n.z += rz / rd * Math.min(rd, 4.5 * dt); n.r = Math.atan2(rx, rz); } m.position.set(n.x, groundY(n.x, n.z), n.z); m.rotation.y = n.r; animChar(m, dt, mv ? 1 : 0, 1.3); continue; } // the robber walks to your batua, nothing else
@@ -1701,9 +1717,9 @@ async function appZameen() {
 
 // ================================================================ BADE KAAM: the story missions (D.BADE). Each is a list of steps;
 // a step's tick() returns true when it is done. Fail = hospital/thana/time up; win = the server pays and hands over the next home.
-const bkCx = (i, j, dx, dz) => ({ x: i * 150 + (dx || 0), z: j * 150 + (dz || 0) }); // a spot on the pavement of district (i, j)
+const bkCx = (i, j, dx, dz) => { if (REAL && RC.isReady()) { const r = realDist(i, j); if (r) { const sx = (dx || 0) * 0.08, sz = (dz || 0) * 0.08; return { x: r.x + sx, z: r.z + sz }; } } return { x: i * 150 + (dx || 0), z: j * 150 + (dz || 0) }; }; // a spot on the pavement of district (i, j); on the real map, of the real place
 const bkNear = (p, r) => Math.hypot(p.x - G.x, p.z - G.z) < r;
-const PUMP0 = () => PUMPS.find(p => p.name.startsWith('Chaudhary')) || PUMPS[0] || { x: 0, z: -100, fx: 0, fz: 1, name: 'Chaudhary Filling Station' };
+const PUMP0 = () => (REAL && RC.isReady() ? realPump() : null) || PUMPS.find(p => p.name.startsWith('Chaudhary')) || PUMPS[0] || { x: 0, z: -100, fx: 0, fz: 1, name: 'Chaudhary Filling Station' };
 const pumpSpot = (pm, lx, lz) => ({ x: pm.x + lx * pm.fz + lz * pm.fx, z: pm.z - lx * pm.fx + lz * pm.fz }); // a point in a pump's own frame (z towards the road)
 function bkNpc(name, x, z, shirt, r) { const n = makeChar(shirt || 0x8a5a2b, { g: 'm' }); n.position.set(x, groundY(x, z), z); n.rotation.y = r || 0; scene.add(n); const lab = labelSprite(name, { fs: 30, scale: 0.45, bg: 'rgba(185,28,28,.85)' }); lab.position.y = 2.9; n.add(lab); BK.ents.push({ mesh: n }); return n; }
 function bkFoe(name, x, z, o) { o = o || {}; const n = makeFighter(name, x, z, o.hp || 40, o.dmg || 5, o.shirt || 0x3a3a3a); n.bk = true; n.hold = FIGHTERS.some(f => f.bk && f.state !== 'ko'); /* the rest wait their turn (see bkWave) */ if (BK.hpStep !== BK.i + ':' + BK.step) { BK.hpStep = BK.i + ':' + BK.step; if (G.hp < 100) { G.hp = 100; toast('💪 Ladai se pehle: health full', 'money'); } } n.gun = o.gun || null; if (o.scale) n.mesh.scale.setScalar(o.scale); n.state = o.state || 'aggro'; FIGHTERS.push(n); BK.ents.push({ foe: n }); return n; }
@@ -1722,7 +1738,7 @@ const RESUME = [
   { prime(s) { const h = bkCx(-1, 0, 18, 66); BK.d.home = h; BK.d.at = bkCx(-1, 1, 6, 66); if (s >= 1) BK.boss = bkNpc('Sharma ji', h.x, h.z, 0xe8e2d0, Math.PI); }, at: s => s },
   { prime() {}, at: () => 0 },
   { prime() { BK.noCops = true; }, at: s => s },
-  { prime() { BK.d.b = bkCx(-1, -1, 30, 63); BK.d.p = PLOT_AT.sohna || bkCx(1, 0, 20, 30); }, at: s => s === 1 ? 0 : s },
+  { prime() { BK.d.b = bkCx(-1, -1, 30, 63); BK.d.p = (REAL ? null : PLOT_AT.sohna) || bkCx(1, 0, 20, 30); }, at: s => s === 1 ? 0 : s },
   { prime(s) { const n = bkCx(2, 1, -10, 66); BK.d.n = n; if (s >= 1) BK.boss = bkNpc('Netaji', n.x, n.z, 0xffffff, Math.PI); }, at: s => s },
   { prime() { BK.d.s = bkCx(1, 1, 10, 63); BK.noCops = true; }, at: s => s },
 ];
@@ -1771,7 +1787,7 @@ const MISSIONS = [
   { // 5 Zameen ka Sauda: drive Bansal ji to the Sohna Road plot, then hold off Sandy Gunda's shooters
     steps: [
       { start() { const s = bkCx(-1, -1, 30, 63); BK.d.b = s; BK.boss = bkNpc('Bansal ji', s.x, s.z, 0xf6c026, Math.PI); bkWp(s.x, s.z, 'Bansal ji, Huda City Centre'); bkQuest('Zameen ka Sauda', 'Gaadi le ke Bansal ji ko utha (Huda City Centre)'); }, tick() { return bkNear(BK.d.b, 7) && G.veh && D.VEH[G.veh].kind === 4; } },
-      { start() { scene.remove(BK.boss); say(player, 'Baithiye Bansal ji!', 1.6); const A0 = PLOT_AT.sohna || bkCx(1, 0, 20, 30); BK.d.p = A0; BK.deadline = now() + 180; bkWp(A0.x, A0.z, 'Plot 7, Sohna Road'); bkQuest('Sohna Road plot tak le ja', 'Bansal ji gaadi mein. Plot pe Sandy ke shooter honge'); }, tick() { bkQuest(BK.qt, BK.qs); return bkNear(BK.d.p, 16); } },
+      { start() { scene.remove(BK.boss); say(player, 'Baithiye Bansal ji!', 1.6); const A0 = (REAL ? null : PLOT_AT.sohna) || bkCx(1, 0, 20, 30); BK.d.p = A0; BK.deadline = now() + 180; bkWp(A0.x, A0.z, 'Plot 7, Sohna Road'); bkQuest('Sohna Road plot tak le ja', 'Bansal ji gaadi mein. Plot pe Sandy ke shooter honge'); }, tick() { bkQuest(BK.qt, BK.qs); return bkNear(BK.d.p, 16); } },
       { start() { BK.deadline = now() + 60; clearWp(); BK.noCops = true; if (G.veh) { G.vs = 0; dismount(); } const s = BK.d.p; BK.boss = bkNpc('Bansal ji', s.x - 3, s.z + 3, 0xf6c026); bigText('GHAAT!', 'Sandy Gunda ke shooter: 60 second, warna Bansal ji ko goli', 2.2);
           for (let k = 0; k < 4; k++) bkFoe(k < 2 ? 'Sandy ka shooter' : 'Sandy ka chhora', s.x + rnd(-14, 14), s.z + (k % 2 ? 16 : -16), { hp: 45, dmg: 6, gun: k < 2 ? 'katta' : null }); bkQuest('Bansal ji ko bacha', 'Saare shooter KO kar'); }, tick() { bkQuest(BK.qt, BK.qs); return foesLeft() === 0; } },
     ] },
@@ -1890,7 +1906,8 @@ function startChase(o) { o = o || {}; if (chaseJeep) scene.remove(chaseJeep); ch
 async function updateChase(dt) {
   const c = G.chase; if (!c) return; const dx = G.x - c.x, dz = G.z - c.z, d = Math.hypot(dx, dz); let sp = now() < (c.wait || 0) ? 0 : c.sp || 29; if (!G.veh && !c.story) sp = Math.min(sp, 8.6); // out of the car: the havaldar runs after you, a little slower than you sprint
   if (c.boat) { const nx = c.x + dx / (d || 1) * 3, nz = c.z + dz / (d || 1) * 3; if (waterDepth(nx, nz) < 0.25) { sp = 0; if (!c.stuckSaid) { c.stuckSaid = 1; toast('Police ki naav kinare pe atak gayi! Sukhi sadak pe bhaag!', 'money'); } } chaseJeep.position.y = 0.05 + Math.min(waterDepth(c.x, c.z), 1) * 0.35 + Math.sin(now() * 3) * 0.06; } // floats on the water like yours
-  if (d > 0.1) { c.x += dx / d * Math.min(sp * dt, d); c.z += dz / d * Math.min(sp * dt, d); } chaseJeep.position.x = c.x; chaseJeep.position.z = c.z; if (!c.boat) chaseJeep.position.y = 0.2; chaseJeep.rotation.y = Math.atan2(dx, dz);
+  let tx = G.x, tz = G.z; if (REAL && !c.boat && d > 22) { if (!c.path || now() > (c.pathT || 0)) { c.path = RC.route(c.x, c.z, G.x, G.z); c.pathT = now() + 1.2; c.pi = 1; } const P2 = c.path; if (P2) { while (c.pi < P2.length - 1 && Math.hypot(P2[c.pi][0] - c.x, P2[c.pi][1] - c.z) < 4) c.pi++; tx = P2[c.pi][0]; tz = P2[c.pi][1]; } } /* by road, not through buildings */
+  { const ex = tx - c.x, ez = tz - c.z, ed = Math.hypot(ex, ez); if (ed > 0.1) { c.x += ex / ed * Math.min(sp * dt, ed); c.z += ez / ed * Math.min(sp * dt, ed); } } chaseJeep.position.x = c.x; chaseJeep.position.z = c.z; if (!c.boat) chaseJeep.position.y = 0.2; chaseJeep.rotation.y = Math.atan2((tx - c.x) || dx, (tz - c.z) || dz);
   c.sirenT -= dt; if (c.sirenT < 0) { c.sirenT = 2; A.sfx('siren'); }
   if (c.story && (d < 3.5 || d > 130 || now() > c.until || !G.veh || G.inside)) { const esc = d >= 3.5; G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); if (!esc) G.vs = 0; A.stinger(esc ? 'escape' : 'busted'); storyChaseEnd(esc); return; }
   if (d < (G.veh ? 3.5 : 1.8)) { G.chase = null; scene.remove(chaseJeep); chaseJeep = null; updateBanner(); G.vs = 0; A.stinger('busted'); const st0 = W.stars; if (W.stars && P.money > 0) { bribeOffer().then(ok => { if (!ok) arrest(null, st0); }); } else arrest(null, st0); W.stars = 0; wantedHUD(); clearNaka(); return; }
@@ -3586,7 +3603,7 @@ function wantedTick(dt) {
   if (!c) { if (now() - W.t > D.WANTED.decay) { W.stars--; W.t = now(); wantedHUD(); if (!W.stars) { clearNaka(); toast('Mamla thanda ho gaya. Wanted khatam'); } } return; }
   const d = Math.hypot(G.x - c.x, G.z - c.z); if (d > 70) { if (now() - W.t > 10) { W.stars--; W.t = now(); wantedHUD(); if (!W.stars) { c.until = now(); } } } else W.t = Math.max(W.t, now() - 5); // out of sight: a star drops every 10 s
 }
-function nakaAhead() { // a barricade on the road ahead (3+ stars)
+function nakaAhead() { if (REAL) return; // a barricade on the road ahead (3+ stars; grid city only for now)
   const a = G.r; let x = G.x + Math.sin(a) * 70, z = G.z + Math.cos(a) * 70; const rd = nearRoad(x, z); if (rd) { if (rd.ax === 'x') x = rd.v; else z = rd.v; }
   const g = new THREE.Group(); for (let k = -2; k <= 2; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1, 0.3), new THREE.MeshLambertMaterial({ color: k % 2 ? 0xd7331f : 0xf5f5f5 })); b.position.set(k * 2.3, 0.5, 0); g.add(b); }
   const pj = makeVehicle('police'); pj.position.set(6, 0.2, 2); g.add(pj); g.position.set(x, 0, z); g.rotation.y = rd && rd.ax === 'x' ? Math.PI / 2 : 0; scene.add(g); W.naka = { g, x, z, until: now() + 60 }; toast('Aage naka laga se! Doosra raasta le', 'bad');
@@ -3840,7 +3857,7 @@ function realTraffic(dt) {
 function realTick(dt) {
   if (!RC.isReady()) return; if (G.started) realTraffic(Math.min(0.05, dt || 0.016));
   if (!REAL_HIDDEN) { REAL_HIDDEN = []; for (const o of scene.children) if (o.name !== 'realcity' && o !== player && !o.isLight && !/sky/i.test(o.name || '') && o.visible) { o.visible = false; REAL_HIDDEN.push(o); } for (const c of CARS) c.taken = true; }
-  if (G.started && !G.realSpawned) { G.realSpawned = true; realRaceSpots(); const p = RC.toXZ(28.4475, 77.0328); teleport(p.x, p.z, 0); RC.warm(G.x, G.z, 40); toast('Real Gurugram (preview) · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
+  if (G.started && !G.realSpawned) { G.realSpawned = true; realRaceSpots(); { const t = realNamed('Police Thana'), h = realNamed('Civil Hospital'); if (t) { THANA.x = t.x; THANA.z = t.z; THANA.place = 'Civil Lines'; } if (h) { HOSPITAL.x = h.x; HOSPITAL.z = h.z; } } /* arrests and KOs land at real places */ const p = RC.toXZ(28.4475, 77.0328); teleport(p.x, p.z, 0); RC.warm(G.x, G.z, 40); toast('Real Gurugram (preview) · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
   if (G.started) RC.update(G.x, G.z);
 }
 function boot() { loadStep(0.3); buildGround(); districtBuilders(); HM.buildCamp(KIT, world); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); buildRamps(); buildGolgappa(); loadStep(0.6); requestAnimationFrame(loop); }
