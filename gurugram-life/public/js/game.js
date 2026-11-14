@@ -2032,7 +2032,7 @@ function updateEvents(dt) {
   if (out && e?.type === 'baraat' && nearZone == null && Math.hypot(G.x + 222, G.z - baraatZ()) < 18) G.baraatZone = true; else G.baraatZone = false;
 }
 function updateBanner() {
-  const b = $('banner'); if (G.chase) return; if (G.cold || G.cut) { b.hidden = true; return; } // the opening chase and cutscenes get the screen to themselves
+  const b = $('banner'); if (REAL) { b.hidden = true; return; } /* city events live in the classic city for now */ if (G.chase) return; if (G.cold || G.cut) { b.hidden = true; return; } // the opening chase and cutscenes get the screen to themselves
   if (G.ev) { const left = Math.max(0, Math.round(G.ev.end - serverNow())); b.hidden = false; if (G.ev._endFor !== G.ev.end) { const et = (DAY.t + left / D.DAY_SECS) % 1, eh = Math.floor(et * 24), em = Math.round((et * 24 - eh) * 60 / 15) * 15, h2 = (eh + (em === 60 ? 1 : 0)) % 24; G.ev._endFor = G.ev.end; G.ev._endTxt = (h2 % 12 || 12) + ':' + String(em % 60).padStart(2, '0') + (h2 < 12 ? ' am' : ' pm'); } /* worked out once per event, so it never flips */ b.textContent = G.ev.name + ' · ' + G.ev._endTxt + ' tak · ⏱ ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); } // ends on the game clock (a game day is 15 real minutes) with the real-time countdown beside it
   else if (G.evSoon && G.evSoon.at > now()) { b.hidden = false; b.textContent = '⏱ ' + Math.ceil(G.evSoon.at - now()) + 's mein: ' + G.evSoon.name; }
   else if (G.beef && G.beef.until > now()) { b.hidden = false; b.textContent = 'ROAD RAGE vs ' + G.beef.name + ' · ' + Math.ceil(G.beef.until - now()) + 's'; }
@@ -2218,7 +2218,7 @@ function drawMini() {
   const W = mini.width, H = mini.height, sc = 0.55; mctx.save(); mctx.fillStyle = '#5f6b45'; mctx.fillRect(0, 0, W, H);
   if (G.inside) { mctx.fillStyle = '#2a2119'; mctx.fillRect(0, 0, W, H); mctx.fillStyle = '#f6c026'; mctx.font = '700 20px "Baloo 2", sans-serif'; mctx.textAlign = 'center'; wrapText(mctx, INTERIOR[G.inside].name, W / 2, H / 2 - 10, W - 40, 22); mctx.font = '600 15px Mukta, sans-serif'; mctx.fillStyle = '#fff4d8'; mctx.fillText('Exit: south door', W / 2, H / 2 + 34); mctx.restore(); return; }
   mctx.translate(W / 2, H / 2); mctx.rotate(G.yaw + Math.PI); mctx.scale(sc, sc); mctx.translate(-G.x, -G.z);
-  if (REAL && RC.isReady()) RC.drawMini(mctx, G.x, G.z, 280); else {
+  if (REAL && RC.isReady()) { RC.drawMini(mctx, G.x, G.z, 280); if (NAVR.pts && G.wp) { mctx.strokeStyle = '#14b8a6'; mctx.lineWidth = 9; mctx.lineJoin = mctx.lineCap = 'round'; mctx.beginPath(); for (let k = NAVR.i; k < NAVR.pts.length; k++) (k === NAVR.i ? mctx.moveTo : mctx.lineTo).call(mctx, NAVR.pts[k][0], NAVR.pts[k][1]); mctx.stroke(); } } else {
   for (const d of DIST) { mctx.fillStyle = TYPE_COL[d[3]] || '#9a927e'; mctx.fillRect(d[0] * 150 - 68, d[1] * 150 - 68, 136, 136); const t = G.turf && G.turf[d[2]]; if (t) { mctx.strokeStyle = hex(t.color); mctx.lineWidth = 8; mctx.strokeRect(d[0] * 150 - 64, d[1] * 150 - 64, 128, 128); } }
   if (G.ev?.type === 'flood') { mctx.fillStyle = 'rgba(70,120,160,.7)'; for (const n of G.ev.data.districts) { const d = DIST.find(x => x[2] === n); if (d) mctx.fillRect(d[0] * 150 - 75, d[1] * 150 - 75, 150, 150); } }
   mctx.fillStyle = '#2f2f31'; for (const r of ROADS) { mctx.fillRect(r - 7, -450, 14, 900); mctx.fillRect(-450, r - 7, 900, 14); }
@@ -2828,14 +2828,24 @@ function updateRush() { if (REAL) return; // real-map preview: these still live 
   if (!e || G.evReached || G.inside || (e.rush && e.rush.length >= 3)) return; const sp = eventSpot(e.type); if (!sp) return;
   const d = e.type === 'baraat' ? Math.abs(G.x - sp.x) : Math.hypot(G.x - sp.x, G.z - sp.z); if (d < (e.type === 'thaila' ? 6 : 20)) { G.evReached = true; net.send('evreach', {}); if (e.type === 'thaila') { BAG.visible = bagBeacon.visible = false; A.sfx('cash'); } }
 }
+// real map GPS: an A* route along the real roads (one-ways respected); the arrow points ~25 units down the route
+const NAVR = { pts: null, tx: 0, tz: 0, i: 0, t: 0, left: 0 };
+function realStep(tg) {
+  const N = NAVR, moved = Math.abs(N.tx - tg.x) + Math.abs(N.tz - tg.z) > 1; let off = 1e9;
+  if (N.pts) { let bi = N.i, bd = 1e9; for (let k = Math.max(0, N.i - 4); k < Math.min(N.pts.length, N.i + 40); k++) { const d = Math.hypot(N.pts[k][0] - G.x, N.pts[k][1] - G.z); if (d < bd) { bd = d; bi = k; } } N.i = bi; off = bd; }
+  if (!N.pts || moved || (off > 28 && now() - N.t > 2.5)) { N.pts = RC.route(G.x, G.z, tg.x, tg.z); N.tx = tg.x; N.tz = tg.z; N.i = 0; N.t = now(); if (!N.pts) return null; }
+  let k = N.i, acc = 0, x = N.pts[k][0], z = N.pts[k][1]; while (k < N.pts.length - 1 && acc < 25) { const a = N.pts[k], b = N.pts[k + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (acc + L >= 25) { const f = (25 - acc) / (L || 1); x = a[0] + (b[0] - a[0]) * f; z = a[1] + (b[1] - a[1]) * f; acc = 25; break; } acc += L; k++; x = b[0]; z = b[1]; }
+  let left = Math.hypot(N.pts[N.i][0] - G.x, N.pts[N.i][1] - G.z); for (let j = N.i; j < N.pts.length - 1; j++) left += Math.hypot(N.pts[j + 1][0] - N.pts[j][0], N.pts[j + 1][1] - N.pts[j][1]); N.left = left;
+  return { x, z };
+}
 function updateNav() {
   const tg = !G.inside && !G.map && !G.sf && !raceArrow.visible ? navTarget() : null; /* no GPS arrow in a face-off */ const d = tg ? Math.hypot(tg.x - G.x, tg.z - G.z) : 0;
-  const st = tg && d > 9 && !REAL ? routeStep(tg) : null; if (st) navPoint(wpArrow, st.x, st.z); else { wpArrow.visible = false; NAVT.wp = null; }
-  drawNavRing(); goalTick(tg, d, st);
+  const st = tg && d > 9 ? (REAL ? realStep(tg) : routeStep(tg)) : null; const dd = REAL && st && NAVR.left ? NAVR.left : d; // real map: driving distance, not as the crow flies if (st) navPoint(wpArrow, st.x, st.z); else { wpArrow.visible = false; NAVT.wp = null; }
+  drawNavRing(); goalTick(tg, dd, st);
   const chip = $('navchip'), show = !!tg && !(G.race && G.race.phase !== 'done');
   if (chip.hidden === show) chip.hidden = !show; if (!show) return;
   const hd = st || tg, a = Math.atan2(hd.x - G.x, hd.z - G.z) - G.yaw; $('navdir').style.transform = 'rotate(' + (-a * 180 / Math.PI).toFixed(1) + 'deg)';
-  const nm = tg.name || 'GPS', ds = d < 1000 ? Math.round(d / 5) * 5 + ' m' : (d / 1000).toFixed(1) + ' km'; if (chip.dataset.n !== nm) { chip.dataset.n = nm; $('navtxt').textContent = nm; } if (chip.dataset.d !== ds) { chip.dataset.d = ds; $('navdist').textContent = ds; }
+  const rm2 = dd * (REAL ? 2 : 1), nm = tg.name || 'GPS', ds = rm2 < 1000 ? Math.round(rm2 / 10) * 10 + ' m' : (rm2 / 1000).toFixed(1) + ' km'; if (chip.dataset.n !== nm) { chip.dataset.n = nm; $('navtxt').textContent = nm; } if (chip.dataset.d !== ds) { chip.dataset.d = ds; $('navdist').textContent = ds; }
 }
 // ---- where to go, GTA-style: the goal as a subtitle at the bottom, a floating diya over the target, and a "wrong way" nudge
 let DIYA = null;
@@ -2862,7 +2872,7 @@ function goalTick(tg, d, st) {
   const moving = G.moving || Math.abs(G.vs || 0) > 1.5; if (G.lastGap != null && moving && d > G.lastGap + 0.02) G.wrongSince = G.wrongSince || now(); else if (G.lastGap == null || d < G.lastGap - 0.02) G.wrongSince = 0; G.lastGap = d;
   const wrong = !!G.wrongSince && now() - G.wrongSince > 2.5 && d > 25;
   const hd = st || tg, a = Math.atan2(hd.x - G.x, hd.z - G.z) - G.yaw, deg = (-a * 180 / Math.PI).toFixed(0);
-  const goal = qb ? qb.textContent : 'GPS', place = tg.name || '', ds = d < 1000 ? Math.round(d / 5) * 5 + ' m' : (d / 1000).toFixed(1) + ' km';
+  const rm = d * (REAL ? 2 : 1) /* the real map is drawn at half scale: show real metres */, goal = qb ? qb.textContent : 'GPS', place = tg.name || '', ds = rm < 1000 ? Math.round(rm / 10) * 10 + ' m' : (rm / 1000).toFixed(1) + ' km';
   const key = goal + '|' + place + '|' + wrong; if (box.dataset.k !== key) { box.dataset.k = key; box.textContent = '';
     box.append(el('i', { class: 'gs-arrow', text: '➤' }), el('span', { class: 'gs-goal', text: wrong ? 'Ulta ja rya se! Peeche mud' : goal })); if (place && !wrong) box.append(el('span', { class: 'gs-sep', text: ' · ' }), el('b', { class: 'gs-place', text: place })); box.append(el('em', { class: 'gs-dist' })); if (!wrong) box.append(el('button', { type: 'button', class: 'gs-auto', title: 'Auto bulao (₹50): seedha wahan', text: '🛺 ₹50', onclick: () => { const t = navTarget(); if (t) autoTo(t.x, t.z, t.name); } })); }
   box.classList.toggle('wrong', wrong); box.querySelector('.gs-arrow').style.transform = 'rotate(' + (Number(deg) - 90) + 'deg)'; const de = box.querySelector('.gs-dist'); if (de.textContent !== ds) de.textContent = ds;
@@ -3753,7 +3763,7 @@ function loop(t) {
   for (const b of [jobBeacon, wpBeacon]) if (b.visible) { b.userData.ring.rotation.z += dt; b.children[0].visible = !G.inside; b.userData.ring.visible = !G.inside; }
   if (G.wp && !G.inside && Math.hypot(G.wp.x - G.x, G.wp.z - G.z) < 10) { toast('Pahunch gaya: ' + G.wp.name); G.wp = null; wpBeacon.visible = false; }
   if (G_WHEEL && G.wheelSpin > 0) { G.wheelSpin -= dt; G_WHEEL.rotation.y += dt * 12; }
-  if (REAL) realTick(); updateHumans(dt); SF.tick(dt); if ((shT += dt) > 2) { shT = 0; RL.shadowize(scene); }
+  if (REAL) realTick(dt); updateHumans(dt); SF.tick(dt); if ((shT += dt) > 2) { shT = 0; RL.shadowize(scene); }
   Object.assign(DAYV, { wet: WX.wl, inside: !!G.inside, map: !!G.map, t: t / 1000, dt }); RL.frame(camera, G.started ? G.x : camera.position.x, G.started ? G.z : camera.position.z, DAYV); renderer.render(scene, camera);
 }
 let roastRendered = 0; function renderRoastTimer() { if (now() - roastRendered > 1 && !(document.activeElement && document.activeElement.id === 'roastIn')) { roastRendered = now(); renderRoast(); } }
@@ -3769,8 +3779,41 @@ FD.init({ bx, cyl, sph, sign, labelSprite, disposeSprite, texFrom, glow, mat, ma
   card: (title, sub, buttons, foot) => showCard(title, sub, buttons.map(([t, fn, cls]) => [t, () => { $('raceres').hidden = true; fn(); }, cls]), foot) });
 // ---- real-map preview (?real): load OpenStreetMap Gurugram, hide the grid city, start at the real Rajiv Chowk
 let REAL_HIDDEN = null;
-function realTick() {
-  if (!RC.isReady()) return;
+// real map traffic: cars, autos and buses drive the real road graph near you, in the left lane (India), turning at
+// junctions, slowing behind each other and for you; they honk, and a crash is a crash
+const RT = { cars: [], spawnT: 0 };
+function realTraffic(dt) {
+  if (G.inside) { for (const c of RT.cars) c.mesh.visible = false; return; }
+  const want = RL.Q.phone ? 14 : 26, T = now();
+  // spawn out of sight-ish: 70-260 units away, on a drivable road
+  if (RT.cars.length < want && T > RT.spawnT) { RT.spawnT = T + 0.15; const rs = RC.roadsNear(G.x, G.z, 70, 260); if (rs.length) { const ri = pick(rs), rd = RC.road(ri), fwd = rd.ow ? true : Math.random() < 0.5;
+      const type = Math.random() < 0.3 ? 'auto' : Math.random() < 0.07 ? 'bus' : pick(['chhotu', 'desert', 'cruiser', 'chhotu']); const mesh = makeVehicle(type, pick([0xdedede, 0x8b1e1e, 0x2e6bd1, 0x151515, 0xf3b61f, 0x9aa3ab, 0xffffff])); scene.add(mesh);
+      RT.cars.push({ mesh, type, ri, fwd, s: Math.random() * (rd.len || 1), v: 0, max: (rd.c <= 2 ? 15 : rd.c <= 4 ? 12 : 8) * (type === 'bus' ? 0.75 : type === 'auto' ? 0.8 : 1) * rnd(0.85, 1.1), hold: 0, honk: 0 }); } }
+  for (let i = RT.cars.length - 1; i >= 0; i--) { const c = RT.cars[i], m = c.mesh; let rd = RC.road(c.ri);
+    if (c.placed && Math.hypot(m.position.x - G.x, m.position.z - G.z) > 340) { scene.remove(m); RT.cars.splice(i, 1); continue; } // left behind: gone (a new car is placed first)
+    // what's ahead: you, or another car on the same road and direction
+    const hx = Math.sin(m.rotation.y), hz = Math.cos(m.rotation.y); let gap = 99;
+    const px = G.x - m.position.x, pz = G.z - m.position.z, ahead = px * hx + pz * hz, lat = Math.abs(px * hz - pz * hx); if (ahead > 0 && ahead < 14 && lat < 2.6) gap = Math.min(gap, ahead - 3);
+    for (const o of RT.cars) { if (o === c) continue; const ox = o.mesh.position.x - m.position.x, oz = o.mesh.position.z - m.position.z, oa = ox * hx + oz * hz, ol = Math.abs(ox * hz - oz * hx); if (oa > 0 && oa < 12 && ol < 2.2) gap = Math.min(gap, oa - 4.5); }
+    const tgt = c.hold > T ? 0 : gap < 1 ? 0 : Math.min(c.max, gap * 1.4); c.v += (tgt - c.v) * Math.min(1, dt * (tgt < c.v ? 4 : 1.2));
+    if (gap < 3 && ahead > 0 && ahead < 14 && lat < 2.6 && T > c.honk && c.v < 2) { c.honk = T + rnd(3, 6); if (Math.hypot(px, pz) < 60) A.sfx('horn', 0.35); }
+    c.s += c.v * dt;
+    // end of this road: turn onto a connecting one (not straight back, unless it's a dead end)
+    if (c.s >= rd.len) { const node = c.fwd ? rd.b : rd.a, opts = RC.edgesFrom(node).filter(e => e.r !== c.ri && RC.road(e.r).c <= 6); const e = opts.length ? pick(opts) : (rd.ow ? null : { r: c.ri, fwd: !c.fwd });
+      if (!e) { scene.remove(m); RT.cars.splice(i, 1); continue; } c.s -= rd.len; c.ri = e.r; c.fwd = e.fwd; rd = RC.road(e.r); c.max = (rd.c <= 2 ? 15 : rd.c <= 4 ? 12 : 8) * (c.type === 'bus' ? 0.75 : c.type === 'auto' ? 0.8 : 1) * rnd(0.85, 1.1); }
+    // position along the polyline, then into the left lane
+    const p = rd.p, n2 = p.length / 2; let acc = 0, x = p[0], z = p[1], dx = 0, dz = 1;
+    for (let k = 0; k < n2 - 1; k++) { const a = c.fwd ? k : n2 - 1 - k, b = c.fwd ? k + 1 : n2 - 2 - k; const ax = p[a * 2], az = p[a * 2 + 1], bx = p[b * 2], bz = p[b * 2 + 1], L = Math.hypot(bx - ax, bz - az); if (acc + L >= c.s || k === n2 - 2) { const f = L ? Math.min(1, Math.max(0, (c.s - acc) / L)) : 0; x = ax + (bx - ax) * f; z = az + (bz - az) * f; dx = (bx - ax) / (L || 1); dz = (bz - az) / (L || 1); break; } acc += L; }
+    const lane = rd.ow ? 0 : rd.w * 0.25; x += dz * lane; z -= dx * lane; /* left of the direction of travel */
+    m.position.set(x, 0.2, z); const want2 = Math.atan2(dx, dz); m.rotation.y = c.v > 0.3 || !c.placed ? angLerp(m.rotation.y, want2, c.placed ? Math.min(1, dt * 8) : 1) : m.rotation.y; c.placed = true;
+    // you hit it (or it hits you on foot)
+    const dd = Math.hypot(G.x - x, G.z - z);
+    if (G.veh && dd < 3.2 && Math.abs(G.vs) > 4 && (c.bump || 0) < T) { c.bump = T + 1.5; c.hold = T + 2.5; A.sfx('crash', 0.7); if (Math.abs(G.vs) > 14) { G.hp -= 4; flashHit(); } G.vs *= 0.3; if (Math.random() < 0.5) say({ mesh: m }, pick(['Abe andha se ke?', 'Gaadi dekh ke chala!', 'Insurance tera baap bharega?']), 2); }
+    else if (!G.veh && dd < 1.7 && c.v > 4 && (c.bump || 0) < T) { c.bump = T + 1.5; c.hold = T + 2; takeHit(8, 'Gaadi'); G.x += (G.x - x) / (dd || 1) * 1.5; G.z += (G.z - z) / (dd || 1) * 1.5; }
+  }
+}
+function realTick(dt) {
+  if (!RC.isReady()) return; if (G.started) realTraffic(Math.min(0.05, dt || 0.016));
   if (!REAL_HIDDEN) { REAL_HIDDEN = []; for (const o of scene.children) if (o.name !== 'realcity' && o !== player && !o.isLight && !/sky/i.test(o.name || '') && o.visible) { o.visible = false; REAL_HIDDEN.push(o); } for (const c of CARS) c.taken = true; }
   if (G.started && !G.realSpawned) { G.realSpawned = true; const p = RC.toXZ(28.4475, 77.0328); teleport(p.x, p.z, 0); RC.warm(G.x, G.z, 40); toast('Real Gurugram (preview) · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
   if (G.started) RC.update(G.x, G.z);

@@ -5,7 +5,8 @@ usage: python3 build_realmap.py <haryana.osm.pbf> <out.json.gz>
   (the Haryana extract: https://download.openstreetmap.fr/extracts/asia/india/haryana-latest.osm.pbf)
 
 Reads every road, building and land-use area in central Gurugram and writes a compact file the game loads:
-  roads: [class, width, x0, z0, x1, z1, ...]      (a polyline, widened to a playable minimum)
+  roads: [class, width, nodeA, nodeB, oneway, x0, z0, x1, z1, ...]  (split at every junction, so the roads form a graph
+         for GPS and traffic; nodeA/B index gn = junction points [x, z, ...]; oneway 1 = only A -> B)
   bld:   [style, floors, x0, z0, x1, z1, ...]     (a footprint; floors estimated where OSM has none)
   land:  [kind, x0, z0, ...]                       (parks, water, commercial areas, ...)
   names: a string table; rn[i] = name of roads[i] (-1 = none)
@@ -60,7 +61,7 @@ class H(osmium.SimpleHandler):
         elif ('chowk' in nm.lower() or 'crossing' in nm.lower()) and ('highway' in t or 'junction' in t or 'place' in t): s.places.append((6, nm, x, z))
     def way(s, w):
         t = w.tags
-        try: nodes = [(n.lat, n.lon) for n in w.nodes]
+        try: nodes = [(n.lat, n.lon) for n in w.nodes]; refs = [n.ref for n in w.nodes]
         except Exception: return
         if not nodes or not any(LAT0 < la < LAT1 and LON0 < lo < LON1 for la, lo in nodes): return
         pts = [xy(la, lo) for la, lo in nodes]
@@ -68,7 +69,9 @@ class H(osmium.SimpleHandler):
             c, wmin = ROAD[t['highway']]; lanes = t.get('lanes'); w0 = wmin
             try: w0 = max(wmin, float(lanes) * 3.4 * S * 1.6)
             except Exception: pass
-            s.roads.append((c, min(w0, 30), dp(pts, 0.8), t.get('name:en') or t.get('name', '')))
+            ow = t.get('oneway') in ('yes', 'true', '1') or t.get('junction') == 'roundabout' or t['highway'] in ('motorway', 'motorway_link')
+            if t.get('oneway') == '-1': pts = pts[::-1]; refs = refs[::-1]; ow = True
+            s.roads.append((c, min(w0, 30), pts, t.get('name:en') or t.get('name', ''), refs, ow))
             return
         nm = t.get('name:en') or t.get('name') or ''
         if t.get('railway') in ('subway', 'light_rail', 'monorail') and len(pts) >= 2:
@@ -89,6 +92,23 @@ class H(osmium.SimpleHandler):
 
 def main(src, out):
     h = H(); h.apply_file(src, locations=True)
+    # split roads at junctions: a node shared by two road ways (or a way's end) becomes a graph node
+    use = {}
+    for c, w, pts, n, refs, ow in h.roads:
+        for k, r in enumerate(refs): use[r] = use.get(r, 0) + (2 if k in (0, len(refs) - 1) else 1)
+    GN = {}; gn = []
+    def gid(r, p):
+        if r not in GN: GN[r] = len(gn); gn.append(p)
+        return GN[r]
+    split = []
+    for c, w, pts, n, refs, ow in h.roads:
+        a = 0
+        for k in range(1, len(refs)):
+            if use.get(refs[k], 0) >= 2 or k == len(refs) - 1:
+                seg = pts[a:k + 1]
+                if len(seg) >= 2: split.append((c, w, dp(seg, 0.8), n, gid(refs[a], pts[a]), gid(refs[k], pts[k]), ow))
+                a = k
+    h.roads = [(c, w, pts, n) for c, w, pts, n, ia, ib, ow in split]; h.graph = [(ia, ib, ow) for c, w, pts, n, ia, ib, ow in split]
     # land-use grid, so a building knows if it stands in a commercial, industrial or residential area
     G = 60; grid = {}
     for kind, poly in h.land:
@@ -190,16 +210,17 @@ def main(src, out):
         if not n: return -1
         if n not in NI: NI[n] = len(NAMES); NAMES.append(n)
         return NI[n]
-    rn = [ni(n) for c, w, pts, n in h.roads if len(pts) >= 2]
+    rn = [ni(n) for c, w, pts, n in h.roads]
     metro = [[line, ni(n)] + [v for p in pts for v in (round(p[0] * Q), round(p[1] * Q))] for line, n, pts in h.metro]
     pl = [[k, ni(n), round(x), round(z)] for k, n, x, z in places]
     stn = [[ni(n), line, round(x), round(z)] for n, line, x, z in stations]
-    roads = [[c, round(w * Q)] + [v for p in pts for v in (round(p[0] * Q), round(p[1] * Q))] for c, w, pts, _ in h.roads if len(pts) >= 2]
+    roads = [[c, round(w * Q), g[0], g[1], 1 if g[2] else 0] + [v for p in pts for v in (round(p[0] * Q), round(p[1] * Q))] for (c, w, pts, _), g in zip(h.roads, h.graph)]
     land = [[k] + [v for p in poly for v in (round(p[0] * Q), round(p[1] * Q))] for k, poly in h.land if k in (1, 2, 3, 7)]
     names = sorted({(c, n) for c, w, pts, n in h.roads if n and c <= 4})
     x0, z0 = xy(LAT1, LON0); x1, z1 = xy(LAT0, LON1)
-    data = {'v': 1, 'S': S, 'Q': Q, 'origin': [OLAT, OLON], 'bounds': [round(x0), round(z0), round(x1), round(z1)], 'floor': 3.4,
+    data = {'v': 2, 'S': S, 'Q': Q, 'origin': [OLAT, OLON], 'bounds': [round(x0), round(z0), round(x1), round(z1)], 'floor': 3.4,
             'credit': 'Map data (c) OpenStreetMap contributors, ODbL', 'roads': roads, 'bld': blds, 'land': land,
+            'gn': [v for p in gn for v in (round(p[0] * Q), round(p[1] * Q))],
             'names': NAMES, 'rn': rn, 'metro': metro, 'stations': stn, 'places': pl}
     raw = json.dumps(data, separators=(',', ':')).encode()
     with gzip.open(out, 'wb', 9) as f: f.write(raw)
