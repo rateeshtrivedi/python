@@ -770,7 +770,7 @@ const chatKey = a => (P.missions && P.missions.day) + ':' + a.slot + ':' + a.t;
 function chatThreads() {
   const th = new Map(), add = (id, who, face, col, m) => { if (!th.has(id)) th.set(id, { id, who, face, col, msgs: [] }); th.get(id).msgs.push(m); };
   const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1], who = B.giver.split(',')[0]; add('bk', who, '💥', '#7a1010', { key: 'bk' + cl.n, text: B.brief, sub: 'Bada Kaam ' + cl.n + ': ' + B.title + ' · inaam ' + fmt(B.pay), btn: BK.on ? 'Chal rya se' : 'Shuru 💥', act: () => { closeModal(); openBade(); } }); }
-  const ds = donState(); if (ds && ds.avail && !ds.champ) add('golu', 'Golu', '🧑', '#d7331f', { key: 'don' + ds.ch + (P.missions && P.missions.day), text: ds.called ? ds.C.boss + ' ' + ds.at[2] + ' pe intezaar kar rya se. Aaja!' : 'Bhai! Gali ke Don chapter ' + (ds.ch + 1) + ' tayyar se. ' + ds.C.boss + ' ko sabak sikhana se.', sub: 'Inaam ' + donRewardText(ds.ch), btn: 'Kahani 👊', act: () => { closeModal(); openDon(); } });
+  const ds = donState(); if (ds && ds.avail && !ds.champ) add('golu', 'Golu', '🧑', '#d7331f', { key: 'don' + ds.ch + (P.missions && P.missions.day), text: ds.called ? ds.C.boss + ' ' + ds.at[2] + ' pe intezaar kar rya se. Aaja!' : '📞 Missed call. ' + (D.DON_CALLS[ds.ch] || D.DON_CALLS[0])[2], sub: 'Gali ke Don ch ' + (ds.ch + 1) + ' · inaam ' + donRewardText(ds.ch), btn: ds.called ? 'GPS 📍' : 'Chal, aata hoon 👊', act: () => { closeModal(); if (ds.called) setWaypoint(ds.at[0], ds.at[1], ds.C.boss + ' (' + ds.at[2] + ')', 'don'); else acceptDon(); } });
   for (const a of dailyTasks()) { const w = CHAT_WHO[a.slot] || ['golu', 'Golu', '🧑', '#d7331f', '']; const p = taskProg(a); add(w[0], w[1], w[2], w[3], { key: chatKey(a), text: (w[4] ? w[4] + ' ' : '') + a.t, sub: taskCount(a, p) + ' · inaam ' + fmt(a.r), pct: p / a.n, done: a.done, btn: a.done ? '✓ Ho gaya' : 'Chalo 👉', act: () => { closeModal(); goTask(a); } }); }
   return [...th.values()];
 }
@@ -794,10 +794,10 @@ function openChatThread(id) {
   });
 }
 // a new message buzzes in from the side: one line, tap to open the chat
-function buzz(t, text) {
+function buzz(t, text, ms) {
   if (!t || G.film || G.cut) return; const old = $('buzz'); if (old) old.remove(); A.sfx('beep');
   const b = el('button', { type: 'button', id: 'buzz', onclick: () => { b.remove(); openChatThread(t.id); } }, el('i', { class: 'cav', style: 'background:' + t.col, text: t.face }), el('div', {}, el('b', { text: t.who }), el('span', { text: text })));
-  $('hud').append(b); setTimeout(() => { b.classList.add('out'); setTimeout(() => b.remove(), 500); }, 5200);
+  $('hud').append(b); setTimeout(() => { b.classList.add('out'); setTimeout(() => b.remove(), 500); }, ms || 5200);
 }
 function chatBuzzCheck() {
   if (!P || !G.started) return; const th = chatThreads(), snap = {}; for (const t of th) for (const m of t.msgs) snap[m.key] = { t, m };
@@ -824,20 +824,14 @@ function updateDon() { if (REAL) return; // real-map preview: these still live o
 }
 // the phone rings: how a new player finds the story. Accepting brings the boss to the nearest corner.
 function maybeDonCall(s) {
-  if (G.sf || G.donCallOpen || G.film || G.story || G.cold || G.cut || G.wbOpen || BK.on || TRIAL.on || POT.on || G.minigame || !$('raceres').hidden || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return; // not over the intro film, the cold open, a cutscene or any card // not over the intro film or a story card
+  if (G.sf || G.film || G.story || G.cold || G.cut || G.wbOpen || BK.on || TRIAL.on || POT.on || G.minigame || !$('raceres').hidden || !G.startedAt || now() - G.startedAt < 20 || now() < (G.donCallNext || 0)) return; // not over the intro film, the cold open, a cutscene or any card // not over the intro film or a story card
   if (G.story || (G.race && G.race.phase !== 'done') || G.frun || G.map || G.inside || G.selfie || G.minigame || G.chase || !$('modal').hidden || !$('raceres').hidden || G.veh && Math.abs(G.vs) > 20) return;
   const day = P.missions && P.missions.day; const lc = L.donCalls && L.donCalls.day === day ? L.donCalls : { day, n: 0 }; if (lc.n >= 2) return;
   lc.n++; L.donCalls = lc; saveLocal(); showDonCall(s);
 }
-function showDonCall(s) {
-  const [who, face, msg] = D.DON_CALLS[s.ch] || D.DON_CALLS[0]; G.donCallOpen = true; if (document.pointerLockElement) document.exitPointerLock();
-  const box = el('div', { id: 'doncall' }); box.innerHTML = '<div class="dc-in"><div class="dc-face">' + face + '</div><div class="dc-who"></div><div class="dc-sub">📞 Incoming call · Gali ke Don ch ' + (s.ch + 1) + '</div><div class="dc-msg"></div><div class="dc-btns"><button type="button" class="dc-no">Baad mein</button><button type="button" class="dc-yes">Chal, aata hoon 👊</button></div></div>';
-  box.querySelector('.dc-who').textContent = who; box.querySelector('.dc-msg').textContent = '"' + msg + '"'; document.body.append(box);
-  let rings = 0; const ring = setInterval(() => { if (rings++ > 6 || !box.isConnected) return clearInterval(ring); A.sfx('beep'); setTimeout(() => A.sfx('beep'), 180); }, 1300);
-  const close = () => { clearInterval(ring); box.remove(); G.donCallOpen = false; G.donCallClose = null; };
-  G.donCallClose = () => { close(); G.donCallNext = now() + 90; if (L.donCalls && L.donCalls.n > 0) { L.donCalls.n--; saveLocal(); } }; // a cutscene took the screen: ring again later, it doesn't count
-  box.querySelector('.dc-no').onclick = () => { close(); G.donCallNext = now() + 600; toast('Golu: "Theek se bhai, jab time ho phone (Tab) mein Gali ke Don dabana."'); };
-  box.querySelector('.dc-yes').onclick = () => { close(); G.donCallNext = now() + 600; acceptDon(); }; // no second ring while the server confirms
+function showDonCall(s) { // Golu doesn't take over the screen: a missed call buzzes in, his chat has the rest
+  const [who, face, msg] = D.DON_CALLS[s.ch] || D.DON_CALLS[0]; G.donCallNext = now() + 600; A.sfx('beep'); setTimeout(() => A.sfx('beep'), 180);
+  buzz({ id: 'golu', who: '📞 ' + who + ' · missed call', face, col: '#d7331f' }, '"' + msg + '"', 8000);
 }
 async function acceptDon() {
   const s = donState(); if (!s || !s.avail) return; let best = 0, bd = 1e9;
@@ -3558,7 +3552,7 @@ function appDhanda() {
 
 // --- story pull (RET-12): a short cutscene before each Bada Kaam, a phone call for the next one, a cliffhanger after
 function cutscene(lines, done) {
-  if (G.film || G.cut) return done(); if (G.donCallClose) G.donCallClose(); G.cut = { i: 0, t0: now(), lines }; document.body.classList.add('cutscene'); const box = el('div', { id: 'cutcap' }); $('hud').append(box);
+  if (G.film || G.cut) return done(); G.cut = { i: 0, t0: now(), lines }; document.body.classList.add('cutscene'); const box = el('div', { id: 'cutcap' }); $('hud').append(box);
   const a0 = G.yaw; let i = 0; const next = () => { if (!G.cut) return; if (i >= lines.length) return end(); const [who, text] = lines[i++]; box.textContent = ''; box.append(el('b', { text: who }), el('span', { text: text })); A.sfx('chat'); if (who === 'Tu') say(player, text, 2.4); G.cut.tm = setTimeout(next, Math.max(1600, text.length * 55)); };
   const end = () => { if (!G.cut) return; clearTimeout(G.cut.tm); G.cut = null; box.remove(); document.body.classList.remove('cutscene'); G.yaw = a0; done(); };
   box.onclick = () => { clearTimeout(G.cut.tm); next(); }; G.cutEnd = end; G.cut.orbit = t => { G.yaw = a0 + Math.sin(t * 0.35) * 0.6; G.lookAt = now(); };
@@ -3571,12 +3565,12 @@ const BK_LINES = [
 ];
 function bkLines(i) { const B = D.BADE[i]; return BK_LINES[i] || [[B.giver.split(',')[0], B.brief], ['Tu', 'Ho jaayega. Chalo!']]; }
 function phoneCall(i) {
-  const B = D.BADE[i]; if (!B || G.modal || G.race || BK.on || G.cut || G.donCallOpen) return; const who = B.giver.split(',')[0]; let rings = 0; const ring = setInterval(() => { if (++rings > 4) clearInterval(ring); A.sfx('beep'); }, 700);
+  const B = D.BADE[i]; if (!B || G.modal || G.race || BK.on || G.cut) return; const who = B.giver.split(',')[0]; let rings = 0; const ring = setInterval(() => { if (++rings > 4) clearInterval(ring); A.sfx('beep'); }, 700);
   showCard('📞 ' + who + ' calling…', 'Bada Kaam ' + (i + 1) + ': ' + B.title, [['Uthao 📞', () => { clearInterval(ring); $('raceres').hidden = true; cutscene(bkLines(i), () => showCard(B.title, B.brief, [['Kaam shuru 💥', () => { $('raceres').hidden = true; bkStart(i, true); }], ['Baad mein', () => { $('raceres').hidden = true; }, 'alt2']])); }], ['Kaat do', () => { clearInterval(ring); $('raceres').hidden = true; }, 'alt2']]);
 }
 function cliffhanger(i) { const N = D.BADE[i + 1]; if (!N) return; setTimeout(() => { if (G.modal || G.race || BK.on) return; showCard('Agle episode mein… 🎬', '"' + N.title + '" · ' + N.giver, [['Abhi khelo ▶', () => { $('raceres').hidden = true; phoneCall(i + 1); }], ['Kal dekhenge', () => { $('raceres').hidden = true; }, 'alt2']], N.brief.split('.')[0] + '…'); }, 4200); }
 function storyPull() { // a few minutes into a session with nothing going on: the next Bada Kaam rings you
-  if (G.calledBK || !P || BK.on || G.race || G.story || G.cold || G.job || G.modal || TRIAL.on || POT.on || G.wbOpen || G.donCallOpen || !$('raceres').hidden) return; if (now() - (G.startedAt || now()) < 200) return; const cl = chapterLine(); if (!cl) return; G.calledBK = true; phoneCall(cl.n - 1);
+  if (G.calledBK || !P || BK.on || G.race || G.story || G.cold || G.job || G.modal || TRIAL.on || POT.on || G.wbOpen || !$('raceres').hidden) return; if (now() - (G.startedAt || now()) < 200) return; const cl = chapterLine(); if (!cl) return; G.calledBK = true; phoneCall(cl.n - 1);
 }
 
 // one place for the per-frame and per-second retention work
