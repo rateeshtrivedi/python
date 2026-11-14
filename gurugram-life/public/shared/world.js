@@ -688,7 +688,7 @@ function handle(c, m) {
     }
     case 'races': { reply({ ok: true, rec: raceTops(), best: p.raceBest || {}, wins: p.raceWins || {} }); break; }
     case 'race': { // a finished street race: personal best, route record, prize
-      const R = D.RACES.find(r => r.id === m.id); if (!R) return reply({ ok: false, error: 'Unknown race' });
+      const R = D.RACES.find(r => r.id === m.id) || D.REAL_RACES.find(r => r.id === m.id); if (!R) return reply({ ok: false, error: 'Unknown race' });
       const ms = Math.round(num(m.ms)); if (!(ms >= R.minMs && ms < 600000)) return reply({ ok: false, error: 'Time not valid' });
       if (!rateOk(c, 'race', R.minMs / 1000 * 0.8)) return reply({ ok: false, error: 'Thoda ruk ke' });
       const won = !!m.won; p.raceBest = p.raceBest || {}; p.raceWins = p.raceWins || {};
@@ -966,7 +966,7 @@ function tick1s() {
   botTick(); aiTalk();
 }
 
-function raceTops() { const o = {}; for (const R of D.RACES) o[R.id] = ((db.races || {})[R.id] || []).slice(0, 5).map(e => ({ name: e.name, ms: e.ms })); return o; }
+function raceTops() { const o = {}; for (const R of D.RACES.concat(D.REAL_RACES)) o[R.id] = ((db.races || {})[R.id] || []).slice(0, 5).map(e => ({ name: e.name, ms: e.ms })); return o; }
 
 const FUNNEL = [['landing', 'Opened the page'], ['name_ok', 'Entered a name'], ['avatar_done', 'Made an avatar'], ['pick_shown', 'Saw the start picker'], ['ab_cold', 'A/B: cold open'], ['ab_classic', 'A/B: classic start'], ['play', 'Pressed Khelo'], ['first_move', 'Moved for the first time'], ['cold_go', 'Cold open: chase started'], ['cold_done', 'Cold open: got ₹1,000'], ['first_reward', 'First reward'], ['intro_play', 'Intro film started'], ['intro_done', 'Watched the whole intro film'], ['intro_skip', 'Skipped the intro film'], ['story_start', 'Story started (new player)'], ['race1_go', 'First race: GO'], ['race1_done', 'First race finished'], ['b_fight', 'Road rage started'], ['fight_ko', 'Knocked out Monu'], ['b_swag', 'Swag shop shown'], ['swag_buy', 'Bought swag'], ['b_chase', 'Police chase started'], ['chase_escape', 'Escaped police'], ['chase_caught', 'Caught by police'], ['b_club', 'Sent to the club'], ['club_in', 'Entered the club'], ['debut_done', 'Finished Pehla Din'], ['story_skip', 'Skipped the story'], ['start_other', 'Started somewhere else (no story)'], ['race2_won', 'Won race 2'], ['min1', 'Played 1 minute'], ['min2', 'Played 2 minutes'], ['min5', 'Played 5 minutes'], ['min10', 'Played 10 minutes']];
 

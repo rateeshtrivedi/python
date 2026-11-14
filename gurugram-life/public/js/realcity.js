@@ -164,6 +164,7 @@ function nearestNode(x, z, car = true) { // the closest junction on a drivable r
   return best;
 }
 // A*: the quickest way by road (main roads preferred, one-ways respected). Returns the route as points, or null.
+export function snapRoad(x, z) { if (!ready || !GN) return null; const n = nearestNode(x, z); return n < 0 ? null : [GN[n * 2], GN[n * 2 + 1]]; } // the nearest junction on a drivable road
 export function route(x0, z0, x1, z1) {
   if (!ready || !ADJ) return null; const s = nearestNode(x0, z0), t = nearestNode(x1, z1); if (s < 0 || t < 0) return null; if (s === t) return [[x0, z0], [x1, z1]];
   const n = ADJ.length, g = new Float32Array(n).fill(Infinity), came = new Int32Array(n).fill(-1), via = new Int32Array(n).fill(-1), closed = new Uint8Array(n); const tx = GN[t * 2], tz = GN[t * 2 + 1];
