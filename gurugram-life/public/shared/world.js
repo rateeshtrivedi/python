@@ -929,7 +929,7 @@ function tick100() {
     const me = c.st; let near = [];
     for (const o of list) {
       if (o === c) continue; const s = o.st;
-      if (me && s.in !== me.in) continue;
+      if (me && s.in !== me.in) continue; if (me && (s.rm || 0) !== (me.rm || 0)) continue; // the real-map city and the classic city are two worlds: only see who's in yours
       const d = me && !s.in ? dist(s, me) : 0; if (d > VIEW_RADIUS) continue;
       near.push([d, o]);
     }
