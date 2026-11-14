@@ -585,3 +585,4 @@ body.touch #daybar{display:none!important}body.touch #stat.open #daybar:not([hid
 #naach .ns{font:800 15px var(--display);color:#ffd27a}
 #naach .npads{display:flex;gap:8px}#naach .npads button{width:48px;height:44px;border:0;border-radius:10px;background:#ff2bd6;color:#fff;font:800 22px var(--display);cursor:pointer}
 body:not(.touch) #naach .npads{display:none}
+.golist{display:grid;gap:4px;max-height:52vh;overflow-y:auto;margin-top:8px}

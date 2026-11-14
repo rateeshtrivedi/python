@@ -15,11 +15,19 @@ export async function load(url, scene) {
   const r = await fetch(url); DATA = await r.json(); const Q = DATA.Q;
   const dec = a => { const o = new Float32Array(a.length - 2); for (let i = 2; i < a.length; i++) o[i - 2] = a[i] / Q; return o; };
   DATA.B = DATA.bld.map(b => { const p = dec(b); let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (let i = 0; i < p.length; i += 2) { x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); z0 = Math.min(z0, p[i + 1]); z1 = Math.max(z1, p[i + 1]); } return { s: b[0], f: b[1], p, x0, z0, x1, z1 }; });
-  DATA.R = DATA.roads.map(r2 => ({ c: r2[0], w: r2[1] / Q, p: dec(r2) }));
+  const NM = DATA.names || []; DATA.R = DATA.roads.map((r2, i) => ({ c: r2[0], w: r2[1] / Q, p: dec(r2), n: DATA.rn && DATA.rn[i] >= 0 ? NM[DATA.rn[i]] : '' }));
+  DATA.M = (DATA.metro || []).map(m => ({ line: m[0], n: NM[m[1]] || '', p: dec(m) }));
+  DATA.PL = (DATA.places || []).map(q => ({ k: q[0], n: NM[q[1]], x: q[2], z: q[3] }));
+  DATA.ST = (DATA.stations || []).map(q => ({ n: NM[q[0]], line: q[1], x: q[2], z: q[3] }));
   DATA.L = DATA.land.map(l => ({ k: l[0], p: new Float32Array(l.slice(1).map(v => v / Q)) }));
-  const key = (x, z) => Math.floor(x / TILE) + ',' + Math.floor(z / TILE); const add = (k, t, v) => { let e = index.get(k); if (!e) index.set(k, e = { b: [], r: [], l: [] }); e[t].push(v); };
+  const key = (x, z) => Math.floor(x / TILE) + ',' + Math.floor(z / TILE); const add = (k, t, v) => { let e = index.get(k); if (!e) index.set(k, e = { b: [], r: [], l: [], m: [], pi: [], sg: [], pl: [], st: [] }); e[t].push(v); };
   DATA.B.forEach((b, i) => add(key((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2), 'b', i));
   DATA.R.forEach((rd, i) => { for (let j = 0; j < rd.p.length - 2; j += 2) add(key((rd.p[j] + rd.p[j + 2]) / 2, (rd.p[j + 1] + rd.p[j + 3]) / 2), 'r', [i, j]); });
+  // metro viaducts: segments and pillars (every 28 units along each line)
+  DATA.M.forEach((m, i) => { let acc = 0; for (let j = 0; j < m.p.length - 2; j += 2) { const x0 = m.p[j], z0 = m.p[j + 1], x1 = m.p[j + 2], z1 = m.p[j + 3], L = Math.hypot(x1 - x0, z1 - z0); add(key((x0 + x1) / 2, (z0 + z1) / 2), 'm', [i, j]); for (let d = (28 - acc % 28) % 28; d < L; d += 28) { const x = x0 + (x1 - x0) * d / L, z = z0 + (z1 - z0) * d / L; add(key(x, z), 'pi', [x, z]); } acc += L; } });
+  // green road-name boards along named roads: one near each end of a long stretch and every ~160 units
+  DATA.R.forEach(rd => { if (!rd.n || rd.c > 6) return; let acc = 0, next = 20; const p = rd.p; for (let j = 0; j < p.length - 2; j += 2) { const x0 = p[j], z0 = p[j + 1], x1 = p[j + 2], z1 = p[j + 3], L = Math.hypot(x1 - x0, z1 - z0); if (L < 0.01) continue; while (next <= acc + L) { const t = (next - acc) / L, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; add(key(x, z), 'sg', { x, z, dx: (x1 - x0) / L, dz: (z1 - z0) / L, w: rd.w, n: rd.n }); next += 160; } acc += L; } });
+  DATA.PL.forEach((q, i) => add(key(q.x, q.z), 'pl', i)); DATA.ST.forEach((q, i) => add(key(q.x, q.z), 'st', i));
   DATA.L.forEach((l, i) => { let x = 0, z = 0; const n = l.p.length / 2; for (let j = 0; j < l.p.length; j += 2) { x += l.p[j]; z += l.p[j + 1]; } add(key(x / n, z / n), 'l', i); });
   root = new THREE.Group(); root.name = 'realcity'; scene.add(root); makeMaterials();
   const [bx0, bz0, bx1, bz1] = DATA.bounds; const ground = new THREE.Mesh(new THREE.PlaneGeometry(bx1 - bx0 + 800, bz1 - bz0 + 800), mats.ground); ground.rotation.x = -Math.PI / 2; mats.ground.map.repeat.set((bx1 - bx0 + 800) / 60, (bz1 - bz0 + 800) / 60); ground.position.set((bx0 + bx1) / 2, -0.02, (bz0 + bz1) / 2); ground.receiveShadow = true; root.add(ground);
@@ -49,6 +57,7 @@ function makeMaterials() {
   mats = { walls: [null, L(house), L(tower), L(office), L(house), L(shed), L(mall), L(house)], ground1: L(shop), roof: new THREE.MeshLambertMaterial({ map: roof, vertexColors: true }),
     road: new THREE.MeshLambertMaterial({ map: road, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), line: new THREE.MeshBasicMaterial({ map: line, transparent: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
     ground: new THREE.MeshLambertMaterial({ map: earth }), park: new THREE.MeshLambertMaterial({ color: 0x5f8a3e, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), water: new THREE.MeshLambertMaterial({ color: 0x4f86a8, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    deck: new THREE.MeshLambertMaterial({ color: 0xbdb8ae }), yellow: new THREE.MeshLambertMaterial({ color: 0xf2b705, side: THREE.DoubleSide }), blue: new THREE.MeshLambertMaterial({ color: 0x2c6fb7, side: THREE.DoubleSide }), stationSide: new THREE.MeshLambertMaterial({ color: 0x9fb4c4 }), pole: new THREE.MeshLambertMaterial({ color: 0x6b7178 }),
     tank: new THREE.MeshLambertMaterial({ color: 0x1b1b1d }), trunk: new THREE.MeshLambertMaterial({ color: 0x6b4f35 }), leaf: new THREE.MeshLambertMaterial({ color: 0x3f7a32 }) };
 }
 const PLASTER = [0xf3e6c9, 0xf6d6c2, 0xf1e9a8, 0xffffff, 0xd9e9cf, 0xcfe2ee, 0xf2c9a0, 0xe8d7f0, 0xf4f0e6, 0xe9c9c0];
@@ -97,12 +106,54 @@ function buildTile(k) {
     const A = { pos: [], nor: [], uv: [] }; const y = l.k === 3 ? 0.012 : 0.01; for (const [a, b2, c2] of tri) upTri(A, pts[a].x, y, pts[a].y, pts[b2].x, y, pts[b2].y, pts[c2].x, y, pts[c2].y, [0, 0, 0, 0, 0, 0]); flat(A, l.k === 3 ? mats.water : mats.park);
     if (l.k === 1 || l.k === 7) { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const q of pts) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.y); z1 = Math.max(z1, q.y); } const nT = Math.min(60, Math.floor((x1 - x0) * (z1 - z0) / 140)); for (let t = 0; t < nT; t++) { const x = x0 + hash(li, t * 2) * (x1 - x0), z = z0 + hash(li, t * 2 + 1) * (z1 - z0); if (inPoly(pts, x, z)) trees.push(x, z); } }
   }
+  buildExtras(e, g);
   if (tanks.length) { const im = new THREE.InstancedMesh(TANK || (TANK = new THREE.CylinderGeometry(0.75, 0.75, 1.3, 10)), mats.tank, tanks.length / 3); const m4 = new THREE.Matrix4(); for (let i = 0; i < tanks.length; i += 3) { m4.makeTranslation(tanks[i], tanks[i + 1] + 0.65, tanks[i + 2]); im.setMatrixAt(i / 3, m4); } im.castShadow = true; g.add(im); }
   if (trees.length) { const n = trees.length / 2; const tr = new THREE.InstancedMesh(TRUNK || (TRUNK = new THREE.CylinderGeometry(0.25, 0.35, 3, 6)), mats.trunk, n), lf = new THREE.InstancedMesh(LEAF || (LEAF = new THREE.IcosahedronGeometry(2.4, 0)), mats.leaf, n); const m4 = new THREE.Matrix4();
     for (let i = 0; i < n; i++) { const s = 0.8 + hash(i, 9) * 0.6; m4.makeScale(s, s, s).setPosition(trees[i * 2], 1.5 * s, trees[i * 2 + 1]); tr.setMatrixAt(i, m4); m4.makeScale(s, s * 1.1, s).setPosition(trees[i * 2], 4.2 * s, trees[i * 2 + 1]); lf.setMatrixAt(i, m4); } tr.castShadow = lf.castShadow = true; g.add(tr, lf); }
   return g;
 }
-let TANK = null, TRUNK = null, LEAF = null;
+let TANK = null, TRUNK = null, LEAF = null, PILLAR = null;
+// ---------------------------------------------------------------- names and the metro: what makes it Gurugram
+const LBL = []; // floating place names, faded by distance in update()
+function textCanvas(text, o) { const c = document.createElement('canvas'), x = c.getContext('2d'), fs = o.fs || 44; x.font = '800 ' + fs + 'px "Baloo 2","Mukta",sans-serif'; const w = Math.min(1024, Math.ceil(x.measureText(text).width) + fs * (o.pad || 1)); c.width = w; c.height = Math.round(fs * (o.h || 1.5)); x.font = '800 ' + fs + 'px "Baloo 2","Mukta",sans-serif';
+  if (o.bg) { x.fillStyle = o.bg; if (o.round) { const r = c.height / 2.4; x.beginPath(); x.moveTo(r, 0); x.arcTo(w, 0, w, c.height, r); x.arcTo(w, c.height, 0, c.height, r); x.arcTo(0, c.height, 0, 0, r); x.arcTo(0, 0, w, 0, r); x.fill(); } else x.fillRect(0, 0, w, c.height); }
+  if (o.border) { x.strokeStyle = o.border; x.lineWidth = 6; x.strokeRect(5, 5, w - 10, c.height - 10); }
+  x.fillStyle = o.fg || '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, w / 2, c.height / 2 + 2); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return { t, aspect: w / c.height }; }
+const PLC = { 1: ['#1b1410cc', '#fff4d8', 13, 34, 520], 2: ['#1b1410b0', '#fff4d8', 10, 30, 380], 3: ['#2f6b2fd8', '#fff', 6, 12, 220], 4: ['#5b2a86d8', '#fff', 6, 15, 240], 5: ['#d7331fe6', '#fff', 7, 22, 320], 6: ['#f6c026ee', '#1b1410', 6, 9, 260] }; // bg, fg, size, height, seen-from
+function buildExtras(e, g) {
+  // metro: a concrete deck on pillars, a coloured band for the line (Yellow Line / Rapid Metro blue)
+  if (e.m.length) { const D = { pos: [], nor: [], uv: [] }, B1 = { pos: [], nor: [], uv: [] }, B2 = { pos: [], nor: [], uv: [] }, y0 = 8.2, y1 = 9.6, hw = 3.2;
+    const wall = (A, ax, az, bx, bz, ya, yb, nx, nz) => { A.pos.push(ax, ya, az, bx, ya, bz, bx, yb, bz, ax, ya, az, bx, yb, bz, ax, yb, az); for (let k = 0; k < 6; k++) A.nor.push(nx, 0, nz); A.uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1); };
+    for (const [mi, j] of e.m) { const m = DATA.M[mi], p = m.p, x0 = p[j], z0 = p[j + 1], x1 = p[j + 2], z1 = p[j + 3], L = Math.hypot(x1 - x0, z1 - z0); if (L < 0.05) continue; const ux = (x1 - x0) / L, uz = (z1 - z0) / L, sx = -uz * hw, sz = ux * hw, ex = ux * 0.6, ez = uz * 0.6;
+      const a0x = x0 - ex, a0z = z0 - ez, a1x = x1 + ex, a1z = z1 + ez;
+      upTri(D, a0x + sx, y1, a0z + sz, a0x - sx, y1, a0z - sz, a1x - sx, y1, a1z - sz, [0, 0, 1, 0, 1, 1]); upTri(D, a0x + sx, y1, a0z + sz, a1x - sx, y1, a1z - sz, a1x + sx, y1, a1z + sz, [0, 0, 1, 1, 0, 1]);
+      D.pos.push(a0x + sx, y0, a0z + sz, a1x - sx, y0, a1z - sz, a0x - sx, y0, a0z - sz, a0x + sx, y0, a0z + sz, a1x + sx, y0, a1z + sz, a1x - sx, y0, a1z - sz); for (let k = 0; k < 6; k++) D.nor.push(0, -1, 0); D.uv.push(0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1);
+      const band = m.line === 2 ? B2 : B1; wall(band, a0x + sx, a0z + sz, a1x + sx, a1z + sz, y0, y1, -uz, ux); wall(band, a1x - sx, a1z - sz, a0x - sx, a0z - sz, y0, y1, uz, -ux); }
+    const mk = (A, mat) => { if (!A.pos.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(A.pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(A.nor, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(A.uv, 2)); geo.computeBoundingSphere(); const ms = new THREE.Mesh(geo, mat); ms.castShadow = true; ms.receiveShadow = true; g.add(ms); };
+    mk(D, mats.deck); mk(B1, mats.yellow); mk(B2, mats.blue); }
+  if (e.pi.length) { const im = new THREE.InstancedMesh(PILLAR || (PILLAR = new THREE.CylinderGeometry(0.9, 1.1, 8.2, 10)), mats.deck, e.pi.length); const m4 = new THREE.Matrix4(); e.pi.forEach(([x, z], i) => { m4.makeTranslation(x, 4.1, z); im.setMatrixAt(i, m4); }); im.castShadow = true; g.add(im); }
+  // stations: a box over the line, the name in big letters
+  for (const si of e.st) { const st = DATA.ST[si]; let ang = 0, bd = 1e9; for (const m of DATA.M) for (let j = 0; j < m.p.length - 2; j += 2) { const d = Math.hypot((m.p[j] + m.p[j + 2]) / 2 - st.x, (m.p[j + 1] + m.p[j + 3]) / 2 - st.z); if (d < bd) { bd = d; ang = Math.atan2(m.p[j + 2] - m.p[j], m.p[j + 3] - m.p[j + 1]); } }
+    const box = new THREE.Mesh(new THREE.BoxGeometry(11, 5.5, 46), [mats.stationSide, mats.stationSide, mats.deck, mats.deck, mats.stationSide, mats.stationSide]); box.position.set(st.x, 12.4, st.z); box.rotation.y = ang; box.castShadow = true; box.userData.own = true; g.add(box);
+    const { t, aspect } = textCanvas('🚇 ' + st.n + (st.line === 2 ? ' · Rapid Metro' : / Station$/.test(st.n) ? '' : ' · Metro'), { fs: 46, bg: st.line === 2 ? '#2c6fb7' : '#d6a400', fg: '#fff', round: true, pad: 1.4 }); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false })); sp.scale.set(5 * aspect, 5, 1); sp.position.set(st.x, 19, st.z); sp.userData.own = true; g.add(sp); LBL.push({ sp, x: st.x, z: st.z, far: 600 }); }
+  // green road-name boards (Gurugram style) at the kerb, readable from both directions
+  for (const sg of e.sg) { const { t, aspect } = textCanvas(sg.n, { fs: 40, bg: '#178a48', fg: '#ffffff', border: '#ffffff', pad: 1.2, h: 1.6 }); const W = Math.min(9, 1.5 * aspect), H = 1.5; const mat = new THREE.MeshBasicMaterial({ map: t }); const grp = new THREE.Group();
+    for (const sd of [0, Math.PI]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat); pl.rotation.y = sd; pl.position.z = sd ? -0.03 : 0.03; grp.add(pl); }
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.6, 6), mats.pole); pole.position.set(-W / 2 + 0.2, -2.0, 0); grp.add(pole); const pole2 = pole.clone(); pole2.position.x = W / 2 - 0.2; grp.add(pole2);
+    const off = sg.w / 2 + 1.6; grp.position.set(sg.x - sg.dz * off, 4.3, sg.z + sg.dx * off); grp.rotation.y = Math.atan2(sg.dx, sg.dz); grp.userData.own = true; mat.userData = { own: true }; g.add(grp); }
+  // place names: sectors and localities high up, parks/markets/landmarks/chowks lower down
+  for (const pi of e.pl) { const q = DATA.PL[pi], st = PLC[q.k]; if (!st) continue; const { t, aspect } = textCanvas((q.k === 3 ? '🌳 ' : q.k === 6 ? '🚦 ' : q.k === 5 ? '🏬 ' : '') + q.n, { fs: 44, bg: st[0], fg: st[1], round: true, pad: 1.2 }); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
+    sp.scale.set(st[2] * aspect * 0.5, st[2] * 0.5, 1); sp.position.set(q.x, st[3], q.z); sp.userData.own = true; g.add(sp); LBL.push({ sp, x: q.x, z: q.z, far: st[4] }); }
+}
+// where am I: the locality (nearest sector or neighbourhood) and the road under you
+export function placeAt(x, z) {
+  if (!ready) return null; let area = null, ad = 1e9, road = null, rdd = 1e9; const tx = Math.floor(x / TILE), tz = Math.floor(z / TILE);
+  for (let ax = tx - 3; ax <= tx + 3; ax++) for (let az = tz - 3; az <= tz + 3; az++) { const e = index.get(ax + ',' + az); if (!e) continue; for (const pi of e.pl) { const q = DATA.PL[pi]; if (q.k > 2) continue; const d = Math.hypot(q.x - x, q.z - z) * (q.k === 1 ? 0.85 : 1); if (d < ad) { ad = d; area = q.n; } }
+    if (Math.abs(ax - tx) <= 1 && Math.abs(az - tz) <= 1) for (const [ri, j] of e.r) { const rd = DATA.R[ri]; if (!rd.n) continue; const p = rd.p, x0 = p[j], z0 = p[j + 1], dx = p[j + 2] - x0, dz = p[j + 3] - z0, L2 = dx * dx + dz * dz || 1e-9, k = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / L2)), d = Math.hypot(x - x0 - k * dx, z - z0 - k * dz); if (d < rd.w / 2 + 3 && d < rdd) { rdd = d; road = rd.n; } } }
+  return { area: ad < 1400 ? area : null, road };
+}
+export const places = () => ready ? DATA.PL.map(q => ({ k: q.k, n: q.n, x: q.x, z: q.z })).concat(DATA.ST.map(q => ({ k: 7, n: q.n + (q.line === 2 ? ' (Rapid Metro)' : ' Metro'), x: q.x, z: q.z }))) : [];
+
 // flat triangles must face up (counter-clockwise seen from above) so they light as ground, not as an underside
 function upTri(A, ax, ay, az, bx, by, bz, cx, cy, cz, uv) { const cr = (bz - az) * (cx - ax) - (bx - ax) * (cz - az); if (cr < 0) { A.pos.push(ax, ay, az, cx, cy, cz, bx, by, bz); if (uv) A.uv.push(uv[0], uv[1], uv[4], uv[5], uv[2], uv[3]); } else { A.pos.push(ax, ay, az, bx, by, bz, cx, cy, cz); if (uv) A.uv.push(...uv); } A.nor.push(0, 1, 0, 0, 1, 0, 0, 1, 0); }
 function inPoly(pts, x, z) { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], b = pts[j]; if ((a.y > z) !== (b.y > z) && x < (b.x - a.x) * (z - a.y) / (b.y - a.y) + a.x) c = !c; } return c; }
@@ -113,7 +164,8 @@ export function update(px, pz) {
   let built = 0, best = null, bd = 1e9;
   for (let tx = tx0; tx <= tx1; tx++) for (let tz = tz0; tz <= tz1; tz++) { const k = tx + ',' + tz; if (tiles.has(k)) continue; const d = Math.hypot((tx + 0.5) * TILE - px, (tz + 0.5) * TILE - pz); if (d < R && d < bd) { bd = d; best = k; } }
   if (best) { const g = buildTile(best); root.add(g); tiles.set(best, g); built++; } // one tile per frame keeps it smooth
-  for (const [k, g] of tiles) { const [tx, tz] = k.split(',').map(Number); if (Math.hypot((tx + 0.5) * TILE - px, (tz + 0.5) * TILE - pz) > R + TILE * 1.2) { root.remove(g); g.traverse(o => { if (o.geometry && o.geometry !== TANK && o.geometry !== TRUNK && o.geometry !== LEAF) o.geometry.dispose(); }); tiles.delete(k); } }
+  for (const [k, g] of tiles) { const [tx, tz] = k.split(',').map(Number); if (Math.hypot((tx + 0.5) * TILE - px, (tz + 0.5) * TILE - pz) > R + TILE * 1.2) { root.remove(g); g.traverse(o => { if (o.geometry && o.geometry !== TANK && o.geometry !== TRUNK && o.geometry !== LEAF && o.geometry !== PILLAR) o.geometry.dispose(); if (o.material && (o.isSprite || o.userData.own || (o.material.userData && o.material.userData.own))) { for (const mt of [].concat(o.material)) { if (mt.map && mt !== mats.deck) mt.map.dispose(); if (mt.userData && mt.userData.own || o.isSprite) mt.dispose(); } } }); tiles.delete(k); } }
+  for (let i = LBL.length - 1; i >= 0; i--) { const L = LBL[i]; if (!L.sp.parent || !L.sp.parent.parent) { LBL.splice(i, 1); continue; } const d = Math.hypot(L.x - px, L.z - pz), o = d < 14 ? d / 14 : d > L.far ? 0 : d > L.far * 0.7 ? (L.far - d) / (L.far * 0.3) : 1; L.sp.material.opacity = o; L.sp.visible = o > 0.02; }
   return built;
 }
 export const tileCount = () => tiles.size;
@@ -130,12 +182,14 @@ export function collide(o, r) {
         const dx = x2 - x1, dz = z2 - z1, L2 = dx * dx + dz * dz || 1e-9; const k = Math.max(0, Math.min(1, ((o.x - x1) * dx + (o.z - z1) * dz) / L2)); const qx = x1 + k * dx, qz = z1 + k * dz; const d = Math.hypot(o.x - qx, o.z - qz); if (d < best) { best = d; bx = qx; bz = qz; } }
       if (inside) { const d = best || 1e-6; o.x = bx + (bx - o.x) / d * r; o.z = bz + (bz - o.z) / d * r; hit = true; }
       else if (best < r) { const d = best || 1e-6; o.x = bx + (o.x - bx) / d * r; o.z = bz + (o.z - bz) / d * r; hit = true; } } }
+  for (let ax = tx - 1; ax <= tx + 1; ax++) for (let az = tz - 1; az <= tz + 1; az++) { const e = index.get(ax + ',' + az); if (!e) continue; for (const [x, z] of e.pi) { const dx = o.x - x, dz = o.z - z, d = Math.hypot(dx, dz), rr = r + 1.0; if (d < rr && d > 1e-6) { o.x = x + dx / d * rr; o.z = z + dz / d * rr; hit = true; } } } // metro pillars
   const [x0, z0, x1, z1] = DATA.bounds; o.x = Math.max(x0, Math.min(x1, o.x)); o.z = Math.max(z0, Math.min(z1, o.z));
   return hit;
 }
 
 // ---------------------------------------------------------------- minimap: real roads (and parks) around the player
-export function drawMini(ctx, px, pz, span) {
+export function drawMini(ctx, px, pz, span) { drawMini0(ctx, px, pz, span); if (!ready) return; ctx.lineWidth = 5; for (const m of DATA.M) { ctx.strokeStyle = m.line === 2 ? '#2c6fb7' : '#f2b705'; ctx.setLineDash([9, 6]); ctx.beginPath(); for (let j = 0; j < m.p.length; j += 2) (j ? ctx.lineTo : ctx.moveTo).call(ctx, m.p[j], m.p[j + 1]); ctx.stroke(); } ctx.setLineDash([]); for (const st of DATA.ST) { if (Math.abs(st.x - px) > span * 1.5 || Math.abs(st.z - pz) > span * 1.5) continue; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(st.x, st.z, 9, 0, 7); ctx.fill(); ctx.fillStyle = st.line === 2 ? '#2c6fb7' : '#d6a400'; ctx.beginPath(); ctx.arc(st.x, st.z, 6, 0, 7); ctx.fill(); } }
+function drawMini0(ctx, px, pz, span) {
   if (!ready) return; const tx = Math.floor(px / TILE), tz = Math.floor(pz / TILE), n = Math.ceil(span / TILE) + 1;
   ctx.fillStyle = '#5f8a3e'; for (let ax = tx - n; ax <= tx + n; ax++) for (let az = tz - n; az <= tz + n; az++) { const e = index.get(ax + ',' + az); if (!e) continue; for (const li of e.l) { const l = DATA.L[li]; ctx.fillStyle = l.k === 3 ? '#4f86a8' : '#5f8a3e'; ctx.beginPath(); for (let j = 0; j < l.p.length; j += 2) (j ? ctx.lineTo : ctx.moveTo).call(ctx, l.p[j], l.p[j + 1]); ctx.fill(); } }
   ctx.lineCap = 'round'; for (let ax = tx - n; ax <= tx + n; ax++) for (let az = tz - n; az <= tz + n; az++) { const e = index.get(ax + ',' + az); if (!e) continue; for (const [ri, j] of e.r) { const rd = DATA.R[ri], p = rd.p; ctx.strokeStyle = rd.c <= 2 ? '#f6c026' : rd.c <= 4 ? '#e8e2d0' : '#2f2f31'; ctx.lineWidth = Math.max(rd.w, 5); ctx.beginPath(); ctx.moveTo(p[j], p[j + 1]); ctx.lineTo(p[j + 2], p[j + 3]); ctx.stroke(); } }
