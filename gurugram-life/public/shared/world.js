@@ -175,7 +175,7 @@ function startEvent() {
   const type = D.EVENT_ORDER[eventIdx++ % D.EVENT_ORDER.length];
   const def = D.WORLD_EVENTS[type]; const t = now();
   worldEvent = { type, name: def.name, start: t, end: t + def.dur, data: {}, rush: [] }; soonSent = false;
-  if (type === 'thaila') { const R = [-375, -225, -75, 75, 225, 375]; const x = pick(R.slice(1, 5)), z = pick(R.slice(1, 5)); const d = D.districtAt(x + 20, z + 20); worldEvent.data = { x, z, place: d ? d[2] : 'Gurugram', prize: 1500 + Math.floor(Math.random() * 6) * 250 }; worldEvent.name = 'Paison ka thaila gira at ' + worldEvent.data.place + '!'; }
+  if (type === 'thaila') { const R = [-375, -225, -75, 75, 225, 375]; const x = pick(R.slice(1, 5)), z = pick(R.slice(1, 5)); const d = D.districtAt(x + 20, z + 20); const rq = pick(D.REAL_THAILA); worldEvent.data = { x, z, place: d ? d[2] : 'Gurugram', rx: rq[0], rz: rq[1], rplace: rq[2], prize: 1500 + Math.floor(Math.random() * 6) * 250 }; /* rx/rz: where it lies on the real map */ worldEvent.name = 'Paison ka thaila gira at ' + worldEvent.data.place + '!'; }
   if (type === 'flood') worldEvent.data.districts = D.FLOOD_DISTRICTS.slice().sort(() => Math.random() - 0.5).slice(0, 4);
   if (type === 'ipl') worldEvent.data = { teams: D.IPL_TEAMS, runs: [0, 0], wkts: [0, 0], balls: 0, inn: 0, target: 0, cheers: [0, 0], last: '' };
   broadcast({ t: 'event', ev: worldEvent });
@@ -532,7 +532,7 @@ function handle(c, m) {
     case 'st': { // position/state ~10Hz
       const st = c.st || (c.st = {});
       st.x = clamp(num(m.x, st.x || 0), -3200, 3200); st.z = clamp(num(m.z, st.z || 0), -3200, 3200); st.r = num(m.r, 0);
-      st.a = clamp(Math.floor(num(m.a, 0)), 0, 4); st.in = INTERIORS.includes(m.in) ? m.in : '';
+      st.a = clamp(Math.floor(num(m.a, 0)), 0, 4); st.in = INTERIORS.includes(m.in) ? m.in : ''; st.rm = m.rm ? 1 : 0; // rm: playing on the real map (Asli Gurugram)
       const v = m.v; st.v = v && (p.vehicles.includes(v) || ['rent', 'chhotu', 'desert', 'dhakad', 'scooty', 'cruiser', 'auto', 'bus', 'truck'].includes(v)) ? v : null; // owned, rented, Chacha's loaner or one taken off the road (a boat must be owned)
       if (st.v && st.v !== 'rent' && p.cur !== st.v) { p.cur = st.v; broadcast(pinfo(c)); }
       st.hp = clamp(Math.round(num(m.hp, 100)), 0, 100); st.fx = m.fx === 1 ? 1 : 0; st.w = m.w === 1 && p.guns.includes('katta') ? 1 : m.w === 2 && p.guns.includes('dunali') ? 2 : 0; st.ts = now();
@@ -611,8 +611,8 @@ function handle(c, m) {
     }
     case 'evreach': { // first three to an event spot win; the money bag goes to the first one only
       const e = worldEvent; if (!e || !c.st || c.st.in || e.rush.includes(p.id) || !rateOk(c, 'evreach', 2)) return;
-      if (e.type === 'thaila') { if (e.data.taken || dist(c.st, e.data) > 8) return; e.data.taken = p.name; e.rush.push(p.id); credit(c, e.data.prize, 'Paison ka thaila!'); sendProfile(c); announce('💰 ' + p.name + ' ne ' + e.data.place + ' pe thaila utha liya (' + fmt(e.data.prize) + ')!', 'event'); e.end = Math.min(e.end, now() + 2); break; }
-      const sp = D.EVENT_SPOTS[e.type]; if (!sp || e.rush.length >= 3) return; const ok = sp.line ? Math.abs(c.st.x - sp.x) < 20 : dist(c.st, sp) < 28; if (!ok) return;
+      if (e.type === 'thaila') { if (e.data.taken || dist(c.st, c.st.rm && e.data.rx != null ? { x: e.data.rx, z: e.data.rz } : e.data) > 8) return; e.data.taken = p.name; e.rush.push(p.id); credit(c, e.data.prize, 'Paison ka thaila!'); sendProfile(c); announce('💰 ' + p.name + ' ne ' + e.data.place + ' pe thaila utha liya (' + fmt(e.data.prize) + ')!', 'event'); e.end = Math.min(e.end, now() + 2); break; }
+      const sp = c.st.rm ? D.REAL_EVENT_SPOTS[e.type] : D.EVENT_SPOTS[e.type]; if (!sp || e.rush.length >= 3) return; const ok = sp.line ? Math.abs(c.st.x - sp.x) < 20 : dist(c.st, sp) < (c.st.rm ? 40 : 28); if (!ok) return;
       e.rush.push(p.id); const k = e.rush.length; credit(c, Math.round(D.RUSH_PRIZE[k - 1] * (1 + 0.1 * Math.min(p.level, 10))), '#' + k + ' pahuncha · ' + e.name); sendProfile(c);
       if (k === 1) announce(p.name + ' sabse pehle pahuncha: ' + e.name + '!', 'event'); break;
     }
