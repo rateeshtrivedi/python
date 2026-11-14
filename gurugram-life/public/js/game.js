@@ -2687,11 +2687,42 @@ function updateRush() { if (REAL) return; // real-map preview: these still live 
 function updateNav() {
   const tg = !G.inside && !G.map && !G.sf && !raceArrow.visible ? navTarget() : null; /* no GPS arrow in a face-off */ const d = tg ? Math.hypot(tg.x - G.x, tg.z - G.z) : 0;
   const st = tg && d > 9 ? routeStep(tg) : null; if (st) navPoint(wpArrow, st.x, st.z); else { wpArrow.visible = false; NAVT.wp = null; }
-  drawNavRing();
+  drawNavRing(); goalTick(tg, d, st);
   const chip = $('navchip'), show = !!tg && !(G.race && G.race.phase !== 'done');
   if (chip.hidden === show) chip.hidden = !show; if (!show) return;
   const hd = st || tg, a = Math.atan2(hd.x - G.x, hd.z - G.z) - G.yaw; $('navdir').style.transform = 'rotate(' + (-a * 180 / Math.PI).toFixed(1) + 'deg)';
   const nm = tg.name || 'GPS', ds = d < 1000 ? Math.round(d / 5) * 5 + ' m' : (d / 1000).toFixed(1) + ' km'; if (chip.dataset.n !== nm) { chip.dataset.n = nm; $('navtxt').textContent = nm; } if (chip.dataset.d !== ds) { chip.dataset.d = ds; $('navdist').textContent = ds; }
+}
+// ---- where to go, GTA-style: the goal as a subtitle at the bottom, a floating diya over the target, and a "wrong way" nudge
+let DIYA = null;
+function makeDiya() {
+  const g = new THREE.Group(); const clay = new THREE.MeshLambertMaterial({ color: 0xc8622a, emissive: 0x3a1204 });
+  const pts = [[0, 0], [0.55, 0.05], [0.95, 0.3], [1.1, 0.55], [1.0, 0.6], [0.6, 0.35], [0, 0.32]].map(([x, y]) => new THREE.Vector2(x, y));
+  const bowl = new THREE.Mesh(new THREE.LatheGeometry(pts, 18), clay); bowl.scale.set(1, 1, 0.8); g.add(bowl);
+  const spout = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.7, 10), clay); spout.rotation.z = Math.PI / 2; spout.position.set(1.15, 0.45, 0); g.add(spout);
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.9, 12), new THREE.MeshBasicMaterial({ color: 0xffc23a })); flame.position.set(1.15, 1.0, 0); g.add(flame); g.userData.flame = flame;
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff6d0 })); core.position.set(1.15, 0.72, 0); g.add(core);
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,214,110,.95)'); gr.addColorStop(0.4, 'rgba(255,160,40,.35)'); gr.addColorStop(1, 'rgba(255,140,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false, transparent: true, blending: THREE.AdditiveBlending })); glow.scale.set(4, 4, 1); glow.position.set(0.6, 0.8, 0); g.add(glow);
+  g.traverse(o => { if (o.material) { o.material.depthTest = false; o.material.transparent = true; o.renderOrder = 999; } }); /* seen through buildings, like a GTA blip */
+  g.visible = false; scene.add(g); return g;
+}
+function goalTick(tg, d, st) {
+  const box = $('goalsub'); if (!box) return; const q = $('quest'), qb = q && !q.hidden ? q.querySelector('b') : null;
+  const on = !!tg && !G.race && !G.cut && !G.film && !G.modal;
+  // the diya: hovers over the target, stays readable from far away
+  if (!DIYA) DIYA = makeDiya();
+  DIYA.visible = on && d > 6; if (DIYA.visible) { const t = now(), k = clamp(d / 14, 1.5, 11); DIYA.position.set(tg.x, groundY(tg.x, tg.z) + 2.6 * k + Math.sin(t * 2.2) * 0.25 * k, tg.z); DIYA.scale.setScalar(k); DIYA.rotation.y = t * 0.8; const f = DIYA.userData.flame; f.scale.set(1, 1 + Math.sin(t * 17) * 0.12 + Math.sin(t * 7.3) * 0.08, 1); }
+  if (!on) { if (!box.hidden) box.hidden = true; G.wrongSince = 0; G.lastGap = null; return; }
+  // wrong way: moving, and the gap keeps growing for a while
+  const moving = G.moving || Math.abs(G.vs || 0) > 1.5; if (G.lastGap != null && moving && d > G.lastGap + 0.02) G.wrongSince = G.wrongSince || now(); else if (G.lastGap == null || d < G.lastGap - 0.02) G.wrongSince = 0; G.lastGap = d;
+  const wrong = !!G.wrongSince && now() - G.wrongSince > 2.5 && d > 25;
+  const hd = st || tg, a = Math.atan2(hd.x - G.x, hd.z - G.z) - G.yaw, deg = (-a * 180 / Math.PI).toFixed(0);
+  const goal = qb ? qb.textContent : 'GPS', place = tg.name || '', ds = d < 1000 ? Math.round(d / 5) * 5 + ' m' : (d / 1000).toFixed(1) + ' km';
+  const key = goal + '|' + place + '|' + wrong; if (box.dataset.k !== key) { box.dataset.k = key; box.textContent = '';
+    box.append(el('i', { class: 'gs-arrow', text: '➤' }), el('span', { class: 'gs-goal', text: wrong ? 'Ulta ja rya se! Peeche mud' : goal })); if (place && !wrong) box.append(el('span', { class: 'gs-sep', text: ' · ' }), el('b', { class: 'gs-place', text: place })); box.append(el('em', { class: 'gs-dist' })); }
+  box.classList.toggle('wrong', wrong); box.querySelector('.gs-arrow').style.transform = 'rotate(' + (Number(deg) - 90) + 'deg)'; const de = box.querySelector('.gs-dist'); if (de.textContent !== ds) de.textContent = ds;
+  if (box.hidden) box.hidden = false;
 }
 function buildRaceSpots() {
   D.RACES.forEach((R, i) => {
