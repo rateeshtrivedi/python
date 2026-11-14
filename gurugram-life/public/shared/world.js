@@ -134,7 +134,7 @@ const istWeek = () => { const d = new Date(Date.now() + 5.5 * 3600e3); d.setUTCD
 function ensureDon(p) { const wk = istWeek(); if (!p.don || p.don.wk !== wk) p.don = { wk, ch: 0, last: null, champ: p.don && p.don.champ || null, spot: null }; if (p.don.spotDay && p.don.spotDay !== istDay()) { p.don.spot = null; p.don.spotDay = null; } }
 const donAt = dn => (dn.spot != null && D.DON_SPOTS[dn.spot]) || D.DON[dn.ch].at;
 function ensureMissions(p) {
-  const ms = p.missions; const day = D.gameDay(); ensureDon(p); /* aaj ke kaam: one set per 15-minute game day */ if (!p.dayBase || p.dayBase.day !== day) p.dayBase = { day, c: { ...p.c }, money: p.money }; if (ms.v === 2 && ms.day === day && ms.active.length) return;
+  const ms = p.missions; const day = D.taskDay(); ensureDon(p); /* aaj ke kaam: one set per real day, new at midnight IST */ if (!p.dayBase || p.dayBase.day !== day) p.dayBase = { day, c: { ...p.c }, money: p.money }; if (ms.v === 2 && ms.day === day && ms.active.length) return;
   let seed = 7; for (const ch of p.id + day) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647; const pk = a => a[Math.floor(r() * a.length)];
   const lvl = p.level; const prev = ms.v === 2 && ms.day !== day ? (ms.active || []) : [];
   ms.active = D.DAILY_SLOTS.map(slot => {
@@ -942,7 +942,7 @@ function tick1s() {
   roastAdvance(); danceAdvance();
   for (const [k, v] of invites) if (v.until < t) invites.delete(k);
   if (slow % 30 === 0) turfTick();
-  if (slow % 10 === 0) for (const o of conns.values()) { plotRents(o); if (o.p.missions.day !== D.gameDay()) { ensureMissions(o.p); sendProfile(o); send(o, { t: 'toast', text: 'Naya din! Aaj ke naye kaam aa gaye', kind: 'join' }); } } // a new 15-minute day: fresh kaam
+  if (slow % 10 === 0) for (const o of conns.values()) { plotRents(o); if (o.p.missions.day !== D.taskDay()) { ensureMissions(o.p); sendProfile(o); send(o, { t: 'toast', text: 'Naya din! Aaj ke naye kaam aa gaye', kind: 'join' }); } } // a new 15-minute day: fresh kaam
   if (slow % 60 === 0) turfIncome();
   if (slow % 15 === 0) broadcast({ t: 'lb', lb: leaderboards() });
   if (slow % 60 === 0) { beltCheckDay(); warCheck(); }

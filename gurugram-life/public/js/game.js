@@ -741,9 +741,9 @@ function updateHUD() {
 // ================================================================ AAJ KE KAAM (daily tasks): panel, phone button, tap to go
 const TASK_ICON = { kamai: '₹', badla: '👊', shop: '🛍', club: '💃', job: '💼', thrill: '🔥', food: '🍲' };
 const kfmt = n => n >= 1000 ? (n / 1000).toFixed(n % 1000 && n < 1e4 ? 1 : 0) + 'k' : String(n);
-// the game clock: a 15-minute day, so show the time of day and how long until the next one (new kaam, rents)
-function dayClock() { return clockText() + ' · ' + Math.ceil((1 - DAY.t) * D.DAY_SECS / 60) + 'm'; }
-setInterval(() => { if (G.started && P) $('mchip').textContent = $('mchip').textContent.replace(/[^·]*· \d+m$/, ' ' + dayClock()); }, 500); // keep the clock on the chip ticking
+// the game clock: a 45-minute game day; the daily kaam follow the real date
+function dayClock() { return clockText(); } // daily kaam reset at real midnight now, so the chip just shows the game time
+setInterval(() => { if (G.started && P) $('mchip').textContent = $('mchip').textContent.replace(/· [^·]*$/, '· ' + dayClock()); }, 500); // keep the clock on the chip ticking
 function dailyTasks() { return P && P.missions && P.missions.v === 2 ? P.missions.active : []; }
 function taskProg(a) { return a.done ? a.n : Math.max(0, Math.min(a.n, (P.c[a.k] || 0) - a.base)); }
 function taskCount(a, p) { return a.k === 'earned' ? kfmt(p) + '/' + kfmt(a.n) : p + '/' + a.n; }
@@ -754,7 +754,7 @@ function renderMissions() {
   const story = []; const ds = donState(); if (ds) story.push(el('button', { type: 'button', class: 'm don' + (!ds.avail ? ' done' : ''), onclick: openDon }, el('i', { text: ds.champ ? '👑' : '📖' }), el('span', { text: ds.champ ? 'Tu Gali ka Don se! Monday nayi kahani' : ds.avail ? (ds.called ? 'Gali ke Don ch ' + (ds.ch + 1) + ': ' + ds.C.boss + ' (' + ds.at[2] + ')' : '📞 Golu ka call: Gali ke Don ch ' + (ds.ch + 1)) : 'Gali ke Don: kal ch ' + (ds.ch + 1) + ' khulega' }), el('b', { text: ds.ch + '/5' }), el('em', { style: 'width:' + ds.ch * 20 + '%' })));
   const nx = BK.on ? null : act.find(a => !a.done); for (const a of act) { const p = taskProg(a); box.append(el('button', { type: 'button', class: 'm' + (a.done ? ' done' : '') + (a === nx ? ' next' : ''), title: a.t, onclick: () => goTask(a) }, el('i', { text: a.done ? '✓' : TASK_ICON[a.slot] || '•' }), el('span', { text: a.t }), el('b', { text: taskCount(a, p) }), el('em', { style: 'width:' + Math.round(p / a.n * 100) + '%' }))); }
   { const cl = chapterLine(); if (cl) { const B = D.BADE[cl.n - 1]; story.push(el('button', { type: 'button', class: 'm don bk' + (BK.on ? ' next' : ''), onclick: openBade }, el('i', { text: '💥' }), el('span', { text: 'Bada Kaam ' + cl.n + ': ' + B.title + ' → ' + cl.C.prize }), el('b', { text: BK.on ? 'chal rya' : 'shuru' }))); } }
-  if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Agle din (15 min) naye kaam' : nd < 2 ? (2 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Teeno = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
+  if (act.length) box.append(el('div', { class: 'mfoot', text: nd === act.length ? 'Sab poore! Naye kaam kal (raat 12 baje)' : nd < 2 ? (2 - nd) + ' aur = Level ' + (P.level + 1) + ' khulega' : 'Teeno = ' + fmt(D.dailyBonus(P.level, streakNext())) + ' bonus' }));
   if (story.length) { box.append(el('h5', { class: 'mhead', text: 'Kahani · level ke kaam se alag' })); for (const e of story) box.append(e); } // the 3 daily kaam count; the story rows sit under their own heading
   const un = chatUnreadAll(); $('mchip').textContent = '💬 Chats' + (un ? ' · ' + un + ' naye' : '') + ' · ' + nd + '/' + act.length + ' · ' + dayClock(); $('mchip').classList.toggle('unread', !!un); setTimeout(chatBuzzCheck, 0);
 }
@@ -921,7 +921,7 @@ function bottleService() { openModal('VIP bottle service', 'Poore club ko pata c
 function openPhone() {
   tutEvent('phone');
   openModal('Menu', P.name + ' · ' + fmt(P.money) + ' · Tab / Esc se band', b => {
-    const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
+    const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], ...(G.veh ? [['Gaadi nikaalo', '#6b7280', '🏗️', () => { closeModal(); recoverCar(); }]] : []), [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     { const live = el('p', { class: 'menuclock' }); const tick = () => { if (!live.isConnected && live.dataset.on) return; live.dataset.on = 1; const bits = []; if (G.ev) bits.push('⏱ ' + G.ev.name + ' · ' + mmss(Math.max(0, Math.round(G.ev.end - serverNow())))); if (BK.on && BK.deadline) bits.push('⏱ Bada Kaam · ' + mmss(timeLeft())); live.textContent = bits.join('  ·  '); live.hidden = !bits.length; setTimeout(tick, 1000); }; tick(); b.append(live); } // the clock doesn't stop for the menu, so the menu shows it
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
     const apps = [['Chats', '#25d366', '💬', appChats], ['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Startup', '#0f766e', '💻', () => FD.openStartup()], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', appChats], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]); apps.splice(7, 0, ['Khel', '#e8590c', '🎯', appKhel], ['Dhanda', '#2b8a3e', '💼', appDhanda], ['Calendar', '#5f3dc4', '🗓', appCalendar], ['Dost bulao', '#25d366', '📨', inviteFriend]);
@@ -1136,6 +1136,11 @@ function parkBack() { // the stolen car stays where you got out
   const w = 2.5; e.col = { x0: G.x - w, x1: G.x + w, z0: G.z - w, z1: G.z + w }; COL.out.push(e.col);
 }
 function toggleVehicle() { if (!G.veh && !G.inside) { const pc = PARKED.find(e => e.mesh.visible && Math.hypot(e.mesh.position.x - G.x, e.mesh.position.z - G.z) < 4); if (pc) { if (G.stealAsk && G.stealAsk.pc === pc && now() - G.stealAsk.t < 3.5) { G.stealAsk = null; return stealParked(pc); } G.stealAsk = { pc, t: now() }; A.sfx('err'); return toast('🚨 Ye kisi aur ki ' + (D.VEH[pc.type] ? D.VEH[pc.type].name : 'gaadi') + ' se! Churane ke liye F dobara dabao (police ⭐ aayegi). Apni gaadi: thoda door ja ke F', 'bad'); } } /* F next to someone's parked car: warn first, a second F steals it */ if (G.veh) { if (G.race && G.race.phase !== 'done') return quitRace(); return dismount(); } if (G.inside) return toast('Bahar ja ke gaadi nikaal'); if (G.impound > now()) return toast('Gaadi police ne zabt kar rakhi se. ' + Math.ceil(G.impound - now()) + 's baaki', 'bad'); if (!P.vehicles.length) { if (L.loanerOK) { G.quietMount = true; mount(L.loanVeh || 'chhotu'); G.quietMount = false; G.loaner = true; return toast('Chacha ki ' + D.VEH[G.veh].name + '. Apni gaadi ka sapna upar dikh rya se!'); } return toast('Gaadi nahi hai. Iffco Chowk pe rent kar ya Chaudhary Motors se le.'); } const wet = P.vehicles.includes('naav') && [[0, 0], [6, 0], [-6, 0], [0, 6], [0, -6]].some(([a, b]) => waterDepth(G.x + a, G.z + b) > 0.3); mount(wet ? 'naav' : P.cur && P.vehicles.includes(P.cur) && P.cur !== 'naav' ? P.cur : P.vehicles.find(v => v !== 'naav') || P.vehicles[0]); }
+function recoverCar() { // the crane: back on the nearest road, facing along it
+  if (!G.veh) return toast('Gaadi mein baith ke'); if ((G.craneCD || 0) > now()) return toast('Crane aa rahi se… ' + Math.ceil(G.craneCD - now()) + 's'); if (G.race && G.race.phase !== 'done' || G.chase) return toast('Abhi crane nahi aayegi', 'bad');
+  G.craneCD = now() + 8; const q = nearRoad(G.x, G.z); if (!q) return; const alongZ = q.ax === 'x'; let h = alongZ ? (Math.cos(G.r) >= 0 ? 0 : Math.PI) : (Math.sin(G.r) >= 0 ? Math.PI / 2 : -Math.PI / 2);
+  const lx = Math.cos(h) * 3, lz = -Math.sin(h) * 3; /* the left lane, like real traffic */ fadeTo('🏗️ Crane ne gaadi uthaa ke sadak pe rakh di', 900, () => { const sp = openNear({ x: q.x + lx, z: q.z + lz, r: h }); G.x = sp.x; G.z = sp.z; G.r = G.yaw = h; G.vs = 0; G.stuck = false; G.stuckT = 0; G.pinT = 0; });
+}
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
 function exitInterior() { const key = G.inside; const d = DOORS[key]; fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
@@ -1160,7 +1165,7 @@ window.addEventListener('keydown', e => {
   if (!G.started || !$('modal').hidden) return;
   keys[e.code] = true;
   const k = e.code;
-  if (k === 'KeyE') doAction(); if (k === 'KeyQ') attack(); if (k === 'Digit1') setWeapon(0); if (k === 'Digit2') setWeapon(1); if (k === 'Digit3') setWeapon(2); if (k === 'KeyX') cycleWeapon(); if (k === 'KeyF' || k === 'KeyV') toggleVehicle(); if (k === 'KeyT') { e.preventDefault(); openChat(); } if (k === 'KeyP' || k === 'Tab') { e.preventDefault(); openPhone(); } if (k === 'KeyM') openMap3D(); if (k === 'KeyR') A.nextStation(); if (k === 'Space' && !G.veh) G.jumpReq = true; if (k === 'ShiftLeft' || k === 'ShiftRight') e.preventDefault();
+  if (k === 'KeyE') doAction(); if (k === 'KeyQ') attack(); if (k === 'Digit1') setWeapon(0); if (k === 'Digit2') setWeapon(1); if (k === 'Digit3') setWeapon(2); if (k === 'KeyX') cycleWeapon(); if (k === 'KeyF' || k === 'KeyV') toggleVehicle(); if (k === 'KeyT') { e.preventDefault(); openChat(); } if (k === 'KeyP' || k === 'Tab') { e.preventDefault(); openPhone(); } if (k === 'KeyM') openMap3D(); if (k === 'KeyR') { if (G.veh && G.stuck) recoverCar(); else A.nextStation(); }; if (k === 'Space' && !G.veh) G.jumpReq = true; if (k === 'ShiftLeft' || k === 'ShiftRight') e.preventDefault();
   if (k === 'KeyB') toggleDance(); if (k === 'KeyH') horn(); if (k === 'KeyC') startSelfie(); if (k === 'KeyG') throwColor();
   if (k.startsWith('Arrow') || k === 'Space') e.preventDefault();
 });
@@ -1249,6 +1254,7 @@ function updatePlayer(dt) {
       if (into > 0.2) { const tx = -nz / nl, tz = nx / nl, s2 = Math.sign(tx * hx + tz * hz) || 1, want = Math.atan2(tx * s2, tz * s2) + (G.vs < 0 ? Math.PI : 0); G.r = angLerp(G.r, want, Math.min(1, dt * (G.pinT > 0.8 ? 4 : 2))); }
     } else G.pinT = 0; }
     if (!drag && now() - (G.lookAt || 0) > 1.2) G.yaw = angLerp(G.yaw, G.r, dt * 2.5);
+    { const pushing = Math.abs(iy) > 0.3 && !blocked && !(G.race && G.race.phase === 'count'); G.stuckT = pushing && Math.abs(G.vs) < 1.6 ? (G.stuckT || 0) + dt : Math.max(0, (G.stuckT || 0) - dt * 2); const was = G.stuck; G.stuck = G.stuckT > 1.2 || (G.pinT || 0) > 1.2; if (G.stuck && !was && (G.stuckTip || 0) < now()) { G.stuckTip = now() + 20; toast(touchUI() ? '🚧 Phans gaya? Menu → Gaadi nikaalo' : '🚧 Phans gaya? R dabao: crane gaadi sadak pe rakh degi', 'bad'); } } // pinned against a wall or traffic: offer the crane
     moving = Math.abs(G.vs) > 0.5; const float = V.kind === 5 && dep > 0.25; playerVeh.position.set(G.x, float ? 0.05 + Math.min(dep, 1) * 0.35 + Math.sin(now() * 3) * 0.06 : 0.2, G.z); playerVeh.rotation.y = G.r; playerVeh.rotation.z = V.kind === 2 ? ix * -0.15 * clamp(G.vs / 10, 0, 1) : float ? Math.sin(now() * 2.2) * 0.05 - ix * 0.08 : 0;
     if (float && Math.abs(G.vs) > 4 && Math.random() < dt * 20) burst(G.x - Math.sin(G.r) * 2.4, 0.4, G.z - Math.cos(G.r) * 2.4, 0xe8f2f8, 2, { speed: 2.5, up: 1.5, life: 0.7 }); // wake
     if (V.kind === 5 && !float && Math.abs(G.vs) > 1 && (G.scrapeT || 0) < now()) { G.scrapeT = now() + 0.6; A.sfx('crash', 0.15); }
@@ -1310,7 +1316,7 @@ function hitMark(n, dmg) {
 }
 function hpBar(n) { // a small bar over the head, drawn when the fighter is hurt
   const u = n.mesh.userData; if (!u.hpb) { const c = document.createElement('canvas'); c.width = 64; c.height = 8; const t = new THREE.CanvasTexture(c); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false })); sp.scale.set(1.3, 0.16, 1); sp.position.y = 2.75; n.mesh.add(sp); u.hpb = { c, t, sp }; }
-  const { c, t } = u.hpb, x = c.getContext('2d'), f = Math.max(0, n.hp) / (n.max || 1); x.fillStyle = '#1b1410'; x.fillRect(0, 0, 64, 8); x.fillStyle = f > 0.5 ? '#3fbf5a' : f > 0.25 ? '#f0b22b' : '#e0342a'; x.fillRect(1, 1, Math.round(62 * f), 6); t.needsUpdate = true; u.hpb.sp.visible = n.hp > 0 && n.hp < (n.max || 1);
+  const { c, t } = u.hpb, x = c.getContext('2d'), f = Math.max(0, n.hp) / (n.max || 1); x.fillStyle = '#1b1410'; x.fillRect(0, 0, 64, 8); x.fillStyle = f > 0.5 ? '#3fbf5a' : f > 0.25 ? '#f0b22b' : '#e0342a'; x.fillRect(1, 1, Math.round(62 * f), 6); t.needsUpdate = true; u.hpb.sp.visible = n.hp > 0 && (n.hp < (n.max || 1) || n.state === 'aggro');
 }
 function flashHit() { const h = $('hit'); h.style.transition = 'none'; h.style.opacity = 1; requestAnimationFrame(() => { h.style.transition = 'opacity .6s'; h.style.opacity = 0; }); }
 function punch() {
@@ -1324,8 +1330,9 @@ function punch() {
   let best = null, bs = 1e9;
   for (const c of cands) { const dx = c.x - G.x, dz = c.z - G.z, d = Math.hypot(dx, dz); if (d > 3.1) continue; const a = Math.atan2(dx, dz);
     const off = Math.min(Math.abs(angDiff(a, G.yaw)), Math.abs(angDiff(a, G.r))); if (off > 1.2 && d > 1.7) continue; const sc = d + off * 1.2 + (c.kind === 'crowd' || c.kind === 'ped' ? 0.6 : 0); if (sc < bs) { bs = sc; best = c; } }
+  if (!best && LOCK.t && LOCK.t.state !== 'ko' && Math.hypot(LOCK.t.x - G.x, LOCK.t.z - G.z) < 4.6) { const n = LOCK.t, dd = Math.hypot(n.x - G.x, n.z - G.z); G.x += (n.x - G.x) / dd * (dd - 1.2); G.z += (n.z - G.z) / dd * (dd - 1.2); best = { kind: 'npc', o: n, x: n.x, z: n.z }; } /* locked on: lunge in */
   if (!best) return; G.r = Math.atan2(best.x - G.x, best.z - G.z); A.sfx('punch'); G.lastFight = now(); const fx = Math.sin(G.r), fz = Math.cos(G.r);
-  if (best.kind === 'npc') { const n = best.o; const dmg = irnd(9, 14) + Math.min(6, Math.floor(P.respect / 100)); n.hp -= dmg; hitMark(n, dmg); n.state = 'aggro'; n.hitT = 0.2; n.x += fx * 0.8; n.z += fz * 0.8; if (n.hp <= 0) return npcKO(n); grunt(n, 'hit'); if (Math.random() < 0.15 && now() > (G.fightTalk || 0)) { G.fightTalk = now() + 4; setTimeout(() => { if (n.state !== 'ko') say(n, pick(['Teri to!', 'Ruk ja!', 'Maar diya re!']), 1.5); }, 500); } }
+  if (best.kind === 'npc') { const n = best.o; const counter = n.wind > 0; if (counter) { n.wind = 0; n.cd = 1.2; fightWarn(n, false); G.npcGap = now() + 0.9; } const dmg = (irnd(9, 14) + Math.min(6, Math.floor(P.respect / 100))) * (counter ? 2 : 1); if (counter) bigText('COUNTER! 💥', '', 0.6); n.hp -= dmg; hitMark(n, dmg); n.state = 'aggro'; n.hitT = 0.2; n.x += fx * 0.8; n.z += fz * 0.8; if (n.hp <= 0) return npcKO(n); grunt(n, 'hit'); if (Math.random() < 0.15 && now() > (G.fightTalk || 0)) { G.fightTalk = now() + 4; setTimeout(() => { if (n.state !== 'ko') say(n, pick(['Teri to!', 'Ruk ja!', 'Maar diya re!']), 1.5); }, 500); } }
   else if (best.kind === 'ped') pedFight(best.o);
   else if (best.kind === 'crowd') { const p = best.o; grunt(p, 'hit'); p.knock = 7; p.kx = fx * 3; p.kz = fz * 3; if (Math.random() < 0.5) toast(pick(['Arre! Bina baat ke maarega?', 'Police bulaunga!', 'Oye, hosh mein aa!']), 'bad'); }
   else net.send('hit', { target: best.id });
@@ -1428,6 +1435,16 @@ function jackWin(m) { // the server says I beat the owner, so the vehicle is min
   bigText('GAADI TERI!', m.name + ' ki ' + D.VEH[m.v].name + ' ab tere paas', 1.8);
 }
 async function startDangal() { if (G.veh) return; if (G.belt && G.belt.id !== P.id && REMOTES.has(G.belt.id)) toast('Champion ' + G.belt.name + ' online se. Belt ke liye unhe akhara mein KO kar!'); const r = await buy('misc', 'dangal'); if (!r.ok) return; AKHARA.fight = true; PEHLWAN.hp = PEHLWAN.max; PEHLWAN.state = 'aggro'; say(PEHLWAN, 'Aaja chhore, dekh le Haryana ka dum!', 2.5); toast('Dangal shuru! Punch with F. Akhara se bahar mat jaana.'); }
+// ---- readable fights: a red ! on whoever is about to hit, an arrow at the screen edge when he's behind you, a ring under your target
+function fightWarn(n, on) { const u = n.mesh.userData; if (!u.warn) { u.warn = labelSprite('!', { fs: 52, scale: 0.62, bg: 'rgba(220,30,20,.95)' }); u.warn.position.y = 3.35; n.mesh.add(u.warn); } u.warn.visible = on; if (!on) LABELS.delete(u.warn); else LABELS.add(u.warn); if (on && !L.fightTip) { L.fightTip = 1; saveLocal(); toast('Laal ❗ = ye maarne wala se! Peeche hat, ya pehle maar: COUNTER = double damage', 'bad'); } }
+const LOCK = { t: null, ring: null };
+function fightHUD() {
+  if (!LOCK.ring) { LOCK.ring = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.95, 32), new THREE.MeshBasicMaterial({ color: 0xffd21f, transparent: true, opacity: 0.85, depthWrite: false })); LOCK.ring.rotation.x = -Math.PI / 2; scene.add(LOCK.ring); }
+  let best = null, bs = 1e9; if (!G.veh && !G.inside && G.hp > 0) for (const n of FIGHTERS) { if (n.state !== 'aggro' || n.sfHold) continue; const dx = n.x - G.x, dz = n.z - G.z, d = Math.hypot(dx, dz); if (d > 8) continue; const sc = d + Math.abs(angDiff(Math.atan2(dx, dz), G.yaw)) * 1.5 - (n === LOCK.t ? 1 : 0); if (sc < bs) { bs = sc; best = n; } }
+  LOCK.t = best; LOCK.ring.visible = !!best; if (best) { LOCK.ring.position.set(best.x, groundY(best.x, best.z) + 0.05, best.z); LOCK.ring.material.color.setHex(best.wind > 0 ? 0xff3b30 : 0xffd21f); }
+  const a = G.npcAtk, el2 = $('threat'); if (!el2) return; const show = a && a.wind > 0 && a.state !== 'ko' && !G.veh;
+  if (show) { const ang = Math.atan2(a.x - G.x, a.z - G.z) - Math.atan2(G.x - camera.position.x, G.z - camera.position.z); const behind = Math.abs(angDiff(ang, 0)) > 0.9; el2.hidden = !behind; if (behind) el2.style.setProperty('--a', (-ang * 180 / Math.PI).toFixed(0) + 'deg'); } else if (!el2.hidden) el2.hidden = true;
+}
 function updateFighters(dt) { if (REAL) return; // real-map preview: these still live on the grid city
   const gone = [];
   for (const n of FIGHTERS) {
@@ -1437,16 +1454,23 @@ function updateFighters(dt) { if (REAL) return; // real-map preview: these still
     if ((n.jack || n.badla || n.fromPed || n.don) && (n.state === 'ko' ? n.t - dt <= 0 : !n.badla && !n.don && (G.inside || G.veh || G.hp <= 0 || Math.hypot(G.x - n.x, G.z - n.z) > 30))) { gone.push(n); if (n.state !== 'ko' && n.jack) { n.jack.held = false; say(n.jack, 'Darpok! Bhaag gaya?', 2); } continue; } // driver climbs back in, or limps off after losing
     if (n.state === 'ko') { n.t -= dt; m.rotation.x = -Math.PI / 2; m.position.set(n.x, 0.4, n.z); if (n.t <= 0) { n.hp = n.max; if (n.mesh.userData.hpb) n.mesh.userData.hpb.sp.visible = false; n.state = n.pehl ? 'idle' : 'wander'; m.rotation.x = 0; if (!n.pehl) { n.x = n.hx; n.z = n.hz; } else { n.x = AKHARA.x; n.z = AKHARA.z; } } continue; }
     const dx = G.x - n.x, dz = G.z - n.z, d = Math.hypot(dx, dz); let moving = false, gm = null;
+    if (n.state === 'aggro' && !n.mesh.userData.hpb) hpBar(n); /* every enemy in the fight shows a health bar */
+    if (n.wind > 0) { n.wind -= dt; if (d > 0.05) n.r = Math.atan2(dx, dz); if (n.wind <= 0) { fightWarn(n, false); m.userData.punchT = 0.25; if (d < 2.0 && G.hp > 0 && !G.veh && !G.inside) takeHit(n.dmg, n.name, n); else if (Math.random() < 0.5) say(n, pick(['Bach gaya!', 'Ruk ja!', 'Bhaag mat!']), 1.2); } }
     if (G.veh && Math.abs(G.vs) > 7 && d < 2.2 && !G.inside && (n.carCD || 0) < now()) { n.carCD = now() + 1; n.hp -= 35; n.x -= dx / (d || 1) * 3; n.z -= dz / (d || 1) * 3; A.sfx('punch'); G.vs *= 0.8; if (n.hp > 0) { grunt(n, 'hit'); setTimeout(() => { if (n.state !== 'ko') say(n, pick(['Aaah! Gaadi se maarega?', 'Teri to...!']), 1.5); }, 450); } if (n.hp <= 0) { npcKO(n); continue; } n.state = 'aggro'; }
     if (n.pehl && n.state === 'idle') { if ((n.lookT = (n.lookT ?? 3) - dt) <= 0) { n.lookT = rnd(3, 7); n.r0 = rnd(-1.2, 1.2) + (d < 25 ? Math.atan2(dx, dz) : 0); } n.r += angDiff(n.r0 ?? n.r, n.r) * Math.min(1, dt * 2); if (Math.random() < 0.002 && d < 20) say(n, 'Hai koi maa ka laal? Dangal karega?', 2); }
     else if (n.state === 'aggro' && !G.inside && !n.pehl && !n.gun && (gm = gangTarget(n, d))) { const gx = gm.x - n.x, gz = gm.z - n.z, gd = Math.hypot(gx, gz); n.r = Math.atan2(gx, gz); if (gd > 1.5) { n.x += gx / gd * 5 * dt; n.z += gz / gd * 5 * dt; moving = true; } else if (n.cd <= 0) { n.cd = 1.2; m.userData.punchT = 0.25; gangHurt(gm, n.dmg, n); } } // your chhore draw some of the fight
-    else if (n.state === 'aggro' && !G.inside && !G.veh && G.hp > 0 && (n.pehl ? Math.hypot(G.x - AKHARA.x, G.z - AKHARA.z) < 12 : n.story || d < (n.bk ? 60 : 30))) { if (d > 0.05) n.r = Math.atan2(dx, dz); if (d < 1.0 && d > 0.001) { n.x -= dx / d * (1.0 - d); n.z -= dz / d * (1.0 - d); } /* never stand inside the player */ if ((n.talkT = (n.talkT === undefined ? rnd(0.5, 1.5) : n.talkT) - dt) <= 0 && d < 14) { if (now() < (G.fightTalk || 0)) n.talkT = rnd(1, 2); else { n.talkT = rnd(10, 16); G.fightTalk = now() + 5; say(n, pick(ANGRY_LINES), 2); } } /* a taunt now and then, one chhora at a time: a fight is mostly grunts, not talk */ if (n.gun && d > 2.4) { if (d > 13) { n.x += dx / d * 4.5 * dt; n.z += dz / d * 4.5 * dt; moving = true; } if ((n.gcd = (n.gcd ?? rnd(0.6, 1.6)) - dt) <= 0) { n.gcd = rnd(1.4, 2.4); npcShoot(n); } } /* a katta: keep some distance and fire */ else if (d > 1.6) { const sp = n.pehl ? 4 : 5; n.x += dx / d * sp * dt; n.z += dz / d * sp * dt; moving = true; } else if (n.cd <= 0 && now() > (G.npcGap || 0)) { G.npcGap = now() + 0.7; n.cd = n.pehl ? 1.0 : 1.2; m.userData.punchT = 0.25; if (Math.random() < 0.45) grunt(n, 'hit', 0.55); /* the effort of the swing */ takeHit(n.dmg, n.name, n); if (Math.random() < 0.12 && now() > (G.fightTalk || 0)) { n.talkT = rnd(8, 12); G.fightTalk = now() + 5; say(n, 'Le! Aur khayega?', 2); } } }
+    else if (n.state === 'aggro' && !G.inside && !G.veh && G.hp > 0 && (n.pehl ? Math.hypot(G.x - AKHARA.x, G.z - AKHARA.z) < 12 : n.story || d < (n.bk ? 60 : 30))) { if (d > 0.05) n.r = Math.atan2(dx, dz); if (d < 1.0 && d > 0.001) { n.x -= dx / d * (1.0 - d); n.z -= dz / d * (1.0 - d); } /* never stand inside the player */ if ((n.talkT = (n.talkT === undefined ? rnd(0.5, 1.5) : n.talkT) - dt) <= 0 && d < 14) { if (now() < (G.fightTalk || 0)) n.talkT = rnd(1, 2); else { n.talkT = rnd(10, 16); G.fightTalk = now() + 5; say(n, pick(ANGRY_LINES), 2); } } /* a taunt now and then, one chhora at a time: a fight is mostly grunts, not talk */ if (n.gun && d > 2.4) { if (d > 13) { n.x += dx / d * 4.5 * dt; n.z += dz / d * 4.5 * dt; moving = true; } if ((n.gcd = (n.gcd ?? rnd(0.6, 1.6)) - dt) <= 0) { n.gcd = rnd(1.4, 2.4); npcShoot(n); } } /* a katta: keep some distance and fire */ else if (n.wind > 0) { /* winding up: stands and swings (resolved above) */ }
+      else if (d > 1.6) { const waitTurn = G.npcAtk && G.npcAtk !== n && G.npcAtk.state !== 'ko' && now() < (G.npcGap || 0) + 0.4 && d < 3.6; const sp = n.pehl ? 4 : 5;
+        if (!waitTurn) { n.x += dx / d * sp * dt; n.z += dz / d * sp * dt; } else { n.side = n.side || (Math.random() < 0.5 ? 1 : -1); const want = 2.9 - d; n.x += (-dz / d * n.side * 1.3 + -dx / d * want * 1.5) * dt; n.z += (dx / d * n.side * 1.3 + -dz / d * want * 1.5) * dt; } /* not his turn: circle at a distance, like a real street fight */ moving = true; }
+      else if (n.cd <= 0 && now() > (G.npcGap || 0)) { G.npcGap = now() + 1.5; G.npcAtk = n; n.cd = n.pehl ? 1.4 : 1.8; n.wind = n.pehl ? 0.45 : 0.55; fightWarn(n, true); if (Math.random() < 0.45) grunt(n, 'hit', 0.55); /* wind-up: a red ! and a beat to react (step back, or hit him first) */ if (Math.random() < 0.12 && now() > (G.fightTalk || 0)) { n.talkT = rnd(8, 12); G.fightTalk = now() + 5; say(n, 'Le! Aur khayega?', 2); } }
+      else if (G.npcAtk !== n && d < 1.5 && d > 0.01) { n.x -= dx / d * 2 * dt; n.z -= dz / d * 2 * dt; moving = true; } }
     else {
       if (n.state === 'aggro') { n.state = n.pehl ? 'idle' : 'wander'; if (n.pehl && AKHARA.fight) { AKHARA.fight = false; toast('Akhara chhod diya! Dangal haara.', 'bad'); n.x = AKHARA.x; n.z = AKHARA.z; } }
       if (!n.pehl) { const tdx = n.tx - n.x, tdz = n.tz - n.z, td = Math.hypot(tdx, tdz); if (td < 1) { n.tx = n.hx + rnd(-30, 30); n.tz = n.hz + rnd(-25, 25); } else { n.x += tdx / td * 2.2 * dt; n.z += tdz / td * 2.2 * dt; n.r = Math.atan2(tdx, tdz); moving = true; } if (d < 7 && !G.inside && Math.random() < dt * 0.25) say(n, pick(CHHORA_LINES), 2.5); }
     }
     n.cd -= dt; m.position.set(n.x, groundY(n.x, n.z) + (n.hitT > 0 ? 0.15 : 0), n.z); m.rotation.y = n.r; animChar(m, dt, moving ? 1 : 0, 1.3);
   }
+  fightHUD();
   for (const n of gone) { scene.remove(n.mesh); FIGHTERS.splice(FIGHTERS.indexOf(n), 1); if (n.fromPed) n.fromPed.fighter = null; if (n.don) DONF = DONF.filter(x => x !== n); }
 }
 
@@ -1631,8 +1655,8 @@ async function plotDeal(pl) {
   await loadPlots(); const p = plotInfo(pl.id); if (!p) return;
   const hist = []; for (let k = 6; k >= 0; k--) hist.push(D.plotPrice(pl, G.plots.day - k));
   openModal(pl.name, (p.mine ? 'Tera plot' : p.owner ? p.owner + ' ka plot' : 'Bikau · Yadav Estates') + ' · ' + wallet(), b => {
-    b.append(el('p', { text: 'Aaj ka bhaav: ' + fmt(p.price) + ' (' + trend(p) + ' kal se) · kiraya ' + fmt(D.plotRent(pl)) + ' har din (15 min)' }));
-    const mx = Math.max(...hist), mn = Math.min(...hist), bars = el('div', { class: 'tchart' }); hist.forEach((v, i) => bars.append(el('i', { title: fmt(v), style: 'height:' + Math.round(20 + 80 * (v - mn) / Math.max(1, mx - mn)) + '%' + (i === 6 ? ';background:#f6c026' : '') }))); b.append(el('p', { class: 'fine', text: 'Pichhle 7 din ka bhaav (har din 15 minute):' }), bars);
+    b.append(el('p', { text: 'Aaj ka bhaav: ' + fmt(p.price) + ' (' + trend(p) + ' kal se) · kiraya ' + fmt(D.plotRent(pl)) + ' har game din (45 min)' }));
+    const mx = Math.max(...hist), mn = Math.min(...hist), bars = el('div', { class: 'tchart' }); hist.forEach((v, i) => bars.append(el('i', { title: fmt(v), style: 'height:' + Math.round(20 + 80 * (v - mn) / Math.max(1, mx - mn)) + '%' + (i === 6 ? ';background:#f6c026' : '') }))); b.append(el('p', { class: 'fine', text: 'Pichhle 7 game din ka bhaav (har din 45 minute):' }), bars);
     if (p.mine) b.append(itemRow('Bech do', 'Aaj ke bhaav pe, 3% dalali kat ke', fmt(Math.round(p.price * 0.97)), async () => { const r = await net.req('sellplot', { id: pl.id }); if (!r.ok) return toast(r.error, 'bad'); A.sfx('cash'); bigText('SAUDA PAKKA!', pl.name + ' · ' + fmt(r.price), 1.8); closeModal(); loadPlots(); }));
     else if (!p.owner) b.append(itemRow('Kharid lo', nearPlot(pl) ? 'Registry turant' : 'Plot pe jaa ke kharid', nearPlot(pl) ? fmt(p.price) : 'GPS', async () => { if (!nearPlot(pl)) { closeModal(); const A0 = PLOT_AT[pl.id] || { x: pl.at[0] * 150, z: pl.at[1] * 150 }; setWaypoint(A0.x, A0.z, pl.name); return; } const r = await buy('plot', pl.id); if (r.ok) { bigText('ZAMEEN TERI!', pl.name, 2); A.sfx('cheer'); closeModal(); loadPlots(); } }));
     b.append(el('p', { class: 'fine', text: 'Bhaav har din badalta se: sasta lo, mehnga becho. Flood ke dinon mein bhi zameen chalti rehti se.' }));
@@ -1643,7 +1667,7 @@ async function appZameen() {
   await loadPlots(); const mine = G.plots.list.filter(p => p.mine), worth = mine.reduce((a, p) => a + p.price, 0);
   openModal('Zameen ke saude', 'Yadav Estates · ' + (mine.length ? mine.length + ' plot, aaj ' + fmt(worth) : 'abhi koi plot nahi') + ' · ' + wallet(), b => {
     for (const pl of D.PLOTS) { const p = plotInfo(pl.id); if (!p) continue; b.append(itemRow(pl.name + (p.mine ? ' ✓' : ''), fmt(p.price) + ' · ' + trend(p) + ' · ' + (p.mine ? 'tera' : p.owner ? p.owner + ' ka' : 'bikau'), p.mine ? 'Becho' : p.owner ? 'GPS' : 'Dekho', () => { if (p.owner && !p.mine) { closeModal(); const A0 = PLOT_AT[pl.id] || { x: pl.at[0] * 150, z: pl.at[1] * 150 }; setWaypoint(A0.x, A0.z, pl.name); } else plotDeal(pl); })); }
-    b.append(el('p', { class: 'fine', text: 'Bhaav har game din (15 min) badalta se. Plot pe jaa ke kharid, kahin se bhi bech. Har plot roz kiraya deta se.' }));
+    b.append(el('p', { class: 'fine', text: 'Bhaav har game din (45 min) badalta se. Plot pe jaa ke kharid, kahin se bhi bech. Har plot roz kiraya deta se.' }));
   });
 }
 
@@ -1694,8 +1718,11 @@ const MISSIONS = [
     ] },
   { // 2 Udhaar Vasooli: Pappu Paaji and his chele, then the police
     steps: [
-      { start() { const s = bkCx(-1, 0, 18, 66); BK.boss = bkNpc('Sharma ji', s.x, s.z, 0xe8e2d0, Math.PI); bkWp(s.x, s.z, 'Sharma ji, Galleria Market'); bkQuest('Udhaar Vasooli', 'Sharma ji se mil, Galleria Market'); BK.d.home = s; }, tick() { return bkNear(BK.d.home, 5); } },
-      { start() { say(BK.boss, 'Beta, Pappu ne ₹20,000 dabaa rakhe hain. Vasool kar de, chautha hissa tera!', 3); const s = bkCx(-1, 1, 6, 66); BK.d.at = s; bkWp(s.x, s.z, 'Pappu Paaji, Sector 14 Market'); bkQuest('Pappu Paaji ko dhoond', 'Sector 14 Market. Do chele saath honge'); }, tick() { return bkNear(BK.d.at, 30); } },
+      { start() { const s = bkCx(-1, 0, 18, 66); BK.boss = bkNpc('Sharma ji', s.x, s.z, 0xe8e2d0, Math.PI); bkWp(s.x, s.z, 'Sharma ji, Galleria Market'); bkQuest('Udhaar Vasooli', 'Sharma ji se mil, Galleria Market'); BK.d.home = s; }, tick() { // face to face: walk up and Sharma ji tells you the job
+          if (BK.d.met) return true; if (!BK.d.talking && bkNear(BK.d.home, 6) && !G.veh) { BK.d.talking = 1; G.vs = 0; const h = BK.d.home; G.r = Math.atan2(h.x - G.x, h.z - G.z); G.yaw = G.r; if (BK.boss) BK.boss.rotation.y = Math.atan2(G.x - h.x, G.z - h.z);
+            cutscene([['Sharma ji', 'Aa gaya beta! Pappu Paaji ne ₹20,000 udhaar liye the, ab phone bhi nahi uthata.'], ['Sharma ji', 'Sector 14 Market mein baitha rehta se, do chele saath. Vasool kar de, ₹5,000 tera.'], ['Tu', 'Pappu Paaji ka hisaab aaj hi hoga, Sharma ji.']], () => { BK.d.met = 1; }); }
+          else if (!BK.d.talking && bkNear(BK.d.home, 9) && G.veh && !BK.d.hint) { BK.d.hint = 1; toast('Gaadi se utar ke Sharma ji ke paas ja (F)'); } return false; } },
+      { start() { const s = bkCx(-1, 1, 6, 66); BK.d.at = s; bkWp(s.x, s.z, 'Pappu Paaji, Sector 14 Market'); bkQuest('Pappu Paaji ko dhoond', 'Sector 14 Market. Do chele saath honge'); }, tick() { return bkNear(BK.d.at, 30); } },
       { start() { const s = BK.d.at; clearWp(); BK.d.p = bkFoe('Pappu Paaji', s.x, s.z, { hp: 70, dmg: 6, shirt: 0xd7331f, scale: 1.1 }); bkFoe('Pappu ka chela', s.x + 3, s.z + 1, { hp: 40, dmg: 5 }); bkFoe('Pappu ka chela', s.x - 3, s.z + 1, { hp: 40, dmg: 5 }); say(BK.d.p, 'Kaun Sharma? Bhaag ja yahan se!', 2.5); bigText('VASOOLI!', 'Teeno ko dhobi pachhad', 1.6); bkQuest('Pappu aur chelon ko hara', 'Teeno ko KO kar'); },
         tick() { return foesLeft() === 0; } },
       { start() { bigText('POLICE!', 'Pappu ke saale ne 112 pe call kar diya. 30 second bach!', 2); startChase({ near: true, secs: 30 }); BK.d.chased = now(); bkQuest('Police se bach', '30 second: bhaag, gali mein ghus, ya gaadi se nikal'); }, tick() { return now() - BK.d.chased > 3 && !G.chase; } },
@@ -1760,7 +1787,7 @@ async function bkStart(i, called) {
   if (P.bkOn && P.bkOn.i === i && (P.bkOn.step || 0) > 0 && !BK.on) { closeModal(); return bkResume(true); } // a checkpoint: carry on from the step you reached
   const r = await net.req('bkstart', { i }); if (!r.ok) return toast(r.error || 'Abhi nahi', 'bad');
   closeModal(); Object.assign(BK, { on: true, i, step: -1, d: {}, ents: [], deadline: 0, noCops: false, inCar: false, car: null, carZone: null, boss: null });
-  const card = () => showCard('Bada Kaam ' + (i + 1) + ': ' + B.title, B.giver + ' · ' + B.brief, [['Chalo! 💥', () => { $('raceres').hidden = true; bkNext(); }]], 'Inaam: ' + fmt(B.pay) + (i + 1 < D.LADDER.length ? ' + ' + D.HOUSES[D.LADDER[i + 1]].name : ' + ' + D.BLING.heera.name)); G.cutSeen = G.cutSeen || {}; if (called || G.cutSeen[i]) card(); else { G.cutSeen[i] = 1; cutscene(bkLines(i), card); } // the giver sets it up in a short scene (once a session; a retry goes straight in)
+  const card = () => { bigText('BADA KAAM ' + (i + 1) + ': ' + B.title.toUpperCase(), 'Inaam ' + fmt(B.pay) + (i + 1 < D.LADDER.length ? ' + ' + D.HOUSES[D.LADDER[i + 1]].name : ' + ' + D.BLING.heera.name), 2.4); bkNext(); }; /* you already said yes (call, list or chip): no second confirm, straight in */ G.cutSeen = G.cutSeen || {}; if (called || G.cutSeen[i]) card(); else { G.cutSeen[i] = 1; cutscene(bkLines(i), card); } // the giver sets it up in a short scene (once a session; a retry goes straight in)
   A.sfx('level'); renderMissions();
 }
 function bkNext() { BK.step++; const st = MISSIONS[BK.i].steps[BK.step]; if (!st) return bkWin(); BK.stepAt = now(); net.send('bkstep', { i: BK.i, step: BK.step }); P.bkOn = { i: BK.i, step: BK.step }; st.start(); } // the step is the checkpoint: a fail or an arrest restarts here
@@ -2598,7 +2625,8 @@ function closeMap3D(picked) { const m = G.map; if (!m) return; G.map = null; sce
 }
 function buildMapPins() {
   if (mapGroup) { scene.remove(mapGroup); mapGroup = null; } mapGroup = new THREE.Group(); scene.add(mapGroup); const f = G.map.filter;
-  for (const p of mapPOIs()) { if (f !== 'all' && p.cat !== f) continue; const c = MAPCAT[p.cat]; const sp = labelSprite(c[0].toUpperCase() + ' · ' + p.name, { fs: 40, scale: 1, bg: c[1], fg: '#ffffff' }); sp.userData = { poi: p, base: sp.scale.clone() }; sp.position.set(p.x, 0, p.z); mapGroup.add(sp); const stick = new THREE.Mesh(BOX, glow(parseInt(c[1].slice(1), 16))); stick.userData.stick = true; stick.position.set(p.x, 0, p.z); mapGroup.add(stick); }
+  let pins = mapPOIs(); if (f === 'all') { const cells = new Map(); for (const p of pins) { const k = p.cat + ':' + Math.floor(p.x / 200) + ',' + Math.floor(p.z / 200); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(p); } pins = [...cells.values()].map(g => g.length === 1 ? g[0] : { ...g[0], n: g.length }); } // "Sab": nearby places of one kind merge into one pin (KHANA ×6); a filter shows each one
+  for (const p of pins) { if (f !== 'all' && p.cat !== f) continue; const c = MAPCAT[p.cat]; const sp = labelSprite(c[0].toUpperCase() + (p.n ? ' ×' + p.n : ' · ' + p.name), { fs: 40, scale: 1, bg: c[1], fg: '#ffffff' }); sp.userData = { poi: p, base: sp.scale.clone() }; sp.position.set(p.x, 0, p.z); mapGroup.add(sp); const stick = new THREE.Mesh(BOX, glow(parseInt(c[1].slice(1), 16))); stick.userData.stick = true; stick.position.set(p.x, 0, p.z); mapGroup.add(stick); }
   for (const d of DIST) { const sp = labelSprite(d[2], { fs: 44, scale: 1, bg: 'rgba(27,20,16,.55)', fg: '#fff4d8' }); sp.userData = { base: sp.scale.clone(), district: true }; sp.position.set(d[0] * 150, 0, d[1] * 150 + 40); mapGroup.add(sp); }
   const me = labelSprite('TU YAHAN HAI', { fs: 48, scale: 1, bg: '#f6c026', fg: '#1b1410' }); me.userData = { base: me.scale.clone(), me: true }; mapGroup.add(me);
 }
@@ -2721,7 +2749,22 @@ function rushStart() {
   if (!G.story && !G.race && (BK.on || !$('quest').hidden)) toast((e.type === 'thaila' ? '💰 Paison ka thaila: ' + e.data.place : '🎉 ' + e.name) + ' · Menu → Events', 'money'); /* on a mission: a quiet line, not a slam over the mission card */
   else if (!G.story && !G.race) bigText(e.type === 'thaila' ? '💰 PAISON KA THAILA!' : 'CITY EVENT!', e.type === 'thaila' ? e.data.place + ' · pehle pahuncho, ' + fmt(e.data.prize) + ' tera' : e.name + ' · pehle 3 ko inaam', 2);
 }
+// ---- events with a goal: at the spot, a card says what to do, counts it, and the end shows what you got
+const EV_DO = { holi: ['🎨 Rang daalo', 'G dabao, logon ya players pe'], baraat: ['💃 Baraat mein naacho', 'B dabao, note udao'], jam: ['☕ Chai becho', 'Phansi gaadiyon ke paas E'], flood: ['🛵 Paani mein kaam', 'Chalo ya Jhatpat: 2x paisa'], diwali: ['🎆 Rocket chhodo', 'Menu → Events, ya Action'], ipl: ['🏏 Match dekho, cheer karo', 'B dabao, screen ke saamne'] };
+function evTick() {
+  const box = $('evcard'); if (!box) return; const e = G.ev, sp = e && eventSpot(e.type);
+  if (e && (!G.evRun || G.evRun.id !== e.start)) G.evRun = { id: e.start, type: e.type, name: e.name, m0: null, rank: 0 };
+  const R = G.evRun; if (R && (!e || e.start !== R.id)) { if (R.m0 != null) { const got = Math.max(0, (P.money || 0) - R.m0), n = R.type === 'holi' && G.holiEv === R.id ? G.holiN || 0 : 0; bigText(R.name.toUpperCase() + ' KHATAM', (got ? '+' + fmt(got) : 'Kuch nahi kamaya') + (n ? ' · ' + n + ' logon pe rang' : '') + (R.rank ? ' · #' + R.rank + ' pahuncha' : ''), 2.6); } G.evRun = null; }
+  const near = e && sp && EV_DO[e.type] && !G.inside && (e.type === 'baraat' ? Math.abs(G.x - sp.x) < 40 : Math.hypot(G.x - sp.x, G.z - sp.z) < 45);
+  const show = near && !BK.on && !G.story && !G.race && $('quest').hidden;
+  if (!show) { if (!box.hidden) box.hidden = true; return; }
+  if (G.evRun.m0 == null) G.evRun.m0 = P.money || 0; const [what, how] = EV_DO[e.type], left = Math.max(0, Math.round(e.end - serverNow())), got = Math.max(0, (P.money || 0) - G.evRun.m0);
+  const prog = e.type === 'holi' ? (G.holiEv === e.start ? G.holiN || 0 : 0) + '/15 · ' : '';
+  const txt = [e.name.toUpperCase() + ' · ⏱ ' + mmss(left), what, how + ' · ' + prog + 'kamaai ' + fmt(got)]; if (box.dataset.k !== txt.join('|')) { box.dataset.k = txt.join('|'); box.textContent = ''; box.append(el('small', { text: txt[0] }), el('b', { text: txt[1] }), el('span', { text: txt[2] })); }
+  box.hidden = false;
+}
 function updateRush() { if (REAL) return; // real-map preview: these still live on the grid city
+  evTick();
   const e = G.ev; if (BAG.visible) { BAG.rotation.y += 0.04; BAG.children[0].position.y = 1.1 + Math.sin(now() * 3) * 0.15; BAG.visible = bagBeacon.visible = !G.inside; }
   if (!e || G.evReached || G.inside || (e.rush && e.rush.length >= 3)) return; const sp = eventSpot(e.type); if (!sp) return;
   const d = e.type === 'baraat' ? Math.abs(G.x - sp.x) : Math.hypot(G.x - sp.x, G.z - sp.z); if (d < (e.type === 'thaila' ? 6 : 20)) { G.evReached = true; net.send('evreach', {}); if (e.type === 'thaila') { BAG.visible = bagBeacon.visible = false; A.sfx('cash'); } }
@@ -2762,7 +2805,7 @@ function goalTick(tg, d, st) {
   const hd = st || tg, a = Math.atan2(hd.x - G.x, hd.z - G.z) - G.yaw, deg = (-a * 180 / Math.PI).toFixed(0);
   const goal = qb ? qb.textContent : 'GPS', place = tg.name || '', ds = d < 1000 ? Math.round(d / 5) * 5 + ' m' : (d / 1000).toFixed(1) + ' km';
   const key = goal + '|' + place + '|' + wrong; if (box.dataset.k !== key) { box.dataset.k = key; box.textContent = '';
-    box.append(el('i', { class: 'gs-arrow', text: '➤' }), el('span', { class: 'gs-goal', text: wrong ? 'Ulta ja rya se! Peeche mud' : goal })); if (place && !wrong) box.append(el('span', { class: 'gs-sep', text: ' · ' }), el('b', { class: 'gs-place', text: place })); box.append(el('em', { class: 'gs-dist' })); }
+    box.append(el('i', { class: 'gs-arrow', text: '➤' }), el('span', { class: 'gs-goal', text: wrong ? 'Ulta ja rya se! Peeche mud' : goal })); if (place && !wrong) box.append(el('span', { class: 'gs-sep', text: ' · ' }), el('b', { class: 'gs-place', text: place })); box.append(el('em', { class: 'gs-dist' })); if (!wrong) box.append(el('button', { type: 'button', class: 'gs-auto', title: 'Auto bulao (₹50): seedha wahan', text: '🛺 ₹50', onclick: () => { const t = navTarget(); if (t) autoTo(t.x, t.z, t.name); } })); }
   box.classList.toggle('wrong', wrong); box.querySelector('.gs-arrow').style.transform = 'rotate(' + (Number(deg) - 90) + 'deg)'; const de = box.querySelector('.gs-dist'); if (de.textContent !== ds) de.textContent = ds;
   if (box.hidden) box.hidden = false;
 }
@@ -3414,8 +3457,8 @@ function renderObj() {
 }
 async function autoTo(x, z, name) {
   if (G.race || G.story || G.cold || G.chase) return toast('Abhi auto nahi aayega', 'bad'); if (W.stars) return toast('Police peeche se, auto wala darr gaya!', 'bad');
-  const r = await buy('misc', 'auto'); if (!r.ok) return; if (G.veh) dismount(); if (G.inside) { G.inside = null; setIndoor(false); }
-  fadeTo('🛺 Auto wale bhaiya ' + (name || 'wahan') + ' le ja rahe se…', 1500, () => { const a = Math.atan2(G.x - x, G.z - z); const sp = openNear({ x: x + Math.sin(a) * 9, z: z + Math.cos(a) * 9, r: a + Math.PI }); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; });
+  const mine = G.veh && !G.loaner && !G.parked && (P.vehicles || []).includes(G.veh); const r = await buy('misc', 'auto'); if (!r.ok) return; if (G.veh && !mine) { dismount(); toast('Ye gaadi teri nahi thi, wahin chhod di', 'bad'); } if (G.inside) { G.inside = null; setIndoor(false); }
+  fadeTo(mine ? '🛺 Bhaiya teri ' + D.VEH[G.veh].name + ' tow karke ' + (name || 'wahan') + ' le ja rahe se…' : '🛺 Auto wale bhaiya ' + (name || 'wahan') + ' le ja rahe se…', 1500, () => { G.vs = 0; /* your own gaadi comes along on the tow */ const a = Math.atan2(G.x - x, G.z - z); const sp = openNear({ x: x + Math.sin(a) * 9, z: z + Math.cos(a) * 9, r: a + Math.PI }); G.x = sp.x; G.z = sp.z; G.r = G.yaw = sp.r; });
 }
 { const b = el('button', { type: 'button', id: 'navauto', title: 'Auto bulao (₹50)', text: '🛺' }); b.onclick = () => { const t = navTarget(); if (t) autoTo(t.x, t.z, t.name); }; $('navx').before(b); } // fast travel to any GPS target: jobs, events, missions
 
@@ -3573,13 +3616,14 @@ function appDhanda() {
 function cutscene(lines, done) {
   if (G.film || G.cut) return done(); G.cut = { i: 0, t0: now(), lines }; document.body.classList.add('cutscene'); const box = el('div', { id: 'cutcap' }); $('hud').append(box);
   const a0 = G.yaw; let i = 0; const next = () => { if (!G.cut) return; if (i >= lines.length) return end(); const [who, text] = lines[i++]; box.textContent = ''; box.append(el('b', { text: who }), el('span', { text: text })); A.sfx('chat'); if (who === 'Tu') say(player, text, 2.4); G.cut.tm = setTimeout(next, Math.max(1600, text.length * 55)); };
-  const end = () => { if (!G.cut) return; clearTimeout(G.cut.tm); G.cut = null; box.remove(); document.body.classList.remove('cutscene'); G.yaw = a0; done(); };
+  const fr0 = G.frozen; G.frozen = true; G.vs = 0; // stand still while people talk
+  const end = () => { if (!G.cut) return; clearTimeout(G.cut.tm); G.cut = null; box.remove(); document.body.classList.remove('cutscene'); G.yaw = a0; G.frozen = fr0; done(); };
   box.onclick = () => { clearTimeout(G.cut.tm); next(); }; G.cutEnd = end; G.cut.orbit = t => { G.yaw = a0 + Math.sin(t * 0.35) * 0.6; G.lookAt = now(); };
   next();
 }
 const BK_LINES = [
   [['Chaudhary Saab', 'Chhore, pump pe naukri chahiye? Teen gaadi bhar, paisa haath ke haath.'], ['Tu', 'Ram Ram Chaudhary Saab! Kaam se darr nahi lagta.']],
-  [['Sharma ji', 'Beta, Pappu Paaji ne udhaar dabaa rakha se. Vasool kar de, hissa tera.'], ['Tu', 'Pappu Paaji? Aaj hisaab hoga.']],
+  [['Sharma ji', 'Beta, Galleria Market aa ja. Ek zaroori kaam se, phone pe nahi bataunga.'], ['Tu', 'Aata hoon, Sharma ji.']], // the real brief is face to face (step 1)
   [['Bittu Hathiyaar wala', 'Cyber Hub ki parking mein kaali Desert King. Uthaa la, garage tak.'], ['Tu', 'Police ka kya?'], ['Bittu Hathiyaar wala', 'Unko chakma dena tera kaam.']],
 ];
 function bkLines(i) { const B = D.BADE[i]; return BK_LINES[i] || [[B.giver.split(',')[0], B.brief], ['Tu', 'Ho jaayega. Chalo!']]; }

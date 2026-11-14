@@ -543,3 +543,18 @@ body.film #buzz,body.cutscene #buzz,body.racing #buzz{display:none!important}
 @keyframes fuellow{50%{opacity:.35}}
 /* the speedometer and the goal subtitle never sit on each other */
 #hud:has(#speedo:not([hidden])) #goalsub{bottom:calc(122px + env(safe-area-inset-bottom,0px))}
+/* an enemy winding up behind you: a red arrow at the screen edge pointing at him */
+#threat{position:absolute;inset:0;pointer-events:none;transform:rotate(var(--a,0deg))}
+#threat i{position:absolute;left:50%;top:10px;width:0;height:0;margin-left:-26px;border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:40px solid #ff3b30;filter:drop-shadow(0 0 8px rgba(255,59,48,.9));animation:threatp .35s ease-in-out infinite alternate}
+@keyframes threatp{to{transform:scale(1.25)}}
+body.cutscene #threat,body.film #threat{display:none!important}
+#goalsub .gs-auto{pointer-events:auto;margin-left:6px;padding:2px 9px;border:0;border-radius:99px;background:var(--sarson);color:var(--ink);font:800 12px var(--display);cursor:pointer}
+#goalsub .gs-auto:hover{filter:brightness(1.1)}
+/* event goal card: what to do here, your count, what you've made, time left */
+#evcard{position:absolute;left:50%;top:calc(52px + env(safe-area-inset-top,0px));transform:translateX(-50%);min-width:260px;max-width:min(460px,calc(100% - 32px));background:var(--cream);color:var(--ink);border-radius:14px;padding:7px 14px 8px;border:3px solid #d61f9a;box-shadow:0 6px 18px rgba(0,0,0,.35);pointer-events:none}
+#evcard small{display:block;font:700 11px var(--display);letter-spacing:.1em;color:#d61f9a}
+#evcard b{display:block;font:800 19px/1.15 var(--display)}#evcard span{display:block;font:600 14px var(--body);color:#5b4a3a}
+body.racing #evcard,body.cutscene #evcard,body.film #evcard{display:none!important}
+#hud:has(#evcard:not([hidden])) #obj,#hud:has(#evcard:not([hidden])) #banner{display:none!important}
+body.touch #evcard{top:calc(108px + env(safe-area-inset-top,0px));min-width:0;max-width:calc(100% - 24px)}
+@media (max-width:700px){#evcard{top:calc(240px + env(safe-area-inset-top,0px));left:12px;transform:none}}
