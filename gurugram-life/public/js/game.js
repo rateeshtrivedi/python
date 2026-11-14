@@ -8,7 +8,8 @@ import * as FD from './founder.js';
 import * as SF from './streetfight.js';
 import * as RC from './realcity.js';
 import { startHUD } from './hud.js';
-const REAL = /[?&]real\b/.test(location.search); // preview of the real-map Gurugram (OpenStreetMap)
+const CITY_Q = (location.search.match(/[?&](real|classic)\b/) || [])[1];
+const REAL = CITY_Q === 'real' || (CITY_Q !== 'classic' && lsGet('gl_city') !== 'classic' && !!lsGet('gl_token')); // Asli Gurugram (OpenStreetMap) is the main city; a brand-new player plays the prologue in the classic city first; ?classic or the Menu switch back
 import * as HU from './humans.js';
 import * as RL from './realism.js';
 import * as RD from './rides.js';
@@ -774,6 +775,11 @@ function goTask(a) {
   const go = { badla: () => setWaypoint(a.x, a.z, a.enemy + ' (' + a.place + ')'), mall: () => setWaypoint(DOORS.mall.x, DOORS.mall.z, 'Ambience Mall'), club: () => setWaypoint(DOORS.club.x, DOORS.club.z, 'Neon Nights club'),
     office: () => setWaypoint(DOORS.office.x, DOORS.office.z, 'TechNova office'), dhaba: () => setWaypoint(DOORS.dhaba.x, DOORS.dhaba.z, 'Sher-e-Haryana Dhaba'), akhara: () => setWaypoint(AKHARA.x, AKHARA.z, 'Akhara, Leisure Valley'),
     market: () => { const q = near([[-150, 0, 'Galleria Market'], [300, 0, 'Sadar Bazaar']]); setWaypoint(q[0], q[1], q[2]); }, jhatpat: appDelivery, chalo: appRide, races: appRaces, events: appEvents }[a.go];
+  if (REAL && go && !['jhatpat', 'chalo', 'races', 'events'].includes(a.go)) { // the real map: the same place, where it really is
+    const door = re => { const z = ZONES.find(q => q.port && (() => { try { return re.test(q.label() || ''); } catch { return false; } })()); return z && [z.x, z.z]; };
+    const tg = { badla: () => { const r = realNamed(a.place); return r && [r.x, r.z, a.enemy + ' (' + a.place + ')']; }, mall: () => { const d = door(/Ambience Mall/i); return d && [...d, 'Ambience Mall']; }, club: () => { const d = door(/Neon Nights/i); return d && [...d, 'Neon Nights club']; },
+      office: () => { const d = door(/TechNova/i); return d && [...d, 'TechNova office']; }, dhaba: () => { const d = door(/Dhaba/i); return d && [...d, 'Sher-e-Haryana Dhaba']; }, market: () => { const g = realNamed('Galleria Market'), s2 = realNamed('Sadar Bazaar'), q = Math.hypot(g.x - G.x, g.z - G.z) < Math.hypot(s2.x - G.x, s2.z - G.z) ? g : s2; return [q.x, q.z, q.name]; } }[a.go];
+    const t = tg && tg(); closeModal(); if (t) return setWaypoint(t[0], t[1], t[2]); if (a.go === 'akhara') return toast('Akhara abhi Classic city mein se (Menu → Classic city)'); }
   closeModal(); if (go) go(); else toast(a.k === 'earned' ? 'Paise: Chalo rides, Jhatpat delivery, office shift, race, dangal. Phone (Tab) kholo.' : a.k === 'jacks' ? 'Sadak pe kisi gaadi ke paas jaa ke E dabao. Driver ko KO kar!' : 'Gali ke chhore sadkon pe ghoomte hain. Punch maar ke shuru kar!');
 }
 // ================================================================ CHATS: the day's kaam arrive as WhatsApp-style messages from the people in your life
@@ -864,11 +870,11 @@ function openDon() {
 }
 // Badla: today's goon waits at his corner; KO him for the task
 let BADLA = null;
-function updateBadla() { if (REAL) return; // real-map preview: these still live on the grid city
+function updateBadla() {
   const a = dailyTasks().find(x => x.k === 'badla' && !x.done);
   if (!a) { if (BADLA && BADLA.state !== 'ko') { scene.remove(BADLA.mesh); FIGHTERS.splice(FIGHTERS.indexOf(BADLA), 1); } if (!BADLA || BADLA.state !== 'ko') BADLA = null; return; }
   if (BADLA && !FIGHTERS.includes(BADLA)) BADLA = null;
-  if (!BADLA) { const lv = Math.min(P.level, 10); BADLA = makeFighter(a.enemy + ' · badla', a.x, a.z, 100 + 10 * lv, 6 + (lv >> 1), 0x151515); BADLA.badla = a; FIGHTERS.push(BADLA); }
+  if (!BADLA) { const lv = Math.min(P.level, 10), rb = REAL ? realNamed(a.place) : null; if (REAL && !rb) return; BADLA = makeFighter(a.enemy + ' · badla', rb ? rb.x : a.x, rb ? rb.z : a.z, 100 + 10 * lv, 6 + (lv >> 1), 0x151515); BADLA.badla = a; FIGHTERS.push(BADLA); }
   const n = BADLA, d = Math.hypot(G.x - n.x, G.z - n.z);
   if (n.state === 'wander' && d < 12 && !G.inside && !G.veh && G.hp > 0) { n.state = 'aggro'; if (!n.taunted) { n.taunted = true; say(n, 'Haan maine peeta! Ke karega?', 3); bigText('BADLA!', a.enemy + ' mil gaya. Dhobi pachhad maar!', 1.6); } }
 }
@@ -934,7 +940,7 @@ function openPhone() {
     const quick = [['Map', '#1a8a4a', 'M', () => { closeModal(); REAL ? realGo() : openMap3D(); }], ['Dance', '#ff6fa5', 'B', () => { closeModal(); toggleDance(); }], ['Horn', '#f28c1b', 'H', () => { closeModal(); horn(); }], ['Chat', '#2563b8', 'T', () => { closeModal(); openChat(); }], ['Selfie', '#8b3fc4', 'C', () => { closeModal(); startSelfie(); }], ['Gaadi', '#0f766e', 'F', () => { closeModal(); toggleVehicle(); }], ...(G.veh ? [['Gaadi nikaalo', '#6b7280', '🏗️', () => { closeModal(); recoverCar(); }]] : []), [A.Radio.playing ? 'Radio off' : 'Radio on', '#1b1410', 'FM', () => { A.toggleMusic(); closeModal(); }]];
     { const live = el('p', { class: 'menuclock' }); const tick = () => { if (!live.isConnected && live.dataset.on) return; live.dataset.on = 1; const bits = []; if (G.ev) bits.push('⏱ ' + G.ev.name + ' · ' + mmss(Math.max(0, Math.round(G.ev.end - serverNow())))); if (BK.on && BK.deadline) bits.push('⏱ Bada Kaam · ' + mmss(timeLeft())); live.textContent = bits.join('  ·  '); live.hidden = !bits.length; setTimeout(tick, 1000); }; tick(); b.append(live); } // the clock doesn't stop for the menu, so the menu shows it
     const qg = el('div', { class: 'apps' }); for (const a of quick) qg.append(el('button', { class: 'app', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0])); b.append(el('h3', { text: 'Abhi karo' }), qg, el('h3', { text: 'Phone apps' }));
-    const apps = [[REAL ? 'Classic city' : 'Asli Gurugram', '#0f6b3a', '🗺️', () => { location.href = REAL ? '/' : '/?real'; }], ['Chats', '#25d366', '💬', appChats], ['Kahani', '#7a1010', '📖', appProgress], ['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Startup', '#0f766e', '💻', () => FD.openStartup()], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', appChats], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]); apps.splice(7, 0, ['Khel', '#e8590c', '🎯', appKhel], ['Dhanda', '#2b8a3e', '💼', appDhanda], ['Calendar', '#5f3dc4', '🗓', appCalendar], ['Dost bulao', '#25d366', '📨', inviteFriend]);
+    const apps = [[REAL ? 'Classic city' : 'Asli Gurugram', '#0f6b3a', '🗺️', () => { lsSet('gl_city', REAL ? 'classic' : 'real'); location.href = '/'; }], ['Chats', '#25d366', '💬', appChats], ['Kahani', '#7a1010', '📖', appProgress], ['Sapne', '#c2185b', '✨', appSapne], ['Races', '#d7331f', '🏁', appRaces], ['Paani paar', '#1f7ab8', '🌊', startFloodRun], ['Chalo', '#111', '🚕', appRide], ['Jhatpat', '#d7331f', '🛵', appDelivery], ['Garage', '#2563b8', '🔧', appGarage], ['Ghar', '#f28c1b', '🏠', appHome], ['Startup', '#0f766e', '💻', () => FD.openStartup()], ['Top 10', '#e8b923', '🏆', () => appLeaderboard()], ['Crew', '#00a3b4', '🚩', appCrew], ['Plates', '#1b1410', '🔢', appPlates], ['Events', '#d7331f', '🎉', appEvents], ['Radio', '#8b3fc4', '📻', appRadio], ['Online', '#6a5acd', '🟢', appOnline], ['Bhasha', '#2f5fd0', '🔤', appLang], ['Help', '#0f766e', '❓', openHelp]]; apps.unshift(['Bade Kaam', '#b91c1c', '💥', openBade], ['Gang', '#1d8a4e', '👥', () => appGang()], ['Zameen', '#8a5a1b', '🏗', appZameen], ['Hathiyaar', '#3a3a3a', '🔫', () => appGuns()], ['Aaj ke kaam', '#e07b10', '✓', appChats], ['Gali ke Don', '#3b0d0d', '👊', openDon], ['Aaj ka card', '#ff6fa5', '📸', () => makeDayCard()]); apps.splice(7, 0, ['Khel', '#e8590c', '🎯', appKhel], ['Dhanda', '#2b8a3e', '💼', appDhanda], ['Calendar', '#5f3dc4', '🗓', appCalendar], ['Dost bulao', '#25d366', '📨', inviteFriend]);
     const LOCK = { Gang: 'gang', Zameen: 'land', Hathiyaar: 'guns' }; const grid = el('div', { class: 'apps' }); for (const a of apps) { const lk = LOCK[a[0]] && !D.unlocked(P, LOCK[a[0]]); grid.append(el('button', { class: 'app' + (lk ? ' locked' : ''), title: lk ? 'Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] + ' ke baad khulega' : '', onclick: a[3] }, el('i', { style: 'background:' + a[1], text: a[2] }), a[0], lk ? el('small', { class: 'lockb', text: '🔒 Bada Kaam ' + D.UNLOCK_AT[LOCK[a[0]]] }) : '')); } b.append(grid); /* a lock badge on what the story hasn't opened yet */
     b.append(el('h3', { text: 'Stats' }), el('p', { text: `Rides ${P.c.rides || 0} · Deliveries ${P.c.deliveries || 0} · Shifts ${P.c.shifts || 0} · KOs ${P.c.kos || 0} · Respect ${P.respect} · Party ${P.party} · Net worth ${fmt(D.netWorth(P))}` }));
     b.append(itemRow('🗓 Login streak: ' + P.daily.streak + ' din', 'Kal ka inaam: ' + fmt(D.CALENDAR[D.calDay(P.daily.streak + 1) - 1].amt) + ' · 7ve din sone ka wrap', 'Calendar', appCalendar));
@@ -1198,7 +1204,7 @@ function recoverCar() { // the crane: back on the nearest road, facing along it
 }
 function teleport(x, z, r) { G.x = x; G.z = z; G.r = r || 0; G.yaw = G.r; if (G.inside) { G.inside = null; setIndoor(false); } }
 function enterInterior(key) { if (G.veh) dismount(); const I = INTERIOR[key]; fadeTo('', 500, () => { G.inside = key; G.x = I.spawn.x; G.z = I.spawn.z; G.r = I.spawn.r; G.yaw = G.r; setIndoor(true); toast('Welcome to ' + I.name); if (key === 'mall') ev('visit_mall'); if (key === 'club') { ev('visit_club'); A.setOverride('club'); } if (key === 'dhaba') tutEvent('dhaba'); if (key === 'theka') toast('Bholu Bhaiya: "Aao ji, kya chahiye?"'); }); }
-function exitInterior() { const key = G.inside; const d = (REAL && G.realDoor) || DOORS[key]; /* real map: back out where you went in */ fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
+function exitInterior() { const key = G.inside; const d = (REAL && (G.realDoor || L.realPos || realNamed('Rajiv Chowk'))) || DOORS[key]; /* real map: back out where you went in */ fadeTo('', 500, () => { G.inside = null; setIndoor(false); A.setOverride(null); G.x = d.x; G.z = d.z + 2; G.r = 0; G.yaw = 0; }); }
 function setIndoor(on) { $('bExit').hidden = !on; scene.fog.near = on ? 60 : 160; scene.fog.far = on ? 220 : 560; camera.far = on ? 260 : 640; camera.updateProjectionMatrix(); if (!on) A.setOverride(null); }
 function fadeTo(text, ms, cb) { const f = $('fade'); f.textContent = text; f.classList.add('show'); G.frozen = true; setTimeout(() => { cb && cb(); setTimeout(() => { f.classList.remove('show'); G.frozen = false; }, Math.max(250, ms - 400)); }, 400); }
 function resolve(o, r) {
@@ -3308,6 +3314,7 @@ function quest(title, sub) {
 }
 // day one: off the bus, a bag, an empty pocket, and five dreams
 function arrival() {
+  if (REAL) { A.sfx('level'); return showCard('🗺️ Asli Gurugram mein swagat!', 'Asli sadkein, asli sector, metro, MG Road, Cyber City. Jeb khaali se: pehli naukri Sohna Road pe Chaudhary Filling Station pe.', [['Pehla kaam 💥', () => { $('raceres').hidden = true; endStoryCommon(); bkStart(P.bk || 0); }], ['Pehle ghoom ke dekhoon', () => { $('raceres').hidden = true; endStoryCommon(); toast('M dabao: Kahan jaana hai? · Menu → Races, Chalo, Jhatpat'); }, 'alt2']], 'Pehla Din (race, ladai, police) Classic city mein se: Menu → Classic city'); } // the opening story is built on the classic city
   const C = D.CHAPTERS[0]; A.sfx('level');
   showCard('Din 1: ' + C.title, C.intro + ' Tere 5 sapne: lavish ghar, lavish gaadi, jeevansathi, paisa aur zevar.', [
     ['Chalo, shuru karein! 🏁', () => { $('raceres').hidden = true; startStory(); }], ['Pehle ghoom ke dekhoon', () => { $('raceres').hidden = true; endStoryCommon(); toast('Jeb khaali! Menu → Bade Kaam: Chaudhary Filling Station pe pehli naukri.'); }, 'alt2']],
@@ -3315,7 +3322,8 @@ function arrival() {
 }
 function startStory() { G.story = { beat: 'race' }; step('story_start'); startRace(D.RACES[0].id, { intro: true }); }
 function skipStory() { if (!G.story) return; const s = G.story; G.story = null; quest(null); step('story_skip'); if (s.monu) dropMonu(); if (G.race) cleanupRace(); $('raceres').hidden = true; endStoryCommon(); toast('Story skip. Phone (P) mein sab kuch hai.'); }
-function endStoryCommon() { L.loanerOK = 1; saveLocal(); if (!P.tutDone) { P.tutDone = true; net.send('tutdone', {}); } }
+function endStoryCommon() { L.loanerOK = 1; saveLocal(); if (!P.tutDone) { P.tutDone = true; net.send('tutdone', {}); } offerRealCity(); }
+function offerRealCity() { if (REAL || lsGet('gl_city') === 'classic') return; setTimeout(() => showCard('🗺️ Ab chal ASLI Gurugram!', 'Pehla din poora. Asli sadkein, asli sector, metro, MG Road, Cyber City: wahi Gurugram jo tu jaanta se. Tera paisa, gaadi, kahani sab saath chalega.', [['Chalo! 🚗', () => { $('raceres').hidden = true; lsSet('gl_city', 'real'); fadeTo('🗺️ Asli Gurugram…', 1200, () => { location.href = '/'; }); }], ['Thodi der baad', () => { $('raceres').hidden = true; }, 'alt2']], 'Kabhi bhi Menu → Classic city se wapas aa sakta se'), 6000); }
 function storyGo(beat) { if (!G.story) return; G.story.beat = beat; G.story.t0 = now(); step('b_' + beat); ({ fight: beatFight, swag: beatSwag, chase: beatChase, club: beatClub, done: beatDone })[beat](); }
 const touchUI = () => document.body.classList.contains('touch');
 function beatFight() {
@@ -3511,7 +3519,7 @@ const AB = (() => { const q = (location.search.match(/[?&]start=(cold|classic)\b
 const NEWBIE = !lsGet('gl_token'); // never connected from this browser
 { const r = (location.search.match(/[?&]ref=([\w-]{6,16})\b/) || [])[1]; if (r && NEWBIE) lsSet('gl_ref', r); } // invited by a friend
 { const c = (location.search.match(/[?&]crew=([\w-]{4,16})\b/) || [])[1]; if (c) lsSet('gl_crewInv', c); } // a crew invite link: offered once you're in
-const coldFirst = () => NEWBIE && AB === 'cold';
+const coldFirst = () => NEWBIE && AB === 'cold' && !REAL; // the cold open is built on the classic city
 pre('landing');
 
 // --- lite graphics (phones): lower resolution, no sun shadows, fewer realistic people, simple traffic
@@ -3545,7 +3553,7 @@ function coldQuest(title, sub) { const q = $('quest'); q.hidden = false; q.textC
 async function coldWin() {
   const c = G.cold; if (!c || c.won) return; c.won = true; c.n.mesh.remove(c.mk); const r = await earn('coldopen', 1000, 'Chintu se phone wapas');
   quest(null); bigText('PHONE WAPAS! +₹1,000', 'Gurugram mein pehli kamai', 2.4); A.sfx('cheer'); for (let k = 0; k < 3; k++) setTimeout(() => burst(G.x, 2.4, G.z, pick([0xf6c026, 0xffffff, 0x3ddc6a]), 22, { speed: 5 }), k * 180);
-  step('cold_done'); step('first_reward'); G.donCallNext = Math.max(G.donCallNext || 0, now() + 240); /* let the new player enjoy the car first */
+  step('cold_done'); step('first_reward'); setTimeout(offerRealCity, 60000); /* once the first car has had a minute */ G.donCallNext = Math.max(G.donCallNext || 0, now() + 240); /* let the new player enjoy the car first */
   setTimeout(() => { const i = FIGHTERS.indexOf(c.n); if (i >= 0) FIGHTERS.splice(i, 1); scene.remove(c.n.mesh); }, 4000);
   setTimeout(() => { G.cold = null; if (!r.ok) return arrival();
     showCard('Chacha ka gift 🚗', 'Chacha ji ne apni purani Khatara 800 de di: "Sambhaal ke chalaiyo, chhore!" Ab tu Gurugram mein gaadi wala se.', [['Gaadi chala! (F)', () => { $('raceres').hidden = true; P.cur = 'khatara'; if (!G.veh) mount('khatara'); setTimeout(arrival, 5000); }], ['Pehle ghoom loon', () => { $('raceres').hidden = true; setTimeout(arrival, 1500); }, 'alt2']],
@@ -3870,11 +3878,26 @@ function realTraffic(dt) {
     else if (!G.veh && dd < 1.7 && c.v > 4 && (c.bump || 0) < T) { c.bump = T + 1.5; c.hold = T + 2; takeHit(8, 'Gaadi'); G.x += (G.x - x) / (dd || 1) * 1.5; G.z += (G.z - z) / (dd || 1) * 1.5; }
   }
 }
+// people on the real pavements: they walk the road graph on the footpath, turn at junctions, step aside, get knocked
+const RPD = { list: [], spawnT: 0 };
+function roadAt(rd, fwd, s) { const p = rd.p, n2 = p.length / 2; let acc = 0; for (let k = 0; k < n2 - 1; k++) { const a = fwd ? k : n2 - 1 - k, b = fwd ? k + 1 : n2 - 2 - k, ax = p[a * 2], az = p[a * 2 + 1], bx = p[b * 2], bz = p[b * 2 + 1], L = Math.hypot(bx - ax, bz - az); if (acc + L >= s || k === n2 - 2) { const f = L ? Math.min(1, Math.max(0, (s - acc) / L)) : 0; return { x: ax + (bx - ax) * f, z: az + (bz - az) * f, dx: (bx - ax) / (L || 1), dz: (bz - az) / (L || 1) }; } acc += L; } return { x: p[0], z: p[1], dx: 0, dz: 1 }; }
+function realPeds(dt) {
+  if (G.inside) { for (const w of RPD.list) w.mesh.visible = false; return; } const want = RL.Q.phone ? 10 : 22, T = now();
+  if (RPD.list.length < want && T > RPD.spawnT) { RPD.spawnT = T + 0.2; const rs = RC.roadsNear(G.x, G.z, 25, 150).filter(i => RC.road(i).c >= 3); if (rs.length) { const ri = pick(rs), rd = RC.road(ri), g = Math.random() < 0.35 ? 'f' : 'm';
+      const mesh = makeChar(pick([0xd7331f, 0x2563b8, 0xf6c026, 0x1a8a4a, 0xffffff, 0x8b3fc4, 0xe07b10, 0x334155]), { g }); scene.add(mesh); RPD.list.push({ mesh, ri, fwd: Math.random() < 0.5, s: Math.random() * (rd.len || 1), side: Math.random() < 0.5 ? 1 : -1, sp: rnd(1.1, 1.8), wait: 0, knock: 0 }); } }
+  for (let i = RPD.list.length - 1; i >= 0; i--) { const w = RPD.list[i], m = w.mesh; let rd = RC.road(w.ri);
+    if (w.placed && Math.hypot(m.position.x - G.x, m.position.z - G.z) > 190) { scene.remove(m); RPD.list.splice(i, 1); continue; }
+    if (w.knock > 0) { w.knock -= dt; m.rotation.x = -Math.PI / 2; m.position.y = 0.35; if (w.knock <= 0) { m.rotation.x = 0; m.position.y = 0; } continue; }
+    if (w.wait > 0) w.wait -= dt; else { w.s += w.sp * dt; if (Math.random() < dt * 0.02) w.wait = rnd(2, 6); /* stops for a phone call, a chai */ }
+    if (w.s >= rd.len) { const node = w.fwd ? rd.b : rd.a, opts = RC.edgesFrom(node).filter(e => e.r !== w.ri && RC.road(e.r).c <= 7); const all = opts.length ? opts : [{ r: w.ri, fwd: !w.fwd }]; const e = pick(all); w.s -= rd.len; w.ri = e.r; w.fwd = e.fwd; rd = RC.road(e.r); if (w.s > rd.len) w.s = 0; }
+    const q = roadAt(rd, w.fwd, w.s), off = rd.w / 2 + 1.3; const x = q.x + q.dz * off * w.side, z = q.z - q.dx * off * w.side; m.position.set(x, 0, z); m.rotation.y = Math.atan2(q.dx, q.dz); w.placed = true; animChar(m, dt, w.wait > 0 ? 0 : 1, 1);
+    const dd = Math.hypot(G.x - x, G.z - z); if (G.veh && Math.abs(G.vs) > 6 && dd < 1.8) { w.knock = 4; A.sfx('punch', 0.6); G.vs *= 0.85; if (Math.random() < 0.5) say({ mesh: m }, pick(['Oye! Andha se ke?', 'Arre maar diya re!', 'Police bulaunga!']), 2); crime('ped'); } }
+}
 function realTick(dt) {
   if (!RC.isReady()) return; if (G.started) realTraffic(Math.min(0.05, dt || 0.016));
   if (!REAL_HIDDEN) { REAL_HIDDEN = []; for (const o of scene.children) if (o.name !== 'realcity' && o !== player && !o.isLight && !/sky/i.test(o.name || '') && o.visible) { o.visible = false; REAL_HIDDEN.push(o); } for (const c of CARS) c.taken = true; }
-  if (G.started && !G.realSpawned) { G.realSpawned = true; realRaceSpots(); portZones(); { const t = realNamed('Police Thana'), h = realNamed('Civil Hospital'); if (t) { THANA.x = t.x; THANA.z = t.z; THANA.place = 'Civil Lines'; } if (h) { HOSPITAL.x = h.x; HOSPITAL.z = h.z; } } /* arrests and KOs land at real places */ const p = RC.toXZ(28.4475, 77.0328); teleport(p.x, p.z, 0); RC.warm(G.x, G.z, 40); toast('Real Gurugram (preview) · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
-  if (G.started) RC.update(G.x, G.z);
+  if (G.started && !G.realSpawned) { G.realSpawned = true; realRaceSpots(); portZones(); if (G.inside) G.realDoor = L.realPos || null; { const t = realNamed('Police Thana'), h = realNamed('Civil Hospital'); if (t) { THANA.x = t.x; THANA.z = t.z; THANA.place = 'Civil Lines'; } if (h) { HOSPITAL.x = h.x; HOSPITAL.z = h.z; } } /* arrests and KOs land at real places */ const p = L.realPos && Math.abs(L.realPos.x) < 2600 ? L.realPos : RC.toXZ(28.4475, 77.0328); if (!G.inside) { const o = openNear({ x: p.x, z: p.z, r: 0 }); teleport(o.x, o.z, 0); } RC.warm(G.x, G.z, 40); toast('🗺️ Asli Gurugram · ' + RC.credit); const cr = document.createElement('div'); cr.textContent = RC.credit; cr.style.cssText = 'position:fixed;right:6px;bottom:4px;font:11px sans-serif;color:#fff;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none;z-index:50'; document.body.append(cr); }
+  if (G.started) { RC.update(G.x, G.z); if (!G.inside && !G.race && now() > (RT.saveT || 0)) { RT.saveT = now() + 5; L.realPos = { x: Math.round(G.x), z: Math.round(G.z) }; saveLocal(); } realPeds(dt); }
   if (RT.inKey !== (G.inside || '')) { RT.inKey = G.inside || ''; const rr = scene.getObjectByName('realcity'); if (rr) rr.visible = !G.inside; for (const k in INTERIOR) if (INTERIOR[k] && INTERIOR[k].g) INTERIOR[k].g.visible = G.inside === k; }
 }
 function boot() { loadStep(0.3); buildGround(); districtBuilders(); HM.buildCamp(KIT, world); buildRaceSpots(); buildCityFill(); buildWater(); buildInstances(); buildInteriors(); spawnAmbient(); spawnFighters(); buildBaraat(); buildRamps(); buildGolgappa(); loadStep(0.6); requestAnimationFrame(loop); }
