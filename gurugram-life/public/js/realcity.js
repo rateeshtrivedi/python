@@ -164,6 +164,12 @@ function nearestNode(x, z, car = true) { // the closest junction on a drivable r
   return best;
 }
 // A*: the quickest way by road (main roads preferred, one-ways respected). Returns the route as points, or null.
+export function sidewalk(x, z, extra = 2.5) { // a point on the pavement beside the nearest drivable road: where people stand
+  if (!ready || !GN) return null; const n = nearestNode(x, z); if (n < 0) return null; const e = (ADJ[n] && ADJ[n][0]) || null, nx = GN[n * 2], nz = GN[n * 2 + 1]; if (!e) return { x: nx, z: nz, h: 0 };
+  const rd = DATA.R[e.r], p = rd.p, m = p.length / 2, k = e.fwd ? 1 : m - 2, dx = p[k * 2] - nx, dz = p[k * 2 + 1] - nz, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, off = rd.w / 2 + extra;
+  // step a little along the road too, off the junction itself
+  return { x: nx + ux * 8 + uz * off, z: nz + uz * 8 - ux * off, h: Math.atan2(ux, uz), fx: -uz, fz: ux };
+}
 export function snapRoad(x, z) { if (!ready || !GN) return null; const n = nearestNode(x, z); return n < 0 ? null : [GN[n * 2], GN[n * 2 + 1]]; } // the nearest junction on a drivable road
 export function route(x0, z0, x1, z1) {
   if (!ready || !ADJ) return null; const s = nearestNode(x0, z0), t = nearestNode(x1, z1); if (s < 0 || t < 0) return null; if (s === t) return [[x0, z0], [x1, z1]];
