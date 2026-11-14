@@ -11,7 +11,7 @@ const QUIET = 6, POP = 5, KEYS_MAX = 240, LEARN = 3;
 const HINTS = [ // [label, keys that count as using it]
   ['<kbd>W A S D</kbd> chalo', ['KeyW', 'KeyA', 'KeyS', 'KeyD']], ['<kbd>← →</kbd> ghoomo', ['ArrowLeft', 'ArrowRight']], ['<kbd>Shift</kbd> daudo', ['ShiftLeft', 'ShiftRight']],
   ['<kbd>Space</kbd> jump', ['Space']], ['<kbd>Click</kbd> punch', ['mouse', 'KeyQ']], ['<kbd>E</kbd> action', ['KeyE']], ['<kbd>F</kbd> gaadi', ['KeyF']],
-  ['<kbd>M</kbd> map', ['KeyM']], ['<kbd>Tab</kbd> phone', ['Tab']], ['<kbd>T</kbd> chat', ['KeyT']], ['<kbd>J</kbd> (hold) sab dikhao', ['KeyJ']],
+  ['<kbd>M</kbd> map', ['KeyM']], ['<kbd>Tab</kbd> phone · chats', ['Tab']], ['<kbd>T</kbd> chat', ['KeyT']], ['<kbd>J</kbd> (hold) sab dikhao', ['KeyJ']],
 ];
 const $ = id => document.getElementById(id);
 const num = id => { const e = $(id); return e ? Number(String(e.textContent).replace(/[^0-9.-]/g, '')) || 0 : 0; };
@@ -59,7 +59,7 @@ export function startHUD() {
     const busy = !$('raceres').hidden || ($('modal') && !$('modal').hidden);
     if (busy || now < popUntil) calmAt = now + QUIET;
     const calm = now > calmAt && !peek && !hover;
-    body.classList.toggle('hudcalm', calm); body.classList.toggle('hudpeek', peek || hover);
+    body.classList.toggle('hudcalm', calm); body.classList.toggle('hudpeek', peek || hover); body.classList.toggle('hudall', peek); // hold J: everything, the full kaam list too
     stat && stat.classList.toggle('pop', now < popUntil); stat && stat.classList.toggle('lowhp', hp < 40); stat && stat.classList.toggle('lowhu', hu < 30);
     const kmh = num('spd'); body.classList.toggle('hudcine', !!$('speedo') && !$('speedo').hidden && kmh > 70 && !peek);
     if (kh && !kh.hidden && (HINTS.every((h, i) => learnt(i)) || now - kStart > KEYS_MAX)) { kh.classList.add('gone'); setTimeout(() => { kh.hidden = true; }, 900); }

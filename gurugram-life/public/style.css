@@ -523,3 +523,25 @@ body:not(.touch) #hud:has(#goalsub:not([hidden])) #navchip{display:none}
 body.racing #goalsub,body.cutscene #goalsub,body.film #goalsub{display:none!important}
 body.touch #goalsub{bottom:calc(150px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 200px);font-size:13px}
 @media (max-width:900px){#goalsub{max-width:calc(100% - 24px)}}
+/* ---- Chats (phone): the day's kaam as WhatsApp-style messages ---- */
+body:not(.touch) #mchip{display:block;cursor:pointer}
+body:not(.touch):not(.hudall) #missions{display:none}
+#mchip.unread{border-color:#25d366;box-shadow:0 0 0 0 rgba(37,211,102,.6);animation:chatping 1.8s ease-out infinite}
+@keyframes chatping{70%{box-shadow:0 0 0 9px rgba(37,211,102,0)}}
+.chatrow{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;padding:8px 6px;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.08);color:inherit;text-align:left;cursor:pointer;font:inherit}
+.chatrow:hover{background:rgba(255,255,255,.05)}
+.cav{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-style:normal;font-size:22px;flex:none}
+.chatrow .cmid{display:grid;min-width:0}.chatrow .cmid b{font:800 15px var(--display)}.chatrow .cmid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.75;font-size:13px}
+.chatrow .cend{display:grid;justify-items:end;gap:3px}.chatrow .cend small{opacity:.6;font-size:11px}
+.chatrow .cend em{font-style:normal;background:#25d366;color:#06240f;font:800 12px var(--display);min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;padding:0 5px}
+.chatwall{display:grid;gap:8px;padding:10px;border-radius:12px;background:#0b141a linear-gradient(rgba(255,255,255,.02),rgba(255,255,255,.02));margin-bottom:10px}
+.bub{max-width:86%;justify-self:start;background:#202c33;color:#e9edef;border-radius:2px 12px 12px 12px;padding:8px 10px;display:grid;gap:5px}
+.bub p{margin:0;font-size:14px}.bub small{opacity:.65;font-size:11.5px}.bub .buy{justify-self:start;padding:4px 12px;font-size:13px;min-height:0}
+.bub.done{opacity:.7}.bub .tbar{height:4px;border-radius:2px;background:rgba(255,255,255,.12)}.bub .tbar i{display:block;height:100%;border-radius:2px;background:#25d366}
+.bub.me{justify-self:end;background:#005c4b;border-radius:12px 2px 12px 12px;font-size:13px}
+#buzz{position:absolute;right:12px;bottom:calc(70px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;max-width:320px;padding:8px 14px 8px 8px;background:#1f2c33;color:#e9edef;border:0;border-left:4px solid #25d366;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.45);text-align:left;cursor:pointer;font:inherit;animation:buzzin .45s cubic-bezier(.2,1.4,.4,1);z-index:12}
+#buzz div{display:grid;min-width:0}#buzz b{font:800 14px var(--display)}#buzz span{font-size:13px;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#buzz.out{transition:transform .45s,opacity .45s;transform:translateX(120%);opacity:0}
+@keyframes buzzin{from{transform:translateX(120%)}}
+body.touch #buzz{bottom:auto;top:calc(150px + env(safe-area-inset-top,0px));max-width:calc(100% - 120px)}
+body.film #buzz,body.cutscene #buzz,body.racing #buzz{display:none!important}
