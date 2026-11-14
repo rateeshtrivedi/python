@@ -228,6 +228,13 @@ function randomPlate() {
 }
 
 // ------------------------------------------------------------------ crews & turf ("ilaaka")
+function crewJoin(c, id) { // a player joins a crew (from the list, an invite or an invite link)
+  const p = c.p, cr = db.crews[id]; if (!cr) return { ok: false, error: 'Crew nahi mili' }; if (p.crew === cr.id) return { ok: false, error: 'Tu pehle se is crew mein se' }; if (p.crew) return { ok: false, error: 'Pehle purani crew chhod' };
+  if (cr.members.length >= 20) return { ok: false, error: 'Crew full se (20)' };
+  cr.members.push(p.id); p.crew = cr.id; dirty = true; sendProfile(c); broadcast(pinfo(c));
+  broadcast({ t: 'ann', text: p.name + ' crew [' + cr.tag + '] mein shamil ho gaye', kind: 'crew', at: Date.now() }, x => x.p.crew === cr.id);
+  broadcast({ t: 'turf', turf: turfView(), crews: crewList() }); return { ok: true, tag: cr.tag, name: cr.name };
+}
 function crewList() {
   const owned = {}; for (const [d, t] of Object.entries(db.turf)) if (t.owner) owned[t.owner] = (owned[t.owner] || 0) + 1;
   return Object.values(db.crews).map(cr => ({ id: cr.id, name: cr.name, tag: cr.tag, color: cr.color, members: cr.members.length, leader: cr.leaderName, turf: owned[cr.id] || 0 }));
@@ -710,12 +717,13 @@ function handle(c, m) {
       broadcast({ t: 'auction', a: auction }); reply({ ok: true });
       break;
     }
-    case 'crew_join': {
-      const cr = db.crews[m.id]; if (!cr) return reply({ ok: false, error: 'Crew nahi mili' }); if (p.crew) return reply({ ok: false, error: 'Pehle purani crew chhod' });
-      if (cr.members.length >= 20) return reply({ ok: false, error: 'Crew full se (20)' });
-      cr.members.push(p.id); p.crew = cr.id; dirty = true; sendProfile(c); broadcast(pinfo(c));
-      broadcast({ t: 'ann', text: p.name + ' crew [' + cr.tag + '] mein shamil ho gaye', kind: 'crew', at: Date.now() }, x => x.p.crew === cr.id);
-      broadcast({ t: 'turf', turf: turfView(), crews: crewList() }); return reply({ ok: true });
+    case 'crew_join': return reply(crewJoin(c, m.id));
+    case 'crew_invite': { // ask a player near you to join your crew
+      const cr = crewOf(p); if (!cr) return reply({ ok: false, error: 'Pehle crew bana ya join kar' }); const tc = conns.get(m.target);
+      if (!tc || tc === c || !tc.st || !c.st || tc.st.in !== c.st.in || dist(c.st, tc.st) > 40) return reply({ ok: false, error: 'Woh player paas nahi se' });
+      if (tc.p.crew) return reply({ ok: false, error: tc.p.name + ' pehle se ek crew mein se' }); if (!rateOk(c, 'crewinv', 10)) return reply({ ok: false, error: 'Thoda ruk ke' });
+      invites.set(tc.p.id + ':crew', { from: p.id, crew: cr.id, until: now() + 60 });
+      send(tc, { t: 'invite', kind: 'crew', from: p.id, name: p.name, crew: { tag: cr.tag, name: cr.name, members: cr.members.length } }); return reply({ ok: true });
     }
     case 'crew_leave': {
       const cr = crewOf(p); if (!cr) return reply({ ok: false });
@@ -754,7 +762,8 @@ function handle(c, m) {
     }
     case 'accept': {
       const kind = m.kind; const inv = invites.get(p.id + ':' + kind); invites.delete(p.id + ':' + kind);
-      if (!inv || inv.until < now()) return reply({ ok: false, error: 'Challenge expire ho gaya' });
+      if (!inv || inv.until < now()) return reply({ ok: false, error: kind === 'crew' ? 'Invite expire ho gaya' : 'Challenge expire ho gaya' });
+      if (kind === 'crew') { const r = crewJoin(c, inv.crew); if (r.ok) { const fc = conns.get(inv.from); if (fc) { fc.p.respect += 5; addXP(fc, 25); sendProfile(fc); send(fc, { t: 'toast', text: p.name + ' teri crew mein aa gaya! +5 respect', kind: 'money', sfx: 'level' }); } } return reply(r); }
       const fc = conns.get(inv.from); if (!fc) return reply({ ok: false, error: 'Challenger chala gaya' });
       if (kind === 'roast') {
         if (roast) return reply({ ok: false, error: 'Roast pehle se chal raha' });

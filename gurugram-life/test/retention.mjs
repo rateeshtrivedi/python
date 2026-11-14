@@ -93,4 +93,11 @@ const self = join({ ref: 'nobody-here' }); st(self); self.req('earn', { reason: 
 // RET-09: weekly sector war state is reported with the crews
 check('war' in A2.req('crews', {}), 'the crew list carries the weekly war');
 
+// crew invites: a player near you gets an invite, accepting puts them in your crew; the weekly season has the AI rivals
+{ const X = join({ name: 'Crew Boss' }), Y = join({ name: 'Naya Ladka' }); st(X, 10, 10); st(Y, 14, 12); skew += 5e3; X.req('earn', { reason: 'coldopen', amount: 1000 }); skew += 20e3; X.req('earn', { reason: 'ride', amount: 1100 }); skew += 20e3; X.req('earn', { reason: 'ride', amount: 1100 }); skew += 20e3; // ₹2,000 for the crew
+  const mk = X.req('buy', { kind: 'crew', id: 'new', name: 'Invite Testers', tag: 'INV' }); check(mk && mk.ok, 'a crew for the invite test');
+  const inv = X.req('crew_invite', { target: Y.wel.id }); check(inv && inv.ok && Y.inbox.some(m => m.t === 'invite' && m.kind === 'crew' && m.crew.tag === 'INV'), 'crew invite reaches a nearby player without a crew');
+  const acc = Y.req('accept', { kind: 'crew' }); check(acc && acc.ok && Y.prof().crew, 'accepting the invite joins the crew');
+  check(!Y.req('accept', { kind: 'crew' }).ok, 'an invite works once');
+  const lb = X.req('lb', {}).lb; check(lb.week && lb.week.some(r => /\(AI\)$/.test(r.name)) && lb.weekEnds > 0, 'weekly season board with AI rivals and time left'); }
 console.log(fails ? fails + ' retention check(s) failed' : 'retention checks passed'); process.exit(fails ? 1 : 0);
