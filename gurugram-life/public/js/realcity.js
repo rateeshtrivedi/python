@@ -164,6 +164,13 @@ function nearestNode(x, z, car = true) { // the closest junction on a drivable r
   return best;
 }
 // A*: the quickest way by road (main roads preferred, one-ways respected). Returns the route as points, or null.
+export function offRoad(x, z, margin = 2) { // push a point off any road it stands on, to the kerb (twice, for junctions)
+  if (!ready) return { x, z }; for (let pass = 0; pass < 3; pass++) { let moved = false; const tx = Math.floor(x / TILE), tz = Math.floor(z / TILE);
+    for (let ax = tx - 1; ax <= tx + 1; ax++) for (let az = tz - 1; az <= tz + 1; az++) { const e = index.get(ax + ',' + az); if (!e) continue; for (const [ri, j] of e.r) { const rd = DATA.R[ri]; if (rd.c > 7) continue; const p = rd.p, x0 = p[j], z0 = p[j + 1], dx = p[j + 2] - x0, dz = p[j + 3] - z0, L2 = dx * dx + dz * dz || 1e-9, k = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / L2)), qx = x0 + k * dx, qz = z0 + k * dz, d = Math.hypot(x - qx, z - qz), need = rd.w / 2 + margin;
+      if (d < need) { const nx = d > 1e-4 ? (x - qx) / d : -dz / Math.sqrt(L2), nz = d > 1e-4 ? (z - qz) / d : dx / Math.sqrt(L2); x = qx + nx * need; z = qz + nz * need; moved = true; } } }
+    if (!moved) break; }
+  return { x, z };
+}
 export function sidewalk(x, z, extra = 2.5) { // a point on the pavement beside the nearest drivable road: where people stand
   if (!ready || !GN) return null; const n = nearestNode(x, z); if (n < 0) return null; const e = (ADJ[n] && ADJ[n][0]) || null, nx = GN[n * 2], nz = GN[n * 2 + 1]; if (!e) return { x: nx, z: nz, h: 0 };
   const rd = DATA.R[e.r], p = rd.p, m = p.length / 2, k = e.fwd ? 1 : m - 2, dx = p[k * 2] - nx, dz = p[k * 2 + 1] - nz, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, off = rd.w / 2 + extra;

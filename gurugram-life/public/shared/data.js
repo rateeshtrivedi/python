@@ -270,6 +270,9 @@ export const EVENT_ORDER = ['baraat', 'thaila', 'jam', 'holi', 'thaila', 'ipl', 
 // where each event happens: the first three players to get there win cash (the baraat moves along Golf Course Road)
 export const EVENT_SPOTS = { baraat: { x: -225, z: 0, line: 1 }, jam: { x: 0, z: -75 }, holi: { x: 150, z: 0 }, ipl: { x: 150, z: -295 }, diwali: { x: 0, z: 40 } };
 export const RUSH_PRIZE = [700, 400, 250];
+// the same events on the real map (Asli Gurugram), in real-map game units (from the client's realNamed() spots)
+export const REAL_EVENT_SPOTS = { baraat: { x: 2001, z: 173, name: 'Golf Course Road' }, jam: { x: 591, z: -694, name: 'IFFCO Chowk' }, holi: { x: -929, z: 2052, name: 'Sohna Road' }, ipl: { x: 1397, z: -1883, name: 'Cyber Hub' }, diwali: { x: -1296, z: 716, name: 'Rajiv Chowk' } };
+export const REAL_THAILA = [[1038, -431, 'Galleria Market'], [-627, -771, 'Sector 14'], [-1504, -56, 'Sadar Bazaar'], [297, -384, 'Sector 29'], [835, -772, 'Sushant Lok'], [629, 0, 'Huda City Centre'], [1766, -1788, 'DLF Phase 3'], [1644, -1211, 'Sikanderpur'], [-1681, 62, 'Old Gurgaon']];
 // Gali ke Don: a five-chapter gang story, one chapter a day, new every Monday (Gurugram time)
 export const DON = [
   { boss: 'Rinku Chhapri', at: [300, 0, 'Sadar Bazaar'], hench: 0, hp: 120, dmg: 7, r: 1500,
