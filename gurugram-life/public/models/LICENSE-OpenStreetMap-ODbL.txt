@@ -1,0 +1,6 @@
+realcity.json.gz: roads, building outlines and land use of central Gurugram, derived from OpenStreetMap.
+Map data (c) OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0:
+https://opendatacommons.org/licenses/odbl/1-0/  ·  https://www.openstreetmap.org/copyright
+This derived database (realcity.json.gz) is likewise made available under the ODbL. It is built by
+scripts/realmap/build_realmap.py from the Haryana extract at download.openstreetmap.fr.
+Building heights not recorded in OpenStreetMap are estimated by the build script.

@@ -142,6 +142,13 @@ app.get('/models/:f(people-[mf]\\.glb)', (req, res, next) => {
   if (/\bgzip\b/.test(req.headers['accept-encoding'] || '')) { res.setHeader('Content-Encoding', 'gzip'); return res.sendFile(gz); }
   fs.createReadStream(gz).pipe(zlib.createGunzip()).pipe(res);
 });
+// the real-map city data (OpenStreetMap, ODbL), stored gzipped like the people models
+app.get('/models/realcity.json', (req, res, next) => {
+  const gz = path.join(ROOT, 'public/models/realcity.json.gz'); if (!fs.existsSync(gz)) return next();
+  res.setHeader('Cache-Control', 'public, max-age=86400'); res.setHeader('Vary', 'Accept-Encoding'); res.type('application/json');
+  if (/\bgzip\b/.test(req.headers['accept-encoding'] || '')) { res.setHeader('Content-Encoding', 'gzip'); return res.sendFile(gz); }
+  fs.createReadStream(gz).pipe(zlib.createGunzip()).pipe(res);
+});
 // Game code and the page must always be fresh after a deploy: browsers and Cloudflare revalidate (cheap 304s).
 app.use(express.static(path.join(ROOT, 'public'), { etag: true, lastModified: true, setHeaders: (res, file) => { res.setHeader('Cache-Control', (file.includes(path.sep + 'models' + path.sep) || file.includes(path.sep + 'audio' + path.sep)) ? 'public, max-age=604800' : file.includes(path.sep + 'img' + path.sep) ? 'public, max-age=86400' : 'no-cache'); if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json'); } }));
 app.use((req, res) => { res.status(404).type('html').send(notFound(req)); });
