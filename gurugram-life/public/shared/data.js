@@ -36,8 +36,9 @@ export const LADDER = ['street', 'pg', 'room', 'flat', 'pent', 'kothi', 'farm'];
 export const homeRank = p => Math.max(0, ...(p.houses || []).map(h => LADDER.indexOf(h)));
 export const START_MONEY = 0; // khaali jeb: the first rupee comes from work
 // one game day (sun up to sun up, and one set of aaj ke kaam) is 15 real minutes, timed by the server so everyone shares it
-export const DAY_SECS = 900;
+export const DAY_SECS = 2700; // a game day is 45 real minutes (32 game-minutes a real minute)
 export const gameDay = (ms = Date.now()) => Math.floor(ms / 1000 / DAY_SECS);
+export const taskDay = (ms = Date.now()) => Math.floor((ms + 5.5 * 3600e3) / 86400e3); // aaj ke kaam: a real Gurugram day, new at midnight IST
 export const dayFrac = (ms = Date.now()) => (ms / 1000 % DAY_SECS) / DAY_SECS; // 0 = midnight, 0.5 = noon
 // chapter n is played on the way to LADDER[n]; the last chapter's prize is the diamond set
 export const CHAPTERS = [
