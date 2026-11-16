@@ -100,4 +100,19 @@ check('war' in A2.req('crews', {}), 'the crew list carries the weekly war');
   const acc = Y.req('accept', { kind: 'crew' }); check(acc && acc.ok && Y.prof().crew, 'accepting the invite joins the crew');
   check(!Y.req('accept', { kind: 'crew' }).ok, 'an invite works once');
   const lb = X.req('lb', {}).lb; check(lb.week && lb.week.some(r => /\(AI\)$/.test(r.name)) && lb.weekEnds > 0, 'weekly season board with AI rivals and time left'); }
+// private rooms + rocket race: create, join by code, only the host starts, rockets/wrecks relayed in the room, finish time checked, places paid
+{ const H = join({ name: 'Adda Host' }), F = join({ name: 'Adda Dost' }), O = join({ name: 'Outsider' }); st(H, 5, 5); st(F, 6, 6); st(O, 7, 7); skew += 5e3;
+  const cr = H.req('room_create', {}); check(cr && cr.ok && /^[A-Z0-9]{6}$/.test(cr.code), 'a room gets a 6-letter code');
+  const jn = F.req('room_join', { code: cr.code.toLowerCase() }); check(jn && jn.ok, 'a friend joins with the code (any case)');
+  check(!O.req('room_join', { code: 'ZZZZZZ' }).ok, 'a wrong code is refused');
+  check(!F.req('room_start', {}).ok, 'only the host can start the race');
+  H.send('room_set', { track: 'mud', laps: 3 }); const st1 = H.req('room_start', {}); const view = H.inbox.filter(m => m.t === 'room').pop();
+  check(st1 && st1.ok && view.state === 'race' && view.track === 'mud' && view.laps === 3 && view.racers.length === 2, 'the host starts a race on the chosen track and laps');
+  skew += 1e3; F.send('rocket', { id: 'r1', x: 1, z: 2, r: 0 }); check(H.inbox.some(m => m.t === 'rocket' && m.id === 'r1') && !O.inbox.some(m => m.t === 'rocket'), 'a rocket reaches the room, not outsiders');
+  skew += 3e3; H.send('wreck', { by: F.wel.id, x: 0, z: 0 }); check(F.inbox.some(m => m.t === 'wreck' && m.by === F.wel.id), 'a wreck is credited to the shooter');
+  check(!F.req('race_done', { ms: 1000 }).ok, 'an impossible race time is refused');
+  const T = D.RR_TRACKS.find(t => t.id === 'mud'); const m0 = F.prof().money; const dn = F.req('race_done', { ms: T.minLapMs * 3 + 5000 });
+  check(dn && dn.ok && dn.place === 1 && dn.prize === D.RR_PRIZE[0] + D.RR_KILL && F.prof().money >= m0 + dn.prize, 'the winner is paid the 1st prize plus the wreck bonus');
+  F.send('rtc', { to: H.wel.id, sig: { d: 'x' } }); check(H.inbox.some(m => m.t === 'rtc' && m.from === F.wel.id), 'voice chat signals are relayed inside the room');
+  F.req('room_leave', {}); check(H.inbox.some(m => m.t === 'rleft' && m.id === F.wel.id), 'leaving tells the room'); }
 console.log(fails ? fails + ' retention check(s) failed' : 'retention checks passed'); process.exit(fails ? 1 : 0);

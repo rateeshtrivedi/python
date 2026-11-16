@@ -586,3 +586,21 @@ body.touch #daybar{display:none!important}body.touch #stat.open #daybar:not([hid
 #naach .npads{display:flex;gap:8px}#naach .npads button{width:48px;height:44px;border:0;border-radius:10px;background:#ff2bd6;color:#fff;font:800 22px var(--display);cursor:pointer}
 body:not(.touch) #naach .npads{display:none}
 .golist{display:grid;gap:4px;max-height:52vh;overflow-y:auto;margin-top:8px}
+/* ---- Rocket Race: the room panel ("Apna Adda"), touch buttons, login button ---- */
+#adda{position:absolute;right:12px;top:calc(200px + env(safe-area-inset-top,0px));width:300px;max-height:calc(100vh - 300px);overflow-y:auto;background:rgba(27,20,16,.92);border:2px solid #d7331f;border-radius:14px;padding:10px 12px;color:var(--cream);display:grid;gap:7px;z-index:9;font-size:13px}
+#adda .ah{display:flex;align-items:center;gap:8px}#adda .ah b{font:800 16px var(--display)}#adda .ah code{background:#f6c026;color:#1b1410;font:800 16px var(--display);padding:1px 8px;border-radius:7px;letter-spacing:.12em}
+#adda .amin{margin-left:auto;background:none;border:0;color:var(--cream);font:800 20px var(--display);cursor:pointer}
+#adda .arow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}#adda .buy{padding:5px 10px;font-size:12.5px;min-height:0}
+#adda small{opacity:.75}
+#adda .atr,#adda .acars{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#adda .atr button,#adda .acars button{display:grid;gap:1px;text-align:left;padding:6px 8px;border-radius:9px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:inherit;font:700 12px var(--body);cursor:pointer}
+#adda .atr button i{font-style:normal;font-size:18px}#adda .atr button.on,#adda .acars button.on{border-color:#f6c026;background:rgba(246,192,38,.18)}#adda .atr button:disabled{cursor:default}
+#adda .acars button b{font:800 13px var(--display)}#adda .acars small{font-size:10.5px}
+#adda .chipb{width:30px;height:28px;border-radius:8px;border:2px solid rgba(255,255,255,.2);background:none;color:inherit;font:800 13px var(--display);cursor:pointer}#adda .chipb.on{background:#f6c026;color:#1b1410}
+#adda .amem{display:grid;gap:3px}#adda .amem>div{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:3px 6px;border-radius:7px;background:rgba(255,255,255,.05)}#adda .amem em{font-style:normal}#adda .amem em.talk{filter:drop-shadow(0 0 6px #22c55e)}
+#adda .abots{grid-template-columns:1fr!important;opacity:.7}
+#adda .aq{display:flex;flex-wrap:wrap;gap:4px}#adda .aq button{padding:3px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:inherit;font:700 11.5px var(--body);cursor:pointer}
+body.rr #adda{display:none!important}
+#bRocket,#bMic{display:none}body.rr #bRocket{display:flex}body.inadda #bMic{display:flex}#bMic.on{background:#22c55e}
+#login .go.alt{background:#d7331f;color:#fff;margin-top:6px}
+body.touch #adda{right:8px;left:8px;width:auto;top:calc(110px + env(safe-area-inset-top,0px));max-height:55vh}
