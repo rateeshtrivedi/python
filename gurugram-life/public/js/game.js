@@ -3981,8 +3981,8 @@ function rrPieces(rr) {
   return out;
 }
 // ---- the rocket cars: a rack on the roof, a flag with the name
-function rrPods(mesh, carKey) { if (!mesh || mesh.userData.pods) return; const g = new THREE.Group(); const rack = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 1.4), rrMat(0x2b2b2b)); g.add(rack); for (const sx of [-0.5, 0, 0.5]) { const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.6, 8), rrMat(0x6b7280)); tube.rotation.x = Math.PI / 2; tube.position.set(sx, 0.32, 0); g.add(tube); const tip = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.4, 8), rrMat(0xd7331f)); tip.rotation.x = Math.PI / 2; tip.position.set(sx, 0.32, 0.95); g.add(tip); }
-  g.position.y = 2.15; mesh.add(g); mesh.userData.pods = g; }
+function rrPods(mesh, carKey) { if (!mesh || (mesh.userData.pods && mesh.userData.pods.parent === mesh)) return; const g = new THREE.Group(); const rack = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.35, 1.6), rrMat(0x2b2b2b)); g.add(rack); for (const sx of [-0.55, 0, 0.55]) { const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.8, 8), rrMat(0xc0c7cf)); tube.rotation.x = Math.PI / 2; tube.position.set(sx, 0.32, 0); g.add(tube); const tip = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.4, 8), rrMat(0xd7331f)); tip.rotation.x = Math.PI / 2; tip.position.set(sx, 0.32, 0.95); g.add(tip); }
+  g.position.y = 2.15; g.scale.setScalar(1.15); mesh.add(g); mesh.userData.pods = g; }
 // ---- start, tick, end
 function rrStart(room) {
   if (G.rr) rrEnd(true); if (!RC.isReady()) return toast('Map load ho rya se…'); if (G.inside) exitInterior(); if (G.race) cleanupRace(); if (G.job) endJob();
@@ -4035,6 +4035,7 @@ function rrTick(dt) {
   if (rr.dead && T > rr.dead) rrRespawn();
   // rockets reload
   if (rr.ammo < rr.maxAmmo && T > rr.reloadAt) { rr.ammo++; rr.reloadAt = T + 3.5; }
+  if (playerVeh && (!playerVeh.userData.pods || playerVeh.userData.pods.parent !== playerVeh)) { playerVeh.userData.pods = null; rrPods(playerVeh); } // the car can be rebuilt (profile refresh): keep the rack
   // remote racers in the room get rocket racks too
   for (const [id, R] of REMOTES) if (R.visible && R.vm && RR.room && RR.room.members.some(m => m.id === id)) rrPods(R.vm);
   rrBotsTick(dt); rrRocketsTick(dt); rrHud();
