@@ -275,6 +275,33 @@ export const REAL_EVENT_SPOTS = { baraat: { x: 2001, z: 173, name: 'Golf Course 
 export const REAL_SPOTS = { akhara: { x: 432, z: -534, name: 'Leisure Valley Park' }, chaupal: { x: -691, z: 2538, name: 'Badshahpur' } };
 // the AI rivals walk and drive these loops of real road (Rajiv Chowk, IFFCO Chowk/MG Road, Galleria, Cyber City, Sector 29, Sohna Road)
 export const REAL_AI_LOOPS = [[[-1305,709],[-1303,731],[-1282,758],[-1244,769],[-1200,764],[-1159,738],[-1135,715],[-916,458],[-924,411],[-959,373],[-1005,425],[-1033,404],[-1005,425],[-956,369],[-832,507],[-808,539],[-815,547],[-834,548],[-815,547],[-808,539],[-862,481],[-886,480],[-901,484],[-1031,646],[-1117,742],[-1149,769],[-1201,796],[-1233,804],[-1266,809],[-1304,808],[-1321,805],[-1315,790],[-1318,779],[-1330,767],[-1322,730],[-1356,656],[-1367,623],[-1365,616],[-1428,464],[-1420,464],[-1360,612],[-1351,624],[-1303,727]],[[599,-672],[596,-691],[603,-692],[562,-978],[570,-1001],[585,-1013],[609,-1019],[828,-1066],[834,-1048],[765,-1036],[760,-1025],[937,-1059],[938,-953],[935,-932],[887,-781],[932,-782],[928,-758],[930,-752],[967,-733],[964,-672],[965,-504],[1016,-490],[965,-504],[966,-442],[636,-435],[603,-692],[596,-691],[597,-686]],[[1046,-440],[966,-442],[966,-122],[1036,-90],[1065,-140],[1101,-128],[1135,-186],[1135,-194],[1174,-200],[1189,-221],[1296,-154],[1322,-94],[1433,-122],[1553,-144],[1541,-214],[1516,-210],[1507,-253],[1479,-248],[1476,-262],[1456,-259],[1452,-279],[1440,-277],[1452,-279],[1446,-317],[1465,-320],[1453,-398],[1480,-399],[1474,-430],[1504,-431],[1502,-440],[1110,-440]],[[1515,-1831],[1519,-1833],[1540,-1878],[1547,-1874],[1560,-1894],[1574,-1924],[1476,-1970],[1464,-1928],[1458,-1930],[1409,-1828],[1401,-1821],[1384,-1819],[1373,-1825],[1305,-1914],[1306,-1922],[1334,-1955],[1336,-1968],[1353,-1989],[1371,-1977],[1368,-1973],[1371,-1977],[1353,-1989],[1416,-2064],[1416,-2074],[1402,-2085],[1153,-1792],[1204,-1750],[1242,-1711],[1568,-1415],[1559,-1295],[1703,-1284],[1709,-1341],[1709,-1416],[1706,-1432],[1698,-1444],[1665,-1474],[1590,-1525],[1584,-1536],[1541,-1564],[1524,-1568],[1472,-1601],[1460,-1613],[1453,-1627],[1447,-1643],[1451,-1666],[1547,-1874],[1540,-1878],[1519,-1833]],[[180,-483],[260,-397],[278,-414],[307,-382],[456,-519],[291,-699],[287,-704],[293,-709],[297,-705],[463,-525],[376,-445],[438,-380],[419,-364],[438,-380],[376,-445],[307,-382],[278,-414],[260,-397],[201,-460]],[[-937,2046],[-906,2047],[-901,2060],[-905,2065],[-904,2079],[-944,2082],[-971,2126],[-1011,2139],[-980,2258],[-982,2266],[-978,2287],[-989,2286],[-994,2268],[-1001,2263],[-1063,2013],[-1060,2000],[-1067,1974],[-1076,1962],[-1137,1728],[-884,1667],[-885,1657],[-884,1667],[-722,1621],[-528,1397],[-77,1782],[-210,1930],[-315,2073],[-340,2100],[-366,2073],[-379,2054],[-383,2030],[-437,2032],[-477,1938],[-487,1910],[-482,1910],[-493,1884],[-566,1885],[-567,1879],[-620,1879],[-567,1879],[-566,1885],[-533,1885],[-532,1952],[-523,1971],[-522,1995],[-525,2044],[-532,2053],[-572,2063],[-592,2036],[-613,2024],[-657,2022],[-759,2027],[-779,2039],[-785,2057],[-787,2076],[-812,2082],[-836,2083],[-868,2076],[-904,2079],[-905,2065],[-910,2061],[-934,2056]]];
+// ROCKET RACE (private rooms, "Apna Adda"): long stunt circuits on real Gurugram roads. waypoints are lat/lon; the
+// client routes them along real roads (a closed loop). stunts sit at a fraction of the lap: boost pads, jump ramps,
+// loops, mud and pickups (rockets, repair). minLapMs: no lap can be faster (the server checks finish times).
+export const RR_TRACKS = [
+  { id: 'cyber', name: 'Cyber City Loop Run', sub: 'Sikanderpur · Cyber City · DLF Phase 3', icon: '🌀', minLapMs: 35000,
+    wp: [[28.4815, 77.0932], [28.4950, 77.0890], [28.4925, 77.0960], [28.4860, 77.0985]],
+    stunts: [['boost', 0.05], ['jump', 0.14], ['pick', 0.2], ['loop', 0.3], ['boost', 0.4], ['mud', 0.47], ['pick', 0.56], ['jump', 0.64], ['boost', 0.72], ['loop', 0.8], ['pick', 0.9]] },
+  { id: 'mud', name: 'Aravali Mud Rally', sub: 'Sohna Road · Badshahpur · Golf Course Extension', icon: '🟫', minLapMs: 40000,
+    wp: [[28.4230, 77.0410], [28.4140, 77.0470], [28.4200, 77.0600], [28.4300, 77.0520]],
+    stunts: [['mud', 0.08], ['jump', 0.16], ['pick', 0.22], ['mud', 0.3], ['jump', 0.38], ['boost', 0.45], ['loop', 0.55], ['mud', 0.64], ['pick', 0.7], ['jump', 0.78], ['mud', 0.86], ['boost', 0.94]] },
+  { id: 'nh48', name: 'NH-48 Expressway Rocket Run', sub: 'Rajiv Chowk · IFFCO Chowk · Signature Tower', icon: '🚀', minLapMs: 40000,
+    wp: [[28.4475, 77.0328], [28.4626, 77.0470], [28.4560, 77.0520]],
+    stunts: [['boost', 0.06], ['pick', 0.12], ['jump', 0.2], ['boost', 0.28], ['pick', 0.36], ['loop', 0.45], ['boost', 0.55], ['jump', 0.63], ['pick', 0.72], ['boost', 0.8], ['jump', 0.9]] },
+  { id: 'gali', name: 'Old Gurugram Gali Chaos', sub: 'Sadar Bazaar · Old Gurgaon · Civil Lines', icon: '🛕', minLapMs: 30000,
+    wp: [[28.4645, 77.0290], [28.4590, 77.0260], [28.4580, 77.0330], [28.4660, 77.0340]],
+    stunts: [['jump', 0.08], ['pick', 0.15], ['mud', 0.24], ['jump', 0.33], ['boost', 0.42], ['loop', 0.52], ['pick', 0.62], ['jump', 0.7], ['mud', 0.8], ['boost', 0.9]] },
+];
+// the rocket cars (desi designs on the game's car bodies): speed, how many hits before a wreck, rockets in the rack
+export const RR_CARS = {
+  jugaad:   { name: 'Jugaad Tank', body: 'desert', color: 0x556b2f, speed: 33, hp: 4, ammo: 3, note: 'Tough, slower' },
+  rickshaw: { name: 'Rocket Rickshaw', body: 'auto', color: 0xf6c026, speed: 36, hp: 2, ammo: 3, note: 'Small, quick, cheeky' },
+  sarpanch: { name: 'Sarpanch Cruiser', body: 'cruiser', color: 0xffffff, speed: 35, hp: 3, ammo: 2, homing: true, note: 'Homing rockets' },
+  monsoon:  { name: 'Monsoon Buggy', body: 'chhotu', color: 0x1f7ab8, speed: 34, hp: 3, ammo: 3, mud: true, note: 'King of the mud' },
+};
+export const RR_PRIZE = [1500, 900, 500, 250]; // by finishing place among the players; + RR_KILL a wreck
+export const RR_KILL = 150;
+export const RR_SAY = ['Ruk ja! ✋', 'Bye bye 👋', 'Rocket aa raha 🚀', 'Bach ke! 😈', 'Rematch? 🔁', 'GG 🤝', 'Aaja race mein! 🏁', 'Haha 😂'];
 export const REAL_THAILA = [[1038, -431, 'Galleria Market'], [-627, -771, 'Sector 14'], [-1504, -56, 'Sadar Bazaar'], [297, -384, 'Sector 29'], [835, -772, 'Sushant Lok'], [629, 0, 'Huda City Centre'], [1766, -1788, 'DLF Phase 3'], [1644, -1211, 'Sikanderpur'], [-1681, 62, 'Old Gurgaon']];
 // Gali ke Don: a five-chapter gang story, one chapter a day, new every Monday (Gurugram time)
 export const DON = [

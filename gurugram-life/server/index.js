@@ -53,7 +53,7 @@ app.disable('x-powered-by');
 app.set('trust proxy', true);
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
   next();
 });
 // Search engines: the onrender.com copy stays playable but tells Google not to index it, so ranking isn't split.
@@ -127,6 +127,8 @@ const HOME_HTML = INDEX_HTML.split('__CANON__').join(SITE).replace('__GVERIFY__'
 app.get(['/', '/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(HOME_HTML.split('__ORIGIN__').join(siteOrigin(req)));
 });
+// a private-room invite: gurugramlife.com/r/JAAT42 opens the game and joins that room
+app.get('/r/:code', (req, res) => { const code = String(req.params.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); res.setHeader('X-Robots-Tag', 'noindex'); res.redirect(302, '/?room=' + code); });
 // one address per page: /about/ -> 301 -> /about (Express routes ignore the trailing slash otherwise)
 app.use((req, res, next) => { if (req.path.length > 1 && req.path.endsWith('/') && PAGES[req.path.slice(0, -1)]) return res.redirect(301, req.path.slice(0, -1) + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '')); next(); });
 for (const [p, render] of Object.entries(PAGES)) app.get(p, (req, res) => { res.setHeader('Cache-Control', 'public, max-age=3600'); res.type('html').send(render(req)); });

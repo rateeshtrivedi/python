@@ -146,6 +146,33 @@ function ensureMissions(p) {
   });
   Object.assign(ms, { v: 2, day, lvl, bonusPaid: false });
 }
+function roomMsg(c, m, reply) { // everything a room does; returns true when the message was a room message
+  const p = c.p; const r = c.room && rooms.get(c.room);
+  switch (m.t) {
+    case 'room_create': { if (c.room) roomLeave(c); if (!rateOk(c, 'roomnew', 3)) { reply({ ok: false, error: 'Thoda ruk ke' }); return true; } const code = roomCode();
+      rooms.set(code, { code, host: p.id, members: [p.id], ready: new Set(), cars: {}, track: D.RR_TRACKS[0].id, laps: 2, state: 'lobby', startAt: 0, seed: 0, racers: [], done: [], kills: {}, prog: {} });
+      c.room = code; reply({ ok: true, code }); roomSend(rooms.get(code)); return true; }
+    case 'room_join': { const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6), rr = rooms.get(code); if (!rr) { reply({ ok: false, error: 'Yeh adda nahi mila (code check kar)' }); return true; }
+      if (c.room === code) { reply({ ok: true, code }); roomSend(rr); return true; } if (rr.members.length >= 8) { reply({ ok: false, error: 'Adda full se (8)' }); return true; } if (c.room) roomLeave(c);
+      rr.members.push(p.id); c.room = code; reply({ ok: true, code }); roomCast(rr, { t: 'toast', text: p.name + ' adde mein aa gaya! 🏁', kind: 'money' }, p.id); roomSend(rr); return true; }
+    case 'room_leave': roomLeave(c); reply({ ok: true }); return true;
+    case 'room_ready': if (r) { if (m.on) r.ready.add(p.id); else r.ready.delete(p.id); if (D.RR_CARS[m.car]) r.cars[p.id] = m.car; roomSend(r); } return true;
+    case 'room_set': if (r && r.host === p.id && r.state !== 'race') { if (D.RR_TRACKS.some(t => t.id === m.track)) r.track = m.track; const l = Math.floor(num(m.laps, r.laps)); if (l >= 1 && l <= 3) r.laps = l; roomSend(r); } return true;
+    case 'room_start': { if (!r || r.host !== p.id || r.state === 'race') { reply({ ok: false, error: 'Sirf host race shuru kar sakta se' }); return true; }
+      r.state = 'race'; r.startAt = now() + 7; r.seed = Math.floor(Math.random() * 1e9); r.racers = r.members.slice(); r.done = []; r.kills = {}; r.prog = {}; r.firstDone = 0; reply({ ok: true }); roomSend(r); return true; }
+    case 'race_p': if (r && r.state === 'race' && rateOk(c, 'racep', 0.15)) { const pr = { n: Math.max(0, Math.floor(num(m.n, 0))) }; r.prog[p.id] = pr.n; roomCast(r, { t: 'rprog', id: p.id, n: pr.n }, p.id); } return true;
+    case 'race_done': { if (!r || r.state !== 'race' || !r.racers.includes(p.id) || r.done.some(d => d.id === p.id)) { reply({ ok: false }); return true; }
+      const T = D.RR_TRACKS.find(t => t.id === r.track), ms = Math.round(num(m.ms, 0)); if (!T || !(ms >= T.minLapMs * r.laps) || ms > 900000) { reply({ ok: false, error: 'Time not valid' }); return true; }
+      const place = r.done.length; const kills = r.kills[p.id] || 0; const prize = (D.RR_PRIZE[place] || 100) + kills * D.RR_KILL; r.done.push({ id: p.id, name: p.name, ms, kills, prize }); if (!r.firstDone) r.firstDone = now();
+      if (rateOk(c, 'rrpay', 30)) { credit(c, prize, 'Rocket Race #' + (place + 1)); track(c, 'rrraces'); if (!place) track(c, 'rrwins'); addXP(c, 60 + (place ? 0 : 60)); sendProfile(c); }
+      reply({ ok: true, place: place + 1, prize }); roomSend(r); roomFinishCheck(r); return true; }
+    case 'rocket': if (r && r.state === 'race' && rateOk(c, 'rocket', 0.45)) roomCast(r, { t: 'rocket', by: p.id, id: String(m.id || '').slice(0, 16), x: num(m.x, 0), y: num(m.y, 1.5), z: num(m.z, 0), r: num(m.r, 0), h: m.h ? 1 : 0 }, p.id); return true;
+    case 'wreck': if (r && r.state === 'race' && rateOk(c, 'wreck', 2)) { const by = r.members.includes(m.by) ? m.by : null; if (by && by !== p.id) r.kills[by] = (r.kills[by] || 0) + 1; roomCast(r, { t: 'wreck', id: p.id, by, x: num(m.x, 0), z: num(m.z, 0) }); } return true;
+    case 'room_say': if (r && rateOk(c, 'rsay', 1)) { const k = Math.floor(num(m.k, -1)); if (D.RR_SAY[k]) roomCast(r, { t: 'rsay', id: p.id, name: p.name, k }); } return true;
+    case 'rtc': if (r && rateOk(c, 'rtc', 0.02) && r.members.includes(m.to)) { const k = conns.get(m.to); if (k) send(k, { t: 'rtc', from: p.id, sig: m.sig }); } return true; // voice chat: relay WebRTC signals inside the room
+  }
+  return false;
+}
 function credit(c, amount, why) {
   amount = Math.round(amount); c.p.money += amount; track(c, 'earned', amount);
   send(c, { t: 'toast', text: '+' + fmt(amount) + (why ? ' · ' + why : ''), kind: 'money', sfx: 'cash' });
@@ -279,6 +306,19 @@ function inAkhara(st) { return st && !st.in && Math.hypot(st.x - D.SPOTS.akhara.
 let party = null; // {host, hostName, ends, guests:Set}
 let roast = null; // {id,a,b,aName,bName,phase,round,lines:[[a,b]...],deadline,votes:{a:Set,b:Set}}
 const invites = new Map(); // key target:kind -> {from, until}
+// ------------------------------------------------------------------ private rooms ("Apna Adda") and the ROCKET RACE
+// A room is a code friends join with a link. Inside, players only see each other; the host picks a stunt track and
+// laps and starts a rocket race. The server runs the lobby and the clock, relays rockets and wrecks inside the room,
+// checks finish times and pays the places. Voice chat signalling (WebRTC offers/answers) is relayed here too.
+const rooms = new Map();
+const roomCode = () => { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let k; do { k = ''; for (let i = 0; i < 6; i++) k += A[Math.floor(Math.random() * A.length)]; } while (rooms.has(k)); return k; };
+function roomView(r) { return { t: 'room', code: r.code, host: r.host, track: r.track, laps: r.laps, state: r.state, startAt: r.startAt, seed: r.seed, racers: r.racers, done: r.done, kills: r.kills,
+  members: r.members.map(id => { const k = conns.get(id); return { id, name: k ? k.p.name : '?', level: k ? k.p.level : 1, ready: r.ready.has(id), car: r.cars[id] || 'jugaad' }; }) }; }
+function roomSend(r) { const v = roomView(r); for (const id of r.members) { const k = conns.get(id); if (k) send(k, v); } }
+function roomCast(r, msg, except) { for (const id of r.members) { if (id === except) continue; const k = conns.get(id); if (k) send(k, msg); } }
+function roomLeave(c) { const r = c.room && rooms.get(c.room); c.room = null; if (!r) return; r.members = r.members.filter(x => x !== c.p.id); r.ready.delete(c.p.id); roomCast(r, { t: 'rleft', id: c.p.id });
+  if (!r.members.length) { rooms.delete(r.code); return; } if (r.host === c.p.id) r.host = r.members[0]; roomSend(r); }
+function roomFinishCheck(r) { if (r.state !== 'race') return; const left = r.racers.filter(id => r.members.includes(id) && !r.done.some(d => d.id === id)); if (!left.length || (r.firstDone && now() - r.firstDone > 90)) { r.state = 'done'; roomSend(r); } }
 let dance = null; // {a,b,seq,start,scores:{}}
 
 function roastState() {
@@ -528,6 +568,7 @@ function startup(c, m) {
 function handle(c, m) {
   const p = c.p; const t = m.t;
   const reply = data => { if (m.rid) send(c, { t: 'reply', rid: m.rid, ...data }); };
+  if (/^(room_|race_p$|race_done$|rocket$|wreck$|rtc$)/.test(t) && roomMsg(c, m, reply)) return; // private rooms and the rocket race
   switch (t) {
     case 'st': { // position/state ~10Hz
       const st = c.st || (c.st = {});
@@ -541,7 +582,7 @@ function handle(c, m) {
     case 'chat': {
       if (!rateOk(c, 'chat', 0.9)) return;
       const text = D.cleanText(m.text, 120); if (!text) return;
-      track(c, 'chats'); const cr = crewOf(p);
+      track(c, 'chats'); const cr = crewOf(p); const rm0 = c.room && rooms.get(c.room); if (rm0) { roomCast(rm0, { t: 'chat', id: p.id, name: p.name, tag: cr ? cr.tag : null, text, near: '🏁 Adda ' + rm0.code }); break; } // a room's chat stays in the room
       broadcast({ t: 'chat', id: p.id, name: p.name, tag: cr ? cr.tag : null, text, near: placeName(c.st || {}) });
       if (ais.size && Math.random() < 0.45) aiGreets.push({ at: now() + 2 + Math.random() * 3, text: pick(AI_REPLIES) });
       break;
@@ -914,7 +955,7 @@ function connect(out, closeFn, meta, outRaw) {
       try { handle(c, m); } catch (e) { console.error('handler error', m && m.t, e); }
     },
     close() {
-      if (!c) return; if (conns.get(c.p.id) === c) { conns.delete(c.p.id); broadcast({ t: 'left', id: c.p.id }); }
+      if (!c) return; roomLeave(c); if (conns.get(c.p.id) === c) { conns.delete(c.p.id); broadcast({ t: 'left', id: c.p.id }); }
       c.p.lastSeen = Date.now(); c.p.playMs = (c.p.playMs || 0) + (Date.now() - c.since); if (c.p.firstMs == null && (c.p.visits || 0) <= 1) c.p.firstMs = Date.now() - c.since; dirty = true; // first session length (owner stats)
     },
   };
@@ -929,7 +970,7 @@ function tick100() {
     const me = c.st; let near = [];
     for (const o of list) {
       if (o === c) continue; const s = o.st;
-      if (me && s.in !== me.in) continue; if (me && (s.rm || 0) !== (me.rm || 0)) continue; // the real-map city and the classic city are two worlds: only see who's in yours
+      if (me && s.in !== me.in) continue; if (me && (s.rm || 0) !== (me.rm || 0)) continue; if ((o.room || null) !== (c.room || null)) continue; // a private room is its own world // the real-map city and the classic city are two worlds: only see who's in yours
       const d = me && !s.in ? dist(s, me) : 0; if (d > VIEW_RADIUS) continue;
       near.push([d, o]);
     }
